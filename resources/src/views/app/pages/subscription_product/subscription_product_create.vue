@@ -82,7 +82,7 @@
                       <b-input-group>
                         <b-form-input
                           v-model="form.total_cycles"
-                          type="number"
+                          type="text"
                           min="1"
                           :state="!validationContext.errors.length"
                           aria-describedby="totalCycles-feedback"
@@ -123,7 +123,7 @@
                 <b-col lg="4" md="6" sm="12">
                   <validation-provider name="Price per Cycle" :rules="{ required: true}" v-slot="{ errors }">
                     <b-form-group :label="$t('Price_Per_Cycle') + ' ' + '*'">
-                      <b-form-input v-model="form.price_per_cycle" type="number" step="0.01" :state="!errors.length" />
+                      <b-form-input v-model="form.price_per_cycle" type="text" step="0.01" :state="!errors.length" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
@@ -133,7 +133,7 @@
                 <b-col lg="4" md="6" sm="12">
                   <validation-provider name="Quantity" :rules="{ required: true}" v-slot="{ errors }">
                     <b-form-group :label="$t('Quantity') + ' ' + '*'">
-                      <b-form-input v-model="form.quantity" type="number" :state="!errors.length" />
+                      <b-form-input v-model="form.quantity" type="text" :state="!errors.length" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
@@ -143,7 +143,7 @@
                 <b-col lg="4" md="6" sm="12">
                   <validation-provider name="Price per Unit" :rules="{ required: true}" v-slot="{ errors }">
                     <b-form-group  :label="$t('Price_Per_Unit') + ' ' + '*'">
-                      <b-form-input v-model="form.price_per_unit" type="number" step="0.01" :state="!errors.length" />
+                      <b-form-input v-model="form.price_per_unit" type="text" step="0.01" :state="!errors.length" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>

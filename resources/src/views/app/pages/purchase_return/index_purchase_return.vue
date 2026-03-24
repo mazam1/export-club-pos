@@ -30,7 +30,7 @@
         }"
         :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
       >
-        <div slot="selected-row-actions">
+        <div slot="selected-row-actions"  v-if="currentUserPermissions.includes('Purchase_Returns_delete')">
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
         </div>
         <div slot="table-actions" class="mt-2 mb-3">
@@ -151,6 +151,15 @@
               <span class="ul-btn__text ml-1">{{props.row.purchase_ref}}</span>
             </router-link>
           </div>
+          <span v-else-if="props.column.field == 'GrandTotal'">
+            {{ formatPriceWithSymbol(currentUser.currency, props.row.GrandTotal, 2) }}
+          </span>
+          <span v-else-if="props.column.field == 'paid_amount'">
+            {{ formatPriceWithSymbol(currentUser.currency, props.row.paid_amount, 2) }}
+          </span>
+          <span v-else-if="props.column.field == 'due'">
+            {{ formatPriceWithSymbol(currentUser.currency, props.row.due, 2) }}
+          </span>
         </template>
       </vue-good-table>
     </div>
@@ -478,7 +487,7 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 export default {
   metaInfo: {
@@ -532,7 +541,8 @@ export default {
         payment_method_id: "",
         notes: ""
       },
-     
+      // Optional price format key for frontend display (loaded from system settings/localStorage)
+      price_format_key: null
     };
   },
 
@@ -582,7 +592,6 @@ export default {
         {
           label: this.$t("Status"),
           field: "statut",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left"
         },
@@ -607,14 +616,12 @@ export default {
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false
@@ -782,6 +789,29 @@ export default {
       return `${value[0]}.${formated}`;
     },
 
+    // Price formatting for display only (does NOT affect calculations or stored values)
+    // Uses the global/system price_format setting when available; otherwise falls back
+    // to the existing formatNumber helper to preserve current behavior.
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = Number.isInteger(dec) ? dec : 0;
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
+        const effectiveKey = key || null;
+        return formatPriceDisplayHelper(number, decimals, effectiveKey);
+      } catch (e) {
+        return this.formatNumber(number, dec);
+      }
+    },
+
+    formatPriceWithSymbol(symbol, number, dec) {
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
+    },
+
     //-----------------------------  Return purchase pdf------------------------------\\
     Return_PDF(purchase_return, id) {
       // Start the progress bar.
@@ -849,64 +879,91 @@ export default {
       let pdf = new jsPDF("p", "pt");
 
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
+      try { pdf.addFont(fontPath,'Vazirmatn','normal'); pdf.addFont(fontPath,'Vazirmatn','bold'); } catch(e){}
+      pdf.setFont('Vazirmatn','normal');
 
-      let columns = [
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("Supplier"), dataKey: "provider_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("Purchase_Ref"), dataKey: "purchase_ref" },
-        { title: self.$t("Status"), dataKey: "statut" },
-        { title: self.$t("Total"), dataKey: "GrandTotal" },
-        { title: self.$t("Paid"), dataKey: "paid_amount" },
-        { title: self.$t("Due"), dataKey: "due" },
-        { title: self.$t("PaymentStatus"), dataKey: "payment_status" }
+      const headers = [
+        self.$t("Reference"),
+        self.$t("Supplier"),
+        self.$t("warehouse"),
+        self.$t("Purchase_Ref"),
+        self.$t("Status"),
+        self.$t("Total"),
+        self.$t("Paid"),
+        self.$t("Due"),
+        self.$t("PaymentStatus")
       ];
 
-       // Calculate totals
+      const body = (self.purchase_returns || []).map(purchase_return => ([
+        purchase_return.Ref,
+        purchase_return.provider_name,
+        purchase_return.warehouse_name,
+        purchase_return.purchase_ref,
+        purchase_return.statut,
+        purchase_return.GrandTotal,
+        purchase_return.paid_amount,
+        purchase_return.due,
+        purchase_return.payment_status
+      ]));
+
+      // Calculate totals
       let totalGrandTotal = self.purchase_returns.reduce((sum, purchase_return) => sum + parseFloat(purchase_return.GrandTotal || 0), 0);
       let totalPaidAmount = self.purchase_returns.reduce((sum, purchase_return) => sum + parseFloat(purchase_return.paid_amount || 0), 0);
       let totalDue = self.purchase_returns.reduce((sum, purchase_return) => sum + parseFloat(purchase_return.due || 0), 0);
 
-      let footer = [{
-        Ref: self.$t("Total"),
-        provider_name: '',
-        warehouse_name: '',
-        purchase_ref: '',
-        statut: '',
-        GrandTotal: `${totalGrandTotal.toFixed(2)}`,
-        paid_amount: `${totalPaidAmount.toFixed(2)}`,
-        due: `${totalDue.toFixed(2)}`,
-        payment_status: '',
-      }];
+      const footer = [[
+        self.$t("Total"),
+        '',
+        '',
+        '',
+        '',
+        totalGrandTotal.toFixed(2),
+        totalPaidAmount.toFixed(2),
+        totalDue.toFixed(2),
+        ''
+      ]];
 
+      const marginX = 40;
+      const rtl =
+        (self.$i18n && ['ar','fa','ur','he'].includes(self.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
 
-      pdf.autoTable({
-      columns: columns,
-        body: self.purchase_returns,
+      autoTable(pdf, {
+        head: [headers],
+        body: body,
         foot: footer,
-        startY: 70,
-        theme: "grid", 
-        didDrawPage: (data) => {
-          pdf.setFont("VazirmatnBold");
-          pdf.setFontSize(18);
-          pdf.text("Purchase Returns List", 40, 25);   
-        },
-        styles: {
-          font: "VazirmatnBold", 
-          halign: "center", // 
-        },
-        headStyles: {
-          fillColor: [200, 200, 200], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
-        footStyles: {
-          fillColor: [230, 230, 230], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        footStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+
+          // Header banner
+          pdf.setFillColor(63,81,181);
+          pdf.rect(0, 0, pageW, 60, 'F');
+
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = self.$t('PurchaseReturnsList') || 'Purchase Returns List';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
+
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
       });
 
       pdf.save("purchase_returns.pdf");

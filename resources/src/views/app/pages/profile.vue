@@ -3,7 +3,7 @@
     <breadcumb :page="$t('profil')" :folder="$t('Settings')"/>
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
 
-    <div class="card user-profile o-hidden mb-30" v-if="!isLoading">
+    <div class="card user-profile mb-30" v-if="!isLoading">
       <div class="header-cover"></div>
       <div class="user-info">
         <img class="profile-picture avatar-lg mb-2" :src="'/images/avatar/'+avatar" alt>
@@ -131,28 +131,6 @@
                 </validation-provider>
               </b-col>
 
-              <!-- New Password -->
-              <b-col md="6">
-                <validation-provider
-                  name="New password"
-                  :rules="{min:6 , max:14}"
-                  v-slot="validationContext"
-                >
-                  <b-form-group :label="$t('Newpassword')">
-                    <b-form-input
-                      :state="getValidationState(validationContext)"
-                      aria-describedby="Nawpassword-feedback"
-                      :placeholder="$t('LeaveBlank')"
-                      label="New password"
-                      v-model="user.NewPassword"
-                    ></b-form-input>
-                    <b-form-invalid-feedback
-                      id="Nawpassword-feedback"
-                    >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
-              </b-col>
-
               <b-col md="12" class="mt-3">
                 <b-button variant="primary" type="submit"><i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}</b-button>
               </b-col>
@@ -161,6 +139,89 @@
         </validation-observer>
       </div>
     </div>
+
+    <!-- Password Update Card -->
+    <div class="card mb-30" v-if="!isLoading">
+      <div class="card-body">
+        <h5 class="mb-3">{{ $t('ChangePassword') }}</h5>
+        <validation-observer ref="Update_Password">
+          <b-form @submit.prevent="Submit_Password">
+            <b-row>
+              <!-- Current Password -->
+              <b-col md="4" sm="12">
+                <validation-provider
+                  name="Current password"
+                  :rules="{ required: true }"
+                  v-slot="validationContext"
+                >
+                  <b-form-group :label="$t('CurrentPassword') + ' *'">
+                    <b-form-input
+                      type="password"
+                      :state="getValidationState(validationContext)"
+                      aria-describedby="current-password-feedback"
+                      v-model="passwordForm.current_password"
+                    ></b-form-input>
+                    <b-form-invalid-feedback id="current-password-feedback">
+                      {{ validationContext.errors[0] }}
+                    </b-form-invalid-feedback>
+                  </b-form-group>
+                </validation-provider>
+              </b-col>
+
+              <!-- New Password -->
+              <b-col md="4" sm="12">
+                <validation-provider
+                  vid="new_password"
+                  name="New password"
+                  :rules="{ required: true, min:6 }"
+                  v-slot="validationContext"
+                >
+                  <b-form-group :label="$t('Newpassword') + ' *'">
+                    <b-form-input
+                      type="password"
+                      :state="getValidationState(validationContext)"
+                      aria-describedby="new-password-feedback"
+                      v-model="passwordForm.new_password"
+                    ></b-form-input>
+                    <b-form-invalid-feedback id="new-password-feedback">
+                      {{ validationContext.errors[0] }}
+                    </b-form-invalid-feedback>
+                  </b-form-group>
+                </validation-provider>
+              </b-col>
+
+              <!-- Confirm Password -->
+              <b-col md="4" sm="12">
+                <validation-provider
+                  name="Confirm password"
+                  :rules="{ required: true, confirmed: 'new_password' }"
+                  v-slot="validationContext"
+                >
+                  <b-form-group :label="$t('ConfirmPassword') + ' *'">
+                    <b-form-input
+                      type="password"
+                      :state="getValidationState(validationContext)"
+                      aria-describedby="confirm-password-feedback"
+                      v-model="passwordForm.new_password_confirmation"
+                    ></b-form-input>
+                    <b-form-invalid-feedback id="confirm-password-feedback">
+                      {{ validationContext.errors[0] }}
+                    </b-form-invalid-feedback>
+                  </b-form-group>
+                </validation-provider>
+              </b-col>
+
+              <b-col md="12" class="mt-3">
+                <b-button variant="primary" type="submit">
+                  <i class="i-Yes me-2 font-weight-bold"></i> {{ $t('UpdatePassword') }}
+                </b-button>
+              </b-col>
+            </b-row>
+          </b-form>
+        </validation-observer>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -185,11 +246,16 @@ export default {
         firstname: "",
         lastname: "",
         username: "",
-        NewPassword: null,
         email: "",
         phone: "",
         avatar: ""
-      }
+      },
+      passwordForm: {
+        current_password: "",
+        new_password: "",
+        new_password_confirmation: ""
+      },
+
     };
   },
 
@@ -242,6 +308,7 @@ export default {
         });
     },
 
+
     //------------------------------ Event Upload Avatar -------------------------------\\
     async onFileSelected(e) {
       const { valid } = await this.$refs.Avatar.validate(e);
@@ -263,7 +330,6 @@ export default {
       self.data.append("lastname", self.user.lastname);
       self.data.append("username", self.user.username);
       self.data.append("email", self.user.email);
-      self.data.append("NewPassword", self.user.NewPassword);
       self.data.append("phone", self.user.phone);
       self.data.append("avatar", self.user.avatar);
       self.data.append("_method", "put");
@@ -280,10 +346,63 @@ export default {
 
           setTimeout(() => {
             this.Get_Profile_Info();
+            if (this.$refs.Update_Profile) {
+              this.$refs.Update_Profile.reset();
+            }
           }, 500);
         })
         .catch(error => {
           NProgress.done(), 500;
+        });
+    },
+
+    // ------------------ Update Password ----------------------\\
+    Submit_Password() {
+      this.$refs.Update_Password.validate().then(success => {
+        if (!success) {
+          this.makeToast(
+            "danger",
+            this.$t("Please_fill_the_form_correctly"),
+            this.$t("Failed")
+          );
+        } else {
+          this.Update_Password();
+        }
+      });
+    },
+
+    Update_Password() {
+      NProgress.start();
+      NProgress.set(0.1);
+
+      axios
+        .post("update_user_password", {
+          current_password: this.passwordForm.current_password,
+          new_password: this.passwordForm.new_password,
+          new_password_confirmation: this.passwordForm.new_password_confirmation
+        })
+        .then(() => {
+          this.makeToast(
+            "success",
+            this.$t("PasswordUpdated"),
+            this.$t("Success")
+          );
+          this.passwordForm.current_password = "";
+          this.passwordForm.new_password = "";
+          this.passwordForm.new_password_confirmation = "";
+          if (this.$refs.Update_Password) {
+            this.$refs.Update_Password.reset();
+          }
+          NProgress.done();
+        })
+        .catch(error => {
+          NProgress.done();
+          if (error.response && error.response.status === 422) {
+            const msg =
+              (error.response.data && error.response.data.message) ||
+              this.$t("CurrentPasswordIncorrect");
+            this.makeToast("danger", msg, this.$t("Failed"));
+          }
         });
     }
   }, // END METHODS
@@ -294,4 +413,12 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.card.o-hidden {
+  /* width: 18%; */
+  /* max-width: 18%; */
+  min-width: 130px;
+}
+</style>
 

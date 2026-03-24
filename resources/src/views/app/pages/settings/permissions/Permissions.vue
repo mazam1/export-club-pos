@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <breadcumb :page="$t('GroupPermissions')" :folder="$t('Settings')"/>
+    <breadcumb :page="$t('GroupPermissions')" :folder="$t('Users')"/>
 
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
@@ -29,7 +29,7 @@
           <router-link
             class="btn-rounded btn btn-primary ripple btn-icon m-1"
             v-if="currentUserPermissions && currentUserPermissions.includes('permissions_add')"
-            to="/app/Settings/Permissions/store"
+            to="/app/User_Management/permissions/store"
           >
             <span class="ul-btn__icon">
               <i class="i-Add"></i>
@@ -44,7 +44,7 @@
               v-if="currentUserPermissions && currentUserPermissions.includes('permissions_edit')"
               title="Edit"
               v-b-tooltip.hover
-              :to="'/app/Settings/Permissions/edit/'+props.row.id"
+              :to="'/app/User_Management/permissions/edit/'+props.row.id"
             >
               <i class="i-Edit text-25 text-success"></i>
             </router-link>
@@ -110,7 +110,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false

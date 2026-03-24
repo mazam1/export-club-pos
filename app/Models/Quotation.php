@@ -9,7 +9,7 @@ class Quotation extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'date', 'Ref', 'client_id', 'GrandTotal', 'warehouse_id', 'user_id', 'statut','time',
+        'date', 'Ref', 'client_id', 'GrandTotal', 'warehouse_id', 'user_id', 'statut', 'time',
         'notes', 'discount', 'shipping', 'TaxNet', 'tax_rate', 'created_at', 'updated_at', 'deleted_at',
     ];
 
@@ -44,5 +44,4 @@ class Quotation extends Model
     {
         return $this->belongsTo('App\Models\Warehouse');
     }
-
 }

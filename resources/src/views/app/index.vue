@@ -13,7 +13,7 @@ export default {
     return {};
   },
   computed: {
-    ...mapGetters(["getThemeMode"])
+    ...mapGetters("config", ["getThemeMode"])
   },
   methods: {}
 };

@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <breadcumb :page="$t('deposit_Category')" :folder="$t('Expenses')"/>
+    <breadcumb :page="$t('Deposit_Category')" :folder="$t('Expenses')"/>
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
     <div v-else>
       <vue-good-table
@@ -25,7 +25,7 @@
       }"
         styleClass="tableOne table-hover vgt-table"
       >
-        <div slot="selected-row-actions">
+        <div slot="selected-row-actions" v-if="currentUserPermissions && currentUserPermissions.includes('deposit_delete')">
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
         </div>
         <div slot="table-actions" class="mt-2 mb-3">
@@ -149,7 +149,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false

@@ -34,7 +34,7 @@ return [
     */
 
     'mailers' => [
-    
+
         'ses' => [
             'transport' => 'ses',
         ],
@@ -78,7 +78,6 @@ return [
     //     'name' => env('MAIL_FROM_NAME', 'Example'),
     // ],
     // 'from' => ['address' => 'admin@wr-stock.ma', 'name' => 'Admin'],
-
 
     /*
     |--------------------------------------------------------------------------

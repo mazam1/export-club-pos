@@ -1,86 +1,85 @@
 <?php
 
 namespace App\Http\Controllers\hrm;
-use App\Http\Controllers\Controller;
 
-use Illuminate\Http\Request;
-use App\Models\EmployeeExperience;
+use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Models\EmployeeExperience;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class EmployeeExperienceController extends Controller
 {
-
-
     public function index(Request $request)
     {
         //
     }
 
-    //----------- Store new Employee Experience --------------\\
+    // ----------- Store new Employee Experience --------------\\
 
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Employee::class);
 
         request()->validate([
-            'title'           => 'required|string',
-            'company_name'    => 'required|string',
-            'start_date'      => 'required',
-            'end_date'        => 'required',
+            'title' => 'required|string',
+            'company_name' => 'required|string',
+            'start_date' => 'required',
+            'end_date' => 'required',
             'employment_type' => 'required',
         ]);
 
         EmployeeExperience::create([
-            'company_name'    => $request['company_name'],
-            'employee_id'     => $request['employee_id'],
-            'title'           => $request['title'],
-            'start_date'      => $request['start_date'],
-            'end_date'        => $request['end_date'],
+            'company_name' => $request['company_name'],
+            'employee_id' => $request['employee_id'],
+            'title' => $request['title'],
+            'start_date' => $request['start_date'],
+            'end_date' => $request['end_date'],
             'employment_type' => $request['employment_type'],
-            'location'        => $request['location'],
-            'description'     => $request['description'],
+            'location' => $request['location'],
+            'description' => $request['description'],
         ]);
 
         return response()->json(['success' => true]);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
-        }
 
-    //-----------Update Employee Experience --------------\\
+    }
+
+    // -----------Update Employee Experience --------------\\
 
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Employee::class);
 
         request()->validate([
-            'title'           => 'required|string',
-            'company_name'    => 'required|string',
-            'start_date'      => 'required',
-            'end_date'        => 'required',
-            'employment_type'=> 'required',
+            'title' => 'required|string',
+            'company_name' => 'required|string',
+            'start_date' => 'required',
+            'end_date' => 'required',
+            'employment_type' => 'required',
         ]);
 
         EmployeeExperience::whereId($id)->update([
-            'company_name'    => $request['company_name'],
-            'employee_id'     => $request['employee_id'],
-            'title'           => $request['title'],
-            'start_date'      => $request['start_date'],
-            'end_date'        => $request['end_date'],
+            'company_name' => $request['company_name'],
+            'employee_id' => $request['employee_id'],
+            'title' => $request['title'],
+            'start_date' => $request['start_date'],
+            'end_date' => $request['end_date'],
             'employment_type' => $request['employment_type'],
-            'location'        => $request['location'],
-            'description'     => $request['description'],
+            'location' => $request['location'],
+            'description' => $request['description'],
         ]);
-    
+
         return response()->json(['success' => true]);
     }
 
-    //----------- Delete  Employee --------------\\
+    // ----------- Delete  Employee --------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -92,7 +91,4 @@ class EmployeeExperienceController extends Controller
 
         return response()->json(['success' => true]);
     }
-
-
-
 }

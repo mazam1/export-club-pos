@@ -1,32 +1,33 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Config;
 use DB;
-use \Nwidart\Modules\Facades\Module;
 
 class BaseController extends Controller
 {
-
-    public function sendResponse($result,$msg){
-        $response=[
-            'success'=>true,
-            'message'=>$msg,
+    public function sendResponse($result, $msg)
+    {
+        $response = [
+            'success' => true,
+            'message' => $msg,
         ];
-        if(!empty($result)){
-            $response['data']=$result;
+        if (! empty($result)) {
+            $response['data'] = $result;
         }
+
         return response()->json($response, 200);
     }
 
-    public function sendError($error_msg, $error=null){
-        $response=[
-            'success'=>false,
-            'message'=>$error_msg,
+    public function sendError($error_msg, $error = null)
+    {
+        $response = [
+            'success' => false,
+            'message' => $error_msg,
         ];
-        if(isset($error)){
-            $response['errors']= $error;
+        if (isset($error)) {
+            $response['errors'] = $error;
         }
 
         return response()->json($response, 400);
@@ -37,7 +38,7 @@ class BaseController extends Controller
     {
         $domain = ($_SERVER['SERVER_NAME'] != 'localhost') ? $_SERVER['SERVER_NAME'] : '.'.$_SERVER['SERVER_NAME'];
         $this->destroyCookie($cookie_name);
-        setcookie($cookie_name, $cookie_value, time() + 2147483647, '/', $domain); 
+        setcookie($cookie_name, $cookie_value, time() + 2147483647, '/', $domain);
     }
 
     // Get cookie
@@ -49,6 +50,7 @@ class BaseController extends Controller
             return false;
         }
     }
+
     // Has cookie
     public function hasCookie($cookie_name)
     {
@@ -65,7 +67,7 @@ class BaseController extends Controller
         $domain = ($_SERVER['SERVER_NAME'] != 'localhost') ? $_SERVER['SERVER_NAME'] : '.'.$_SERVER['SERVER_NAME'];
         if (isset($_COOKIE[$cookie_name])) {
             unset($_COOKIE[$cookie_name]);
-            setcookie($cookie_name, '', time() - 2147483647, '/',  $domain);
+            setcookie($cookie_name, '', time() - 2147483647, '/', $domain);
 
         }
     }
@@ -86,52 +88,29 @@ class BaseController extends Controller
 
         $server = DB::table('servers')->where('deleted_at', '=', null)->first();
         $settings = DB::table('settings')->where('deleted_at', '=', null)->first();
-        if ($server && $settings) //checking if table is not empty
-        {
-            $config = array(
-                'driver' => $server->mail_mailer,
-                'host' => $server->host,
-                'port' => $server->port,
-                'from' => array('address' => $settings->email, 'name' => $server->sender_name),
-                'encryption' => $server->encryption,
-                'username' => $server->username,
-                'password' => $server->password,
-                'sendmail' => '/usr/sbin/sendmail -bs',
-                'pretend' => false,
-                'stream' => [
-                    'ssl' => [
-                        'allow_self_signed' => true,
-                        'verify_peer' => false,
-                        'verify_peer_name' => false,
+        if ($server && $settings) { // checking if table is not empty
+            // Prefer sender_email from server, fallback to settings email
+            $fromEmail = ($server->sender_email ?? null) ?: $settings->email;
+            
+            $config = [
+                    'driver' => $server->mail_mailer,
+                    'host' => $server->host,
+                    'port' => $server->port,
+                    'from' => ['address' => $fromEmail, 'name' => $server->sender_name],
+                    'encryption' => $server->encryption,
+                    'username' => $server->username,
+                    'password' => $server->password,
+                    'sendmail' => '/usr/sbin/sendmail -bs',
+                    'pretend' => false,
+                    'stream' => [
+                        'ssl' => [
+                            'allow_self_signed' => true,
+                            'verify_peer' => false,
+                            'verify_peer_name' => false,
+                        ],
                     ],
-                ],
-            );
+                ];
             Config::set('mail', $config);
         }
     }
-
-    public static function get_Module_Info()
-    {
-        $allModules = Module::all();
-        $allEnabledModules = Module::allEnabled();
-
-        $ModulesInstalled = [];
-        $ModulesEnabled = [];
-
-        foreach($allModules as $key => $modules_name){
-            $ModulesInstalled[] = $key;
-        }
-
-        foreach($allEnabledModules as $key => $modules_name){
-            $ModulesEnabled[] = $key;
-        }
-
-        return [
-            'ModulesInstalled' => $ModulesInstalled, 
-            'ModulesEnabled' => $ModulesEnabled, 
-        ];
-    }
-
-
-
 }

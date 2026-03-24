@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-
 use Illuminate\Database\Eloquent\Model;
 
 class Banner extends Model
@@ -12,7 +11,6 @@ class Banner extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'banner1_path','banner2_path'
+        'banner1_path', 'banner2_path',
     ];
-
 }

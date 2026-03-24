@@ -92,6 +92,43 @@
 
                 </b-tab>
 
+                <!-- Custom Template for Booking -->
+                <b-tab :title="$t('Custom_Template_Booking') || 'Custom Template for Booking'">
+
+                  <form @submit.prevent="update_custom_email('booking')">
+                    <div class="row">
+                      <div class=" col-md-12">
+                        <span> <strong>{{$t('Available_Tags')}} : </strong></span>
+                        <p>
+                          {contact_name},{business_name},{booking_number},{booking_date},{start_time},{end_time},{service_name}
+                        </p>
+                      </div>
+                      <hr>
+
+                      <div class="form-group col-md-12">
+                          <label for="email_subject_booking">{{$t('Email_Subject')}} </label>
+                          <input type="text" v-model="booking.subject" class="form-control"
+                            name="email_subject_booking" id="email_subject_booking" :placeholder="$t('Email_Subject')">
+                      </div>
+                      <div class="form-group col-md-12">
+                        <label for="email_body_booking">{{$t('Email_body')}} </label>
+                        <vue-editor id="editor_booking" v-model="booking.body" :editor-toolbar="customToolbar"></vue-editor>
+                      </div>
+
+                    </div>
+
+                    <div class="row mt-3">
+                      <div class="col-md-6">
+                        <button type="submit" :disabled="Submit_Processing" class="btn btn-primary">
+                          <span v-if="Submit_Processing" class="spinner-border spinner-border-sm" role="status"
+                            aria-hidden="true"></span> <i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+
+                </b-tab>
+
                 <!-- Payment Received -->
                 <b-tab :title="$t('PaiementsReceived')">
 
@@ -240,12 +277,12 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 
-import { VueEditor } from "vue2-editor";
+import RichTextEditor from "@/components/RichTextEditor.vue";
 
 
 export default {
    components: {
-    VueEditor,
+    VueEditor: RichTextEditor,
   },
   metaInfo: {
     title: "Email Templates"
@@ -272,6 +309,10 @@ export default {
         body:'',
       },
       payment_sent:{
+        subject:'',
+        body:'',
+      },
+      booking:{
         subject:'',
         body:'',
       },
@@ -321,6 +362,9 @@ export default {
               }else if(email_type == 'payment_sent'){
                 this.custom_email_body = this.payment_sent.body;
                 this.custom_email_subject =  this.payment_sent.subject;
+              }else if(email_type == 'booking'){
+                this.custom_email_body = this.booking.body;
+                this.custom_email_subject =  this.booking.subject;
               }
               
               axios.put("/update_custom_email", {
@@ -361,6 +405,7 @@ export default {
           this.payment_received = response.data.payment_received;
           this.purchase = response.data.purchase;
           this.payment_sent = response.data.payment_sent;
+          this.booking = response.data.booking || { subject: '', body: '' };
 
           this.isLoading = false;
         })

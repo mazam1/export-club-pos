@@ -2,88 +2,66 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Http\Controllers\TestDbController;
+use App\Models\Permission;
+use App\Models\Product;
+use App\Models\Role;
+use App\Models\sms_gateway;
+use Auth;
+use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\File;
-use App\Models\Role;
-use App\Models\Setting;
-use App\Models\sms_gateway;
-use DB;
-use Auth;
-use App\Models\Permission;
+use Illuminate\Support\Facades\Schema;
 
 class UpdateController extends Controller
 {
-
-    public function get_version_info(request $request){
-
-        $this->authorizeForUser($request->user('api'), 'update', Setting::class);
-        $version = $this->check();
-        
-        return response()->json($version);
-    }
-
-
-    /*
-    * Return current version (as plain text).
-    */
-    public function getCurrentVersion(){
-        // todo: env file version
-        $version = File::get(base_path().'/version.txt');
-        return $version;
-    }
-
-    /*
-    * Check if a new Update exist.
-    */
-    public function check()
-    {
-        $lastVersionInfo = $this->getLastVersion();
-        if( version_compare($lastVersionInfo['version'], $this->getCurrentVersion(), ">") )
-            return $lastVersionInfo['version'];
-
-        return '';
-    }
-
-    private function getLastVersion(){
-        $content = file_get_contents('https://update-stocky.ui-lib.com/stocky_version.json');
-        $content = json_decode($content, true);
-        return $content;
-    }
-
-    
     public function viewStep1(Request $request)
     {
         $role = Auth::user()->roles()->first();
         $permission = Role::findOrFail($role->id)->inRole('setting_system');
-        if($permission){
+        if ($permission) {
             return view('update.viewStep1');
         }
     }
-    
+
     public function lastStep(Request $request)
     {
+        ini_set('max_execution_time', 2000); 
+		ini_set('memory_limit', '512M');
+        
         $role = Auth::user()->roles()->first();
         $permission = Role::findOrFail($role->id)->inRole('setting_system');
 
-        if($permission){
-            ini_set('max_execution_time', 600); //600 seconds = 10 minutes 
+        if ($permission) {
+            ini_set('max_execution_time', 2000);
 
             try {
-            
+
                 Artisan::call('config:cache');
                 Artisan::call('config:clear');
+
+                // ----------------------------------------------------
+                // ✅ Backward compatibility for old sales (NO discount_method)
+                // ----------------------------------------------------
+                 if (!Schema::hasColumn('sales', 'discount_method')) {
+
+                    // Run ONLY if the old loyalty column exists
+                    if (Schema::hasColumn('sales', 'discount_from_points')) {
+
+                        DB::table('sales')
+                            ->where('discount_from_points', '>', 0)
+                            ->update([
+                                'discount' => DB::raw('GREATEST(discount - discount_from_points, 0)')
+                            ]);
+                    }
+                }
+
 
                 Artisan::call('migrate --force');
 
                 $role = Role::findOrFail(1);
                 $role->permissions()->detach();
 
-                $permissions = array(
+                $permissions = [
                     0 => 'view_employee',
                     1 => 'add_employee',
                     2 => 'edit_employee',
@@ -142,7 +120,56 @@ class UpdateController extends Controller
                     55 => 'report_sales_by_category',
                     56 => 'report_sales_by_brand',
                     57 => 'opening_stock_import',
-                );
+                    58 => 'seller_report',
+                    59 => 'Store_settings_view',
+                    60 => 'Orders_view',
+                    61 => 'Collections_view',
+                    62 => 'Banners_view',
+                    63 => 'inactive_customers_report',
+                    64 => 'zeroSalesProducts',
+                    65 => 'Dead_Stock_Report',
+                    66 => 'draft_invoices_report',
+                    67 => 'discount_summary_report',
+                    68 => 'tax_summary_report',
+                    69 => 'Stock_Aging_Report',
+                    70 => 'Stock_Transfer_Report',
+                    71 => 'Stock_Adjustment_Report',
+                    72 => 'Top_Suppliers_Report',
+                    73 => 'Subscribers_view',
+                    74 => 'Messages_view',
+                    75 => 'cash_register_report',
+                    76 => 'woocommerce_settings',
+                    77 => 'customer_display_screen_setup',
+                    78 => 'quickbooks_settings',
+                    79 => 'customer_loyalty_points_report',
+                    80 => 'assets',
+                    81 => 'damage_view',
+                    82 => 'cash_flow_report',
+                    83 => 'report_attendance_summary',
+                    84 => 'return_ratio_report',
+                    85 => 'negative_stock_report',
+                    86 => 'accounting_dashboard',
+                    87 => 'chart_of_accounts',
+                    88 => 'journal_entries',
+                    89 => 'trial_balance',
+                    90 => 'accounting_profit_loss',
+                    91 => 'balance_sheet',
+                    92 => 'accounting_tax_report',
+                    93 => 'service_jobs',
+                    94 => 'service_jobs_report',
+                    95 => 'checklist_completion_report',
+                    96 => 'customer_maintenance_history_report',
+                    97 => 'bookings',
+                    98 => 'subcategory',
+                    99 => 'login_device_management',
+                    100 => 'report_device_management',
+                    101 => 'update_settings',
+                    102 => 'analytics_report',
+                    103 => 'Stock_Inventory_Valuation',
+                    104 => 'AI_Reports',
+                    105 => 'report_warranty',
+
+                ];
 
                 foreach ($permissions as $permission_slug) {
                     $perm = Permission::firstOrCreate(['name' => $permission_slug]);
@@ -151,7 +178,7 @@ class UpdateController extends Controller
                 $permissions_data = Permission::pluck('id')->toArray();
                 $role->permissions()->attach($permissions_data);
 
-                //create new sms gateway infobip
+                // create new sms gateway infobip
                 sms_gateway::firstOrCreate(['title' => 'infobip']);
                 sms_gateway::firstOrCreate(['title' => 'termii']); // ✅ Create "termii" gateway
 
@@ -173,17 +200,61 @@ class UpdateController extends Controller
                     ]
                 );
 
-                Artisan::call('module:publish');
-                
+                // Insert email message template: booking
+                DB::table('email_messages')->updateOrInsert(
+                    ['name' => 'booking'],
+                    [
+                        'subject' => 'Your Booking Confirmation',
+                        'body' => '<p><b><span style="font-size:14px;">Dear {contact_name},</span></b></p><p>Your booking has been confirmed. Booking number: {booking_number}.</p><p><span style="font-size:14px;">Date: {booking_date}<br>Time: {start_time} - {end_time}<br>Service: {service_name}</span></p><p>If you have any questions, please don\'t hesitate to contact us.</p><p>Best regards,</p><p><b><span style="font-size:14px;">{business_name}</span></b></p>',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+
+                // ✅ Run TranslationSeeder automatically
+                Artisan::call('db:seed', [
+                    '--class' => 'Database\\Seeders\\TranslationSeeder',
+                    '--force' => true,
+                ]);
+
+                // ✅ Run StoreSettingSeeder automatically
+                Artisan::call('db:seed', [
+                    '--class' => 'Database\\Seeders\\StoreSettingSeeder',
+                    '--force' => true,
+                ]);
+
+                // ----------------------------------------------------
+                // ✅ Clean product names containing < or >
+                // ----------------------------------------------------
+                $cleaned = 0;
+                \App\Models\Product::where('name', 'REGEXP', '<|>')
+                    ->chunkById(200, function ($products) use (&$cleaned) {
+                        foreach ($products as $p) {
+                            $old = $p->name;
+                            // Replace dangerous characters or strip HTML
+                            $clean = str_replace(['<', '>'], ['‹', '›'], strip_tags($old));
+                            if ($clean !== $old) {
+                                $p->name = $clean;
+                                $p->save();
+                                $cleaned++;
+                            }
+                        }
+                    });
+
+                // ✅ Clear caches so translations are picked up immediately
+                Artisan::call('cache:clear');
+                Artisan::call('config:clear');
+                Artisan::call('view:clear');
+                Artisan::call('route:clear');
+
             } catch (\Exception $e) {
-                
+
                 return $e->getMessage();
-                
+
                 return 'Something went wrong';
             }
-            
+
             return view('update.finishedUpdate');
         }
     }
-
 }

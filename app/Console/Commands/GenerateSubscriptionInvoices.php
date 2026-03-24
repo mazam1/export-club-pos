@@ -2,21 +2,19 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Models\Subscription;
-use App\Models\ProductWarehouse;
-use App\Models\Unit;
-use Carbon\Carbon;
-use GuzzleHttp\Client;
-use Illuminate\Support\Facades\Log;
+use App\Models\ErrorLog;
 use App\Models\PaymentSale;
 use App\Models\product_warehouse;
-use App\Models\ErrorLog;
-use Illuminate\Support\Str;
+use App\Models\Subscription;
+use App\Models\Unit;
+use Carbon\Carbon;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class GenerateSubscriptionInvoices extends Command
 {
     protected $signature = 'subscriptions:generate-invoices';
+
     protected $description = 'Generate invoices and auto-charge clients via Flutterwave';
 
     public function handle()
@@ -33,14 +31,14 @@ class GenerateSubscriptionInvoices extends Command
             $invoice = $subscription->generateInvoice();
 
             PaymentSale::create([
-                'sale_id'   => $invoice->id,
-                'date'      => now(),
-                'montant'   => $invoice->GrandTotal,
-                'Ref'       => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
-                'change'    => 0,
+                'sale_id' => $invoice->id,
+                'date' => now(),
+                'montant' => $invoice->GrandTotal,
+                'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
+                'change' => 0,
                 'Reglement' => 'flutterwave',
-                'user_id'   => $invoice->user_id ?? 1,
-                'notes'     => 'Auto payment for subscription #' . $subscription->id,
+                'user_id' => $invoice->user_id ?? 1,
+                'notes' => 'Auto payment for subscription #'.$subscription->id,
             ]);
 
             // 2. Decrease product stock
@@ -56,24 +54,22 @@ class GenerateSubscriptionInvoices extends Command
                 $productWarehouse->save();
             }
 
-
-
             // 4. Send SMS on successful charge
-           
+
             try {
                 app('App\Http\Controllers\SalesController')->Send_Subscription_Payment_Success_SMS($subscription->id, $invoice->id);
                 Log::info("SMS sent after successful payment for subscription #{$subscription->id}");
             } catch (\Exception $e) {
-                Log::error("Failed sending SMS for subscription #{$subscription->id}: " . $e->getMessage());
+                Log::error("Failed sending SMS for subscription #{$subscription->id}: ".$e->getMessage());
 
                 ErrorLog::create([
                     'context' => 'SMS after auto-charge success',
                     'message' => "Failed sending SMS for subscription #{$subscription->id}",
                     'details' => json_encode([
                         'subscription_id' => $subscription->id,
-                        'client_id'       => $subscription->client->id ?? null,
-                        'error'           => $e->getMessage(),
-                        'trace'           => $e->getTraceAsString(),
+                        'client_id' => $subscription->client->id ?? null,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
                     ]),
                 ]);
             }
@@ -86,14 +82,14 @@ class GenerateSubscriptionInvoices extends Command
             }
 
             $subscription->next_billing_date = match ($subscription->billing_cycle) {
-                'weekly'  => Carbon::parse($subscription->next_billing_date)->addWeek(),
+                'weekly' => Carbon::parse($subscription->next_billing_date)->addWeek(),
                 'monthly' => Carbon::parse($subscription->next_billing_date)->addMonth(),
-                'yearly'  => Carbon::parse($subscription->next_billing_date)->addYear(),
+                'yearly' => Carbon::parse($subscription->next_billing_date)->addYear(),
             };
 
             $subscription->save();
         }
 
-        $this->info("✅ Subscription invoices generated and processed.");
+        $this->info('✅ Subscription invoices generated and processed.');
     }
 }

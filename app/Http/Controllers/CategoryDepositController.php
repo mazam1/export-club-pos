@@ -3,15 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\DepositCategory;
-use App\Models\Role;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class CategoryDepositController extends BaseController
 {
-
-    //-------------- Get All Expense Categories ---------------\\
+    // -------------- Get All Expense Categories ---------------\\
 
     public function index(Request $request)
     {
@@ -26,7 +23,7 @@ class CategoryDepositController extends BaseController
 
         // Check If User Has Permission View  All Records
         $DepositCategory = DepositCategory::where('deleted_at', '=', null)
-            
+
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('title', 'LIKE', "%{$request->search}%");
@@ -34,7 +31,7 @@ class CategoryDepositController extends BaseController
             });
 
         $totalRows = $DepositCategory->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $data = $DepositCategory->offset($offSet)
@@ -49,7 +46,7 @@ class CategoryDepositController extends BaseController
 
     }
 
-    //-------------- Store New Category ---------------\\
+    // -------------- Store New Category ---------------\\
 
     public function store(Request $request)
     {
@@ -66,14 +63,15 @@ class CategoryDepositController extends BaseController
         return response()->json(['success' => true], 200);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
-    //
-    
+    public function show($id)
+    {
+        //
+
     }
 
-    //-------------- Update Category ---------------\\
+    // -------------- Update Category ---------------\\
 
     public function update(Request $request, $id)
     {
@@ -92,7 +90,7 @@ class CategoryDepositController extends BaseController
 
     }
 
-    //-------------- Delete Category ---------------\\
+    // -------------- Delete Category ---------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -106,7 +104,7 @@ class CategoryDepositController extends BaseController
         return response()->json(['success' => true], 200);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -120,7 +118,7 @@ class CategoryDepositController extends BaseController
                 'deleted_at' => Carbon::now(),
             ]);
         }
+
         return response()->json(['success' => true], 200);
     }
-
 }

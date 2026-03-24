@@ -7,6 +7,7 @@ use App\Http\Controllers\TestDbController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Passport\ClientRepository;
 
 class SetupController extends Controller
 {
@@ -142,7 +143,8 @@ class SetupController extends Controller
 
     public function lastStep(Request $request)
     {
-        ini_set('max_execution_time', 600); //600 seconds = 10 minutes 
+        ini_set('max_execution_time', 2000); 
+		ini_set('memory_limit', '512M');
 
         try {
             $this->changeEnv([
@@ -177,10 +179,27 @@ class SetupController extends Controller
                 '--force' => true,
             ]);
 
-            // 4) Generate Passport keys & clients
-            Artisan::call('passport:install', [
+            // 4) Generate Passport keys & create clients without interactive prompts
+            Artisan::call('passport:keys', [
                 '--force' => true,
             ]);
+
+            $clientRepository = app(ClientRepository::class);
+            $appUrl = config('app.url') ?: 'http://localhost';
+
+            // Create Personal Access Client
+            $clientRepository->createPersonalAccessClient(
+                null,
+                'Laravel Personal Access Client',
+                $appUrl
+            );
+
+            // Create Password Grant Client
+            $clientRepository->createPasswordGrantClient(
+                null,
+                'Laravel Password Grant Client',
+                $appUrl
+            );
 
             // 5) Mark the install as done
             Storage::disk('public')->put('installed', 'OK');

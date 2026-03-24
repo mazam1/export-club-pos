@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class AdjustmentDetail extends Model
 {
-
     protected $fillable = [
         'id', 'product_id', 'adjustment_id', 'quantity', 'type', 'product_variant_id',
     ];
@@ -27,5 +26,4 @@ class AdjustmentDetail extends Model
     {
         return $this->belongsTo('App\Models\Product');
     }
-
 }

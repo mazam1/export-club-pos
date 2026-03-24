@@ -2,17 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\Client;
 use App\Models\Company;
 use App\Models\Employee;
-use App\Models\Task;
-use App\Models\Project;
 use App\Models\EmployeeProject;
-use App\Models\Client;
-use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
+use App\Models\Project;
 use App\utils\helpers;
-
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ProjectController extends Controller
 {
@@ -21,8 +19,7 @@ class ProjectController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-
-     public function index(request $request)
+    public function index(request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', Project::class);
         $role = Auth::user()->roles()->first();
@@ -34,30 +31,29 @@ class ProjectController extends Controller
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        $helpers = new helpers();
+        $helpers = new helpers;
         // Filter fields With Params to retrieve
-        $param = array(
+        $param = [
             0 => 'like',
             1 => '=',
             2 => '=',
             3 => '=',
             4 => '=',
-        );
-        $columns = array(
+        ];
+        $columns = [
             0 => 'status',
             1 => 'client_id',
             2 => 'start_date',
             3 => 'end_date',
             4 => 'company_id',
-        );
-        $data = array();
+        ];
+        $data = [];
 
         // Check If User Has Permission View  All Records
         $projects = Project::with('company', 'client')
             ->where('deleted_at', '=', null);
-          
 
-        //Multiple Filter
+        // Multiple Filter
         $Filtred = $helpers->filter($projects, $columns, $param, $request)
         // Search With Multiple Param
             ->where(function ($query) use ($request) {
@@ -77,7 +73,7 @@ class ProjectController extends Controller
             });
 
         $totalRows = $Filtred->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $all_projects = $Filtred->offset($offSet)
@@ -87,37 +83,35 @@ class ProjectController extends Controller
 
         foreach ($all_projects as $project) {
 
-            $item['id']           = $project->id;
-            $item['title']   = $project->title;
-            $item['start_date']   = $project->start_date;
-            $item['end_date']     = $project->end_date;
-            $item['client_name']  = $project['client']->name;
+            $item['id'] = $project->id;
+            $item['title'] = $project->title;
+            $item['start_date'] = $project->start_date;
+            $item['end_date'] = $project->end_date;
+            $item['client_name'] = $project['client']->name;
             $item['company_name'] = $project['company']->name;
-            $item['status']       = $project->status;
-           
+            $item['status'] = $project->status;
+
             $data[] = $item;
         }
 
         $companies = Company::where('deleted_at', '=', null)->get(['id', 'name']);
-        $clients = Client::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','name']);
+        $clients = Client::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
 
         $count_not_started = Project::where('deleted_at', '=', null)
-        ->where('status', '=', 'not_started')
-        ->count();
+            ->where('status', '=', 'not_started')
+            ->count();
 
         $count_in_progress = Project::where('deleted_at', '=', null)
-        ->where('status', '=', 'progress')
-        ->count();
+            ->where('status', '=', 'progress')
+            ->count();
 
         $count_cancelled = Project::where('deleted_at', '=', null)
-        ->where('status', '=', 'cancelled')
-        ->count();
+            ->where('status', '=', 'cancelled')
+            ->count();
 
         $count_completed = Project::where('deleted_at', '=', null)
-        ->where('status', '=', 'completed')
-        ->count();
-
-    
+            ->where('status', '=', 'completed')
+            ->count();
 
         return response()->json([
             'totalRows' => $totalRows,
@@ -130,7 +124,6 @@ class ProjectController extends Controller
             'count_completed' => $count_completed,
         ]);
     }
- 
 
     /**
      * Show the form for creating a new resource.
@@ -141,9 +134,9 @@ class ProjectController extends Controller
     {
         $this->authorizeForUser($request->user('api'), 'create', Project::class);
 
-        $clients = Client::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','name']);
-        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','name']);
-       
+        $clients = Client::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
+        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
+
         return response()->json([
             'clients' => $clients,
             'companies' => $companies,
@@ -154,7 +147,6 @@ class ProjectController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request)
@@ -162,23 +154,23 @@ class ProjectController extends Controller
         $this->authorizeForUser($request->user('api'), 'create', Project::class);
 
         $request->validate([
-            'title'           => 'required|string|max:255',
-            'client'          => 'required',
-            'company_id'      => 'required',
-            'assigned_to'     => 'required',
-            'start_date'      => 'required',
-            'end_date'        => 'required',
-            'status'          => 'required',
+            'title' => 'required|string|max:255',
+            'client' => 'required',
+            'company_id' => 'required',
+            'assigned_to' => 'required',
+            'start_date' => 'required',
+            'end_date' => 'required',
+            'status' => 'required',
         ]);
 
-        $project  = Project::create([
-            'title'            => $request['title'],
-            'start_date'       => $request['start_date'],
-            'end_date'         => $request['end_date'],
-            'company_id'       => $request['company_id'],
-            'client_id'        => $request['client'],
-            'status'           => $request['status'],
-            'description'      => $request['description'],
+        $project = Project::create([
+            'title' => $request['title'],
+            'start_date' => $request['start_date'],
+            'end_date' => $request['end_date'],
+            'company_id' => $request['company_id'],
+            'client_id' => $request['client'],
+            'status' => $request['status'],
+            'description' => $request['description'],
         ]);
 
         $project->assignedEmployees()->sync($request['assigned_to']);
@@ -195,7 +187,7 @@ class ProjectController extends Controller
      */
     public function show($id)
     {
-        //    
+        //
     }
 
     /**
@@ -210,9 +202,9 @@ class ProjectController extends Controller
 
         $project = Project::where('deleted_at', '=', null)->findOrFail($id);
         $assigned_employees = EmployeeProject::where('project_id', $id)->pluck('employee_id')->toArray();
-        $clients = Client::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','name']);
-        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','name']);
-        $employees = Employee::where('company_id' , $project->company_id)->where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','username']);
+        $clients = Client::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
+        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
+        $employees = Employee::where('company_id', $project->company_id)->where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'username']);
 
         return response()->json([
             'project' => $project,
@@ -226,7 +218,6 @@ class ProjectController extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
@@ -235,23 +226,23 @@ class ProjectController extends Controller
         $this->authorizeForUser($request->user('api'), 'update', Project::class);
 
         $request->validate([
-            'title'           => 'required|string|max:255',
-            'client'          => 'required',
-            'company_id'      => 'required',
-            'assigned_to'     => 'required',
-            'start_date'      => 'required',
-            'end_date'        => 'required',
-            'status'          => 'required',
+            'title' => 'required|string|max:255',
+            'client' => 'required',
+            'company_id' => 'required',
+            'assigned_to' => 'required',
+            'start_date' => 'required',
+            'end_date' => 'required',
+            'status' => 'required',
         ]);
 
         Project::whereId($id)->update([
-            'title'            => $request['title'],
-            'start_date'       => $request['start_date'],
-            'end_date'         => $request['end_date'],
-            'company_id'       => $request['company_id'],
-            'client_id'        => $request['client'],
-            'status'           => $request['status'],
-            'description'      => $request['description'],
+            'title' => $request['title'],
+            'start_date' => $request['start_date'],
+            'end_date' => $request['end_date'],
+            'company_id' => $request['company_id'],
+            'client_id' => $request['client'],
+            'status' => $request['status'],
+            'description' => $request['description'],
         ]);
 
         $project = Project::where('deleted_at', '=', null)->findOrFail($id);
@@ -277,7 +268,4 @@ class ProjectController extends Controller
         return response()->json(['success' => true]);
 
     }
-
-  
-
 }

@@ -56,7 +56,11 @@
                 mode="remote"
                 :columns="columns_sales"
                 :totalRows="totalRows_sales"
-                :rows="sales"
+                :rows="rows_sales"
+                :group-options="{
+                  enabled: true,
+                  headerPosition: 'bottom',
+                }"
                 @on-page-change="PageChangeSales"
                 @on-per-page-change="onPerPageChangeSales"
                 @on-search="onSearch_sales"
@@ -73,6 +77,9 @@
                 styleClass="tableOne table-hover vgt-table"
               >
               <div slot="table-actions" class="mt-2 mb-3">
+                <b-button @click="printTableOnly('sales')" size="sm" variant="outline-secondary ripple m-1">
+                  <i class="i-Printer"></i> {{ $t("print") }}
+                </b-button>
                 <b-button @click="Sales_PDF()" size="sm" variant="outline-success ripple m-1">
                   <i class="i-File-Copy"></i> PDF
                 </b-button>
@@ -97,11 +104,12 @@
                       <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
-                 
-                  <div v-else-if="props.column.field == 'total'">
-                    <span>{{currentUser.currency}} {{props.row.total}}</span>
-                  </div>
-
+                  <span v-else-if="props.column.field == 'total'">
+                    {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}
+                  </span>
+                  <span v-else>
+                    {{ props.formattedRow[props.column.field] }}
+                  </span>
                 </template>
               </vue-good-table>
             </b-tab>
@@ -112,7 +120,11 @@
                 mode="remote"
                 :columns="columns_quotations"
                 :totalRows="totalRows_quotations"
-                :rows="quotations"
+                :rows="rows_quotations"
+                :group-options="{
+                  enabled: true,
+                  headerPosition: 'bottom',
+                }"
                 @on-page-change="PageChangeQuotation"
                 @on-per-page-change="onPerPageChangeQuotation"
                 @on-search="onSearch_quotations"
@@ -129,6 +141,9 @@
                 styleClass="tableOne table-hover vgt-table"
               >
               <div slot="table-actions" class="mt-2 mb-3">
+                <b-button @click="printTableOnly('quotations')" size="sm" variant="outline-secondary ripple m-1">
+                  <i class="i-Printer"></i> {{ $t("print") }}
+                </b-button>
                 <b-button @click="Quotation_PDF()" size="sm" variant="outline-success ripple m-1">
                   <i class="i-File-Copy"></i> PDF
                 </b-button>
@@ -145,19 +160,19 @@
                 </vue-excel-xlsx>
               </div>
                 <template slot="table-row" slot-scope="props">
-                  
-                   <div v-if="props.column.field == 'Ref'">
+                  <div v-if="props.column.field == 'Ref'">
                     <router-link
                       :to="'/app/quotations/detail/'+props.row.quotation_id"
                     >
                       <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
-
-                  <div v-else-if="props.column.field == 'total'">
-                    <span>{{currentUser.currency}} {{props.row.total}}</span>
-                  </div>
-
+                  <span v-else-if="props.column.field == 'total'">
+                    {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}
+                  </span>
+                  <span v-else>
+                    {{ props.formattedRow[props.column.field] }}
+                  </span>
                 </template>
               </vue-good-table>
             </b-tab>
@@ -168,7 +183,11 @@
                 mode="remote"
                 :columns="columns_purchases"
                 :totalRows="totalRows_purchases"
-                :rows="purchases"
+                :rows="rows_purchases"
+                :group-options="{
+                  enabled: true,
+                  headerPosition: 'bottom',
+                }"
                 @on-page-change="PageChangePurchases"
                 @on-per-page-change="onPerPageChangePurchases"
                 @on-search="onSearch_purchases"
@@ -185,6 +204,9 @@
                 styleClass="tableOne table-hover vgt-table"
               >
               <div slot="table-actions" class="mt-2 mb-3">
+                <b-button @click="printTableOnly('purchases')" size="sm" variant="outline-secondary ripple m-1">
+                  <i class="i-Printer"></i> {{ $t("print") }}
+                </b-button>
                 <b-button @click="Purchase_PDF()" size="sm" variant="outline-success ripple m-1">
                   <i class="i-File-Copy"></i> PDF
                 </b-button>
@@ -201,18 +223,19 @@
                 </vue-excel-xlsx>
               </div>
                 <template slot="table-row" slot-scope="props">
-                   <div v-if="props.column.field == 'Ref'">
+                  <div v-if="props.column.field == 'Ref'">
                     <router-link
                       :to="'/app/purchases/detail/'+props.row.purchase_id"
                     >
                       <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
-
-                  <div v-else-if="props.column.field == 'total'">
-                    <span>{{currentUser.currency}} {{props.row.total}}</span>
-                  </div>
-
+                  <span v-else-if="props.column.field == 'total'">
+                    {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}
+                  </span>
+                  <span v-else>
+                    {{ props.formattedRow[props.column.field] }}
+                  </span>
                 </template>
               </vue-good-table>
             </b-tab>
@@ -223,7 +246,11 @@
                 mode="remote"
                 :columns="columns_sales_return"
                 :totalRows="totalRows_sales_return"
-                :rows="sales_return"
+                :rows="rows_sales_return"
+                :group-options="{
+                  enabled: true,
+                  headerPosition: 'bottom',
+                }"
                 @on-page-change="Page_Change_sales_Return"
                 @on-per-page-change="onPerPage_Change_sales_Return"
                 @on-search="onSearch_return_sales"
@@ -240,6 +267,9 @@
                 styleClass="tableOne table-hover vgt-table"
               >
               <div slot="table-actions" class="mt-2 mb-3">
+                <b-button @click="printTableOnly('sales_return')" size="sm" variant="outline-secondary ripple m-1">
+                  <i class="i-Printer"></i> {{ $t("print") }}
+                </b-button>
                 <b-button @click="Sale_Return_PDF()" size="sm" variant="outline-success ripple m-1">
                   <i class="i-File-Copy"></i> PDF
                 </b-button>
@@ -256,7 +286,6 @@
                 </vue-excel-xlsx>
               </div>
                 <template slot="table-row" slot-scope="props">
-                  
                   <div v-if="props.column.field == 'Ref'">
                     <router-link
                       :to="'/app/sale_return/detail/'+props.row.return_sale_id"
@@ -264,10 +293,12 @@
                       <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
-
-                  <div v-else-if="props.column.field == 'total'">
-                    <span>{{currentUser.currency}} {{props.row.total}}</span>
-                  </div>
+                  <span v-else-if="props.column.field == 'total'">
+                    {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}
+                  </span>
+                  <span v-else>
+                    {{ props.formattedRow[props.column.field] }}
+                  </span>
                 </template>
               </vue-good-table>
             </b-tab>
@@ -278,7 +309,11 @@
                 mode="remote"
                 :columns="columns_purchase_return"
                 :totalRows="totalRows_purchases_return"
-                :rows="purchases_return"
+                :rows="rows_purchases_return"
+                :group-options="{
+                  enabled: true,
+                  headerPosition: 'bottom',
+                }"
                 @on-page-change="Page_Change_purchases_Return"
                 @on-per-page-change="onPerPage_Change_purchases_Return"
                 @on-search="onSearch_return_purchases"
@@ -295,6 +330,9 @@
                 styleClass="tableOne table-hover vgt-table"
               >
                <div slot="table-actions" class="mt-2 mb-3">
+                <b-button @click="printTableOnly('purchases_return')" size="sm" variant="outline-secondary ripple m-1">
+                  <i class="i-Printer"></i> {{ $t("print") }}
+                </b-button>
                 <b-button @click="Returns_Purchase_PDF()" size="sm" variant="outline-success ripple m-1">
                   <i class="i-File-Copy"></i> PDF
                 </b-button>
@@ -311,7 +349,6 @@
                 </vue-excel-xlsx>
               </div>
                 <template slot="table-row" slot-scope="props">
-                  
                   <div v-if="props.column.field == 'Ref'">
                     <router-link
                       :to="'/app/purchase_return/detail/'+props.row.return_purchase_id"
@@ -319,10 +356,12 @@
                       <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
-
-                  <div v-else-if="props.column.field == 'total'">
-                    <span>{{currentUser.currency}} {{props.row.total}}</span>
-                  </div>
+                  <span v-else-if="props.column.field == 'total'">
+                    {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}
+                  </span>
+                  <span v-else>
+                    {{ props.formattedRow[props.column.field] }}
+                  </span>
                 </template>
               </vue-good-table>
             </b-tab>
@@ -350,6 +389,9 @@
                 styleClass="tableOne table-hover vgt-table"
               >
               <div slot="table-actions" class="mt-2 mb-3">
+                <b-button @click="printTableOnly('transfers')" size="sm" variant="outline-secondary ripple m-1">
+                  <i class="i-Printer"></i> {{ $t("print") }}
+                </b-button>
                 <b-button @click="Transfer_PDF()" size="sm" variant="outline-success ripple m-1">
                   <i class="i-File-Copy"></i> PDF
                 </b-button>
@@ -381,6 +423,9 @@
                 styleClass="tableOne table-hover vgt-table"
               >
                <div slot="table-actions" class="mt-2 mb-3">
+                <b-button @click="printTableOnly('adjustments')" size="sm" variant="outline-secondary ripple m-1">
+                  <i class="i-Printer"></i> {{ $t("print") }}
+                </b-button>
                 <b-button @click="Adjustment_PDF()" size="sm" variant="outline-success ripple m-1">
                   <i class="i-File-Copy"></i> PDF
                 </b-button>
@@ -401,7 +446,11 @@
 <script>
 import { mapActions, mapGetters } from "vuex";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting
+} from "../../../../utils/priceFormat";
 
 export default {
   data() {
@@ -441,12 +490,19 @@ export default {
       isLoading: true,
       product:{},
       purchases: [],
+      rows_purchases: [{ statut: '', children: [] }],
       sales: [],
+      rows_sales: [{ statut: '', children: [] }],
       quotations: [],
+      rows_quotations: [{ statut: '', children: [] }],
       sales_return: [],
+      rows_sales_return: [{ statut: '', children: [] }],
       purchases_return: [],
+      rows_purchases_return: [{ statut: '', children: [] }],
       transfers: [],
       adjustments: [],
+      // Optional price format key for frontend display (loaded from system settings/Vuex store)
+      price_format_key: null
     };
   },
 
@@ -497,6 +553,7 @@ export default {
         {
           label: this.$t("SubTotal"),
           field: "total",
+          headerField: this.sumQuotationsTotal,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -548,6 +605,7 @@ export default {
         {
           label: this.$t("SubTotal"),
           field: "total",
+          headerField: this.sumSalesTotal,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -600,6 +658,7 @@ export default {
         {
           label: this.$t("SubTotal"),
           field: "total",
+          headerField: this.sumSalesReturnTotal,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -651,6 +710,7 @@ export default {
         {
           label: this.$t("SubTotal"),
           field: "total",
+          headerField: this.sumPurchasesTotal,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -702,6 +762,7 @@ export default {
         {
           label: this.$t("SubTotal"),
           field: "total",
+          headerField: this.sumPurchaseReturnTotal,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -788,16 +849,16 @@ export default {
       pdf.setFont("VazirmatnBold"); 
 
       let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("product_name"), dataKey: "product_name" },
-        { title: self.$t("Customer"), dataKey: "client_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("Quantity"), dataKey: "quantity" },
-        { title: self.$t("SubTotal"), dataKey: "total" },
+        { header: self.$t("date"), dataKey: "date" },
+        { header: self.$t("Reference"), dataKey: "Ref" },
+        { header: self.$t("product_name"), dataKey: "product_name" },
+        { header: self.$t("Customer"), dataKey: "client_name" },
+        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
+        { header: self.$t("Quantity"), dataKey: "quantity" },
+        { header: self.$t("SubTotal"), dataKey: "total" },
       ];
 
-      pdf.autoTable({
+      autoTable(pdf, {
              columns: columns,
              body: self.sales,
              startY: 70,
@@ -812,8 +873,8 @@ export default {
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
       });
@@ -830,16 +891,16 @@ export default {
       pdf.setFont("VazirmatnBold"); 
 
       let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("product_name"), dataKey: "product_name" },
-        { title: self.$t("Customer"), dataKey: "client_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("Quantity"), dataKey: "quantity" },
-        { title: self.$t("SubTotal"), dataKey: "total" },
+        { header: self.$t("date"), dataKey: "date" },
+        { header: self.$t("Reference"), dataKey: "Ref" },
+        { header: self.$t("product_name"), dataKey: "product_name" },
+        { header: self.$t("Customer"), dataKey: "client_name" },
+        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
+        { header: self.$t("Quantity"), dataKey: "quantity" },
+        { header: self.$t("SubTotal"), dataKey: "total" },
       ];
 
-      pdf.autoTable({
+      autoTable(pdf, {
              columns: columns,
              body: self.quotations,
              startY: 70,
@@ -854,8 +915,8 @@ export default {
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
       });
@@ -873,16 +934,16 @@ export default {
       pdf.setFont("VazirmatnBold"); 
 
       let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("product_name"), dataKey: "product_name" },
-        { title: self.$t("Supplier"), dataKey: "provider_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("Quantity"), dataKey: "quantity" },
-        { title: self.$t("SubTotal"), dataKey: "total" },
+        { header: self.$t("date"), dataKey: "date" },
+        { header: self.$t("Reference"), dataKey: "Ref" },
+        { header: self.$t("product_name"), dataKey: "product_name" },
+        { header: self.$t("Supplier"), dataKey: "provider_name" },
+        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
+        { header: self.$t("Quantity"), dataKey: "quantity" },
+        { header: self.$t("SubTotal"), dataKey: "total" },
       ];
 
-      pdf.autoTable({
+      autoTable(pdf, {
              columns: columns,
              body: self.purchases,
              startY: 70,
@@ -897,8 +958,8 @@ export default {
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
       });
@@ -916,16 +977,16 @@ export default {
       pdf.setFont("VazirmatnBold"); 
 
       let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("product_name"), dataKey: "product_name" },
-        { title: self.$t("Customer"), dataKey: "client_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("Quantity"), dataKey: "quantity" },
-        { title: self.$t("SubTotal"), dataKey: "total" },
+        { header: self.$t("date"), dataKey: "date" },
+        { header: self.$t("Reference"), dataKey: "Ref" },
+        { header: self.$t("product_name"), dataKey: "product_name" },
+        { header: self.$t("Customer"), dataKey: "client_name" },
+        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
+        { header: self.$t("Quantity"), dataKey: "quantity" },
+        { header: self.$t("SubTotal"), dataKey: "total" },
       ];
 
-      pdf.autoTable({
+      autoTable(pdf, {
              columns: columns,
              body: self.sales_return,
              startY: 70,
@@ -940,8 +1001,8 @@ export default {
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
       });
@@ -959,16 +1020,16 @@ export default {
       pdf.setFont("VazirmatnBold"); 
 
       let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("product_name"), dataKey: "product_name" },
-        { title: self.$t("Supplier"), dataKey: "provider_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("Quantity"), dataKey: "quantity" },
-        { title: self.$t("SubTotal"), dataKey: "total" },
+        { header: self.$t("date"), dataKey: "date" },
+        { header: self.$t("Reference"), dataKey: "Ref" },
+        { header: self.$t("product_name"), dataKey: "product_name" },
+        { header: self.$t("Supplier"), dataKey: "provider_name" },
+        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
+        { header: self.$t("Quantity"), dataKey: "quantity" },
+        { header: self.$t("SubTotal"), dataKey: "total" },
       ];
 
-      pdf.autoTable({
+      autoTable(pdf, {
              columns: columns,
              body: self.purchases_return,
              startY: 70,
@@ -983,8 +1044,8 @@ export default {
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
       });
@@ -1002,14 +1063,14 @@ export default {
       pdf.setFont("VazirmatnBold"); 
 
       let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("product_name"), dataKey: "product_name" },
-        { title: self.$t("FromWarehouse"), dataKey: "from_warehouse" },
-        { title: self.$t("ToWarehouse"), dataKey: "to_warehouse" },
+        { header: self.$t("date"), dataKey: "date" },
+        { header: self.$t("Reference"), dataKey: "Ref" },
+        { header: self.$t("product_name"), dataKey: "product_name" },
+        { header: self.$t("FromWarehouse"), dataKey: "from_warehouse" },
+        { header: self.$t("ToWarehouse"), dataKey: "to_warehouse" },
       ];
 
-      pdf.autoTable({
+      autoTable(pdf, {
              columns: columns,
              body: self.transfers,
              startY: 70,
@@ -1024,8 +1085,8 @@ export default {
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
       });
@@ -1043,13 +1104,13 @@ export default {
       pdf.setFont("VazirmatnBold"); 
 
       let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("product_name"), dataKey: "product_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
+        { header: self.$t("date"), dataKey: "date" },
+        { header: self.$t("Reference"), dataKey: "Ref" },
+        { header: self.$t("product_name"), dataKey: "product_name" },
+        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
       ];
 
-      pdf.autoTable({
+      autoTable(pdf, {
              columns: columns,
              body: self.adjustments,
              startY: 70,
@@ -1064,8 +1125,8 @@ export default {
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
       });
@@ -1099,6 +1160,222 @@ export default {
         return `${value[0]}.${formated.substr(0, dec)}`;
       while (formated.length < dec) formated += "0";
       return `${value[0]}.${formated}`;
+    },
+
+    // Price formatting for display only (does NOT affect calculations or stored values)
+    // Uses the global/system price_format setting when available; otherwise falls back
+    // to the existing toLocaleString behavior to preserve current behavior.
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = Number.isInteger(dec) ? dec : 2;
+        const n = Number(number || 0);
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
+        const effectiveKey = key || null;
+        return formatPriceDisplayHelper(n, decimals, effectiveKey);
+      } catch (e) {
+        const n = Number(number || 0);
+        return n.toLocaleString(undefined, { maximumFractionDigits: dec || 2 });
+      }
+    },
+
+    formatPriceWithSymbol(symbol, number, dec) {
+      try {
+        const safeSymbol = symbol || (this.currentUser && this.currentUser.currency) || "";
+        const value = this.formatPriceDisplay(number, dec);
+        return safeSymbol ? `${safeSymbol} ${value}` : value;
+      } catch (e) {
+        const safeSymbol = symbol || "";
+        const value = this.formatPriceDisplay(number, dec);
+        return safeSymbol ? `${safeSymbol} ${value}` : value;
+      }
+    },
+
+    //------ Print Table Only - Print data with all columns based on table type
+    printTableOnly(tableType) {
+      let title, rows, columns;
+      
+      if (tableType === 'sales') {
+        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("Sales")}`;
+        rows = Array.isArray(this.sales) ? this.sales : [];
+        columns = this.columns_sales;
+      } else if (tableType === 'quotations') {
+        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("Quotations")}`;
+        rows = Array.isArray(this.quotations) ? this.quotations : [];
+        columns = this.columns_quotations;
+      } else if (tableType === 'purchases') {
+        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("Purchases")}`;
+        rows = Array.isArray(this.purchases) ? this.purchases : [];
+        columns = this.columns_purchases;
+      } else if (tableType === 'sales_return') {
+        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("SalesReturn")}`;
+        rows = Array.isArray(this.sales_return) ? this.sales_return : [];
+        columns = this.columns_sales_return;
+      } else if (tableType === 'purchases_return') {
+        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("PurchasesReturn")}`;
+        rows = Array.isArray(this.purchases_return) ? this.purchases_return : [];
+        columns = this.columns_purchase_return;
+      } else if (tableType === 'transfers') {
+        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("StockTransfers")}`;
+        rows = Array.isArray(this.transfers) ? this.transfers : [];
+        columns = this.columns_transfers;
+      } else if (tableType === 'adjustments') {
+        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("Adjustment")}`;
+        rows = Array.isArray(this.adjustments) ? this.adjustments : [];
+        columns = this.columns_adjustments;
+      } else {
+        return;
+      }
+      
+      // Build table header with all columns
+      let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
+      tableHTML += '<thead><tr>';
+      
+      columns.forEach(col => {
+        tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
+      });
+      tableHTML += '</tr></thead><tbody>';
+      
+      // Build table rows with all data - format each cell according to column type
+      rows.forEach(row => {
+        tableHTML += '<tr>';
+        columns.forEach(col => {
+          let cellValue = '';
+          
+          if (col.field === 'total') {
+            // Format monetary values
+            cellValue = this.formatPriceWithSymbol(this.currentUser?.currency, row.total, 2);
+          } else {
+            // Default: get value directly from row object
+            cellValue = row[col.field] || '';
+          }
+          
+          tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
+        });
+        tableHTML += '</tr>';
+      });
+      
+      tableHTML += '</tbody></table>';
+
+      const w = window.open("", "_blank");
+      if (!w) {
+        alert("Please allow popups to print");
+        return;
+      }
+
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML)
+        .join("\n");
+
+      const doc = w.document;
+      doc.open();
+      doc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="${window.location.origin}/" />
+    <title>${title}</title>
+    ${links}
+    <style>
+      /* Force visibility in print (some global POS print CSS hides body) */
+      @media print { 
+        body, body * { visibility: visible !important; }
+        @page { size: A4 landscape; margin: 0.3cm; }
+      }
+      body { margin: 0.3cm; font-family: Arial, sans-serif; }
+      .print-header { font-weight: 600; margin-bottom: 10px; font-size: 14px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 10px; }
+      th { background-color: #f5f5f5; font-weight: bold; }
+      tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+  </head>
+  <body>
+    <div class="print-header">${title}</div>
+    ${tableHTML}
+  </body>
+</html>`);
+      doc.close();
+
+      w.focus();
+      setTimeout(() => {
+        w.print();
+        w.close();
+      }, 400);
+    },
+
+    // Group footer helpers for vue-good-table
+    sumSalesTotal(rowObj) {
+      if (!rowObj || !Array.isArray(rowObj.children)) {
+        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
+      }
+      let sum = 0;
+      for (let i = 0; i < rowObj.children.length; i++) {
+        const value = Number(rowObj.children[i].total) || 0;
+        if (Number.isFinite(value)) {
+          sum += value;
+        }
+      }
+      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
+    },
+
+    sumQuotationsTotal(rowObj) {
+      if (!rowObj || !Array.isArray(rowObj.children)) {
+        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
+      }
+      let sum = 0;
+      for (let i = 0; i < rowObj.children.length; i++) {
+        const value = Number(rowObj.children[i].total) || 0;
+        if (Number.isFinite(value)) {
+          sum += value;
+        }
+      }
+      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
+    },
+
+    sumPurchasesTotal(rowObj) {
+      if (!rowObj || !Array.isArray(rowObj.children)) {
+        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
+      }
+      let sum = 0;
+      for (let i = 0; i < rowObj.children.length; i++) {
+        const value = Number(rowObj.children[i].total) || 0;
+        if (Number.isFinite(value)) {
+          sum += value;
+        }
+      }
+      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
+    },
+
+    sumSalesReturnTotal(rowObj) {
+      if (!rowObj || !Array.isArray(rowObj.children)) {
+        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
+      }
+      let sum = 0;
+      for (let i = 0; i < rowObj.children.length; i++) {
+        const value = Number(rowObj.children[i].total) || 0;
+        if (Number.isFinite(value)) {
+          sum += value;
+        }
+      }
+      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
+    },
+
+    sumPurchaseReturnTotal(rowObj) {
+      if (!rowObj || !Array.isArray(rowObj.children)) {
+        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
+      }
+      let sum = 0;
+      for (let i = 0; i < rowObj.children.length; i++) {
+        const value = Number(rowObj.children[i].total) || 0;
+        if (Number.isFinite(value)) {
+          sum += value;
+        }
+      }
+      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
     },
 
 
@@ -1138,6 +1415,7 @@ export default {
         .then(response => {
           this.sales = response.data.sales;
           this.totalRows_sales = response.data.totalRows;
+          this.rows_sales[0].children = this.sales;
         })
         .catch(response => {});
     },
@@ -1178,6 +1456,7 @@ export default {
         .then(response => {
           this.purchases = response.data.purchases;
           this.totalRows_purchases = response.data.totalRows;
+          this.rows_purchases[0].children = this.purchases;
           this.isLoading = false;
         })
         .catch(response => {
@@ -1223,7 +1502,7 @@ export default {
         .then(response => {
           this.quotations = response.data.quotations;
           this.totalRows_quotations = response.data.totalRows;
-         
+          this.rows_quotations[0].children = this.quotations;
         })
         .catch(response => {
          
@@ -1352,6 +1631,7 @@ export default {
         .then(response => {
           this.sales_return = response.data.sales_return;
           this.totalRows_sales_return = response.data.totalRows;
+          this.rows_sales_return[0].children = this.sales_return;
         })
         .catch(response => {});
     },
@@ -1392,6 +1672,7 @@ export default {
         .then(response => {
           this.purchases_return = response.data.purchases_return;
           this.totalRows_purchases_return = response.data.totalRows;
+          this.rows_purchases_return[0].children = this.purchases_return;
         })
         .catch(response => {});
     }

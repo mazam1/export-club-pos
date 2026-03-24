@@ -10,14 +10,15 @@ use Illuminate\Support\Facades\Auth;
 
 class CategoryExpenseController extends BaseController
 {
-
-    //-------------- Get All Expense Categories ---------------\\
+    // -------------- Get All Expense Categories ---------------\\
 
     public function index(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', ExpenseCategory::class);
-        $role = Auth::user()->roles()->first();
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
+        $user = Auth::user();
+        // New way: Check user's record_view field (user-level boolean)
+        // Backward compatibility: If record_view is null, fall back to role permission check
+        $view_records = $user->hasRecordView();
         // How many items do you want to display.
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
@@ -29,7 +30,7 @@ class CategoryExpenseController extends BaseController
         // Check If User Has Permission View  All Records
         $ExpenseCategory = ExpenseCategory::where('deleted_at', '=', null)
             ->where(function ($query) use ($view_records) {
-                if (!$view_records) {
+                if (! $view_records) {
                     return $query->where('user_id', '=', Auth::user()->id);
                 }
             })
@@ -41,7 +42,7 @@ class CategoryExpenseController extends BaseController
             });
 
         $totalRows = $ExpenseCategory->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $ExpenseCategory = $ExpenseCategory->offset($offSet)
@@ -56,7 +57,7 @@ class CategoryExpenseController extends BaseController
 
     }
 
-    //-------------- Store New Category ---------------\\
+    // -------------- Store New Category ---------------\\
 
     public function store(Request $request)
     {
@@ -75,24 +76,27 @@ class CategoryExpenseController extends BaseController
         return response()->json(['success' => true], 200);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
-    //
-    
+    public function show($id)
+    {
+        //
+
     }
 
-    //-------------- Update Category ---------------\\
+    // -------------- Update Category ---------------\\
 
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', ExpenseCategory::class);
-        $role = Auth::user()->roles()->first();
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
+        $user = Auth::user();
+        // New way: Check user's record_view field (user-level boolean)
+        // Backward compatibility: If record_view is null, fall back to role permission check
+        $view_records = $user->hasRecordView();
         $ExpenseCategory = ExpenseCategory::findOrFail($id);
 
         // Check If User Has Permission view All Records
-        if (!$view_records) {
+        if (! $view_records) {
             // Check If User->id === ExpenseCategory->id
             $this->authorizeForUser($request->user('api'), 'check_record', $ExpenseCategory);
         }
@@ -110,17 +114,19 @@ class CategoryExpenseController extends BaseController
 
     }
 
-    //-------------- Delete Category ---------------\\
+    // -------------- Delete Category ---------------\\
 
     public function destroy(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'delete', ExpenseCategory::class);
-        $role = Auth::user()->roles()->first();
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
+        $user = Auth::user();
+        // New way: Check user's record_view field (user-level boolean)
+        // Backward compatibility: If record_view is null, fall back to role permission check
+        $view_records = $user->hasRecordView();
         $ExpenseCategory = ExpenseCategory::findOrFail($id);
 
         // Check If User Has Permission view All Records
-        if (!$view_records) {
+        if (! $view_records) {
             // Check If User->id === ExpenseCategory->id
             $this->authorizeForUser($request->user('api'), 'check_record', $ExpenseCategory);
         }
@@ -131,20 +137,22 @@ class CategoryExpenseController extends BaseController
         return response()->json(['success' => true], 200);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'delete', ExpenseCategory::class);
         $selectedIds = $request->selectedIds;
-        $role = Auth::user()->roles()->first();
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
+        $user = Auth::user();
+        // New way: Check user's record_view field (user-level boolean)
+        // Backward compatibility: If record_view is null, fall back to role permission check
+        $view_records = $user->hasRecordView();
 
         foreach ($selectedIds as $category_id) {
             $ExpenseCategory = ExpenseCategory::findOrFail($category_id);
 
             // Check If User Has Permission view All Records
-            if (!$view_records) {
+            if (! $view_records) {
                 // Check If User->id === ExpenseCategory->id
                 $this->authorizeForUser($request->user('api'), 'check_record', $ExpenseCategory);
             }
@@ -152,7 +160,7 @@ class CategoryExpenseController extends BaseController
                 'deleted_at' => Carbon::now(),
             ]);
         }
+
         return response()->json(['success' => true], 200);
     }
-
 }

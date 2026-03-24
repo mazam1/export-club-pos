@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class Role extends Model
 {
     protected $guarded = ['id'];
-    protected $fillable = array('name','status', 'label', 'description');
+
+    protected $fillable = ['name', 'status', 'label', 'description'];
 
     public function permissions()
     {
@@ -18,27 +19,29 @@ class Role extends Model
     {
         return $this->permissions()->save($permission);
     }
+
     /**
      * Determine if the user may perform the given permission.
      *
-     * @param  Permission $permission
-     * @return boolean
+     * @return bool
      */
     public function hasPermission(Permission $permission, User $user)
     {
         return $this->hasRole($permission->roles);
     }
+
     /**
      * Determine if the role has the given permission.
      *
-     * @param  mixed $permission
-     * @return boolean
+     * @param  mixed  $permission
+     * @return bool
      */
     public function inRole($permission)
     {
         if (is_string($permission)) {
             return $this->permissions->contains('name', $permission);
         }
-        return !!$permission->intersect($this->permissions)->count();
+
+        return (bool) $permission->intersect($this->permissions)->count();
     }
 }

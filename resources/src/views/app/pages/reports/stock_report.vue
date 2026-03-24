@@ -3,7 +3,7 @@
     <breadcumb :page="$t('stock_report')" :folder="$t('Reports')"/>
 
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
+    <b-card class="wrapper print-table-only" v-if="!isLoading">
       <vue-good-table
         mode="remote"
         :columns="columns"
@@ -40,7 +40,9 @@
       </div>
 
        <div slot="table-actions" class="mt-2 mb-3">
-        
+        <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
+          <i class="i-Printer"></i> {{ $t("print") }}
+        </b-button>
           <b-button @click="stock_report_PDF()" size="sm" variant="outline-success ripple m-1">
             <i class="i-File-Copy"></i> PDF
           </b-button>
@@ -72,7 +74,7 @@
 <script>
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 export default {
   metaInfo: {
@@ -132,7 +134,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false
@@ -149,52 +150,77 @@ export default {
       let pdf = new jsPDF("p", "pt");
 
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
+      try {
+        pdf.addFont(fontPath, "Vazirmatn", "normal");
+        pdf.addFont(fontPath, "Vazirmatn", "bold");
+      } catch(e) {}
+      pdf.setFont("Vazirmatn", "normal");
       
-      let columns = [
-        { title: self.$t("ProductCode"), dataKey: "code" },
-        { title: self.$t("ProductName"), dataKey: "name" },
-        { title: self.$t("Categorie"), dataKey: "category" },
-        { title: self.$t("Quantity"), dataKey: "quantity" },
+      const headers = [
+        self.$t("ProductCode"),
+        self.$t("ProductName"),
+        self.$t("Categorie"),
+        self.$t("Quantity")
       ];
 
-        // Calculate totals
-        let totalGrandTotal = self.reports.reduce((sum, report) => sum + parseFloat(report.quantity || 0), 0);
-        
-        let footer = [{
-          code: self.$t("Total"),
-          name: '',
-          category: '',
-          quantity: `${totalGrandTotal.toFixed(2)}`,
-          
-        }];
+      const body = (self.reports || []).map(report => ([
+        report.code,
+        report.name,
+        report.category,
+        report.quantity
+      ]));
 
-      pdf.autoTable({
-             columns: columns,
-             body: self.reports,
-             foot: footer,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Stock report", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
-               fontStyle: "bold", 
-             },
-             footStyles: {
-               fillColor: [230, 230, 230], 
-               textColor: [0, 0, 0], 
-               fontStyle: "bold", 
-             },
+      // Calculate totals
+      let totalGrandTotal = self.reports.reduce((sum, report) => sum + parseFloat(report.quantity || 0), 0);
+      
+      const footer = [[
+        self.$t("Total"),
+        '',
+        '',
+        totalGrandTotal.toFixed(2)
+      ]];
+
+      const marginX = 40;
+      const rtl =
+        (self.$i18n && ['ar','fa','ur','he'].includes(self.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+
+      autoTable(pdf, {
+        head: [headers],
+        body: body,
+        foot: footer,
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [26,86,219], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        footStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [26,86,219], textColor: 255 },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+
+          // Header banner
+          pdf.setFillColor(26,86,219);
+          pdf.rect(0, 0, pageW, 60, 'F');
+
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = 'Stock report';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
+
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
       });
 
       pdf.save("Stock_report.pdf");
@@ -239,6 +265,105 @@ export default {
     onSearch(value) {
       this.search = value.searchTerm;
       this.Get_Stock_Report(this.serverParams.page);
+    },
+
+    //------ Print Table Only
+    printTableOnly() {
+      const root = this.$el;
+      if (!root) {
+        window.print();
+        return;
+      }
+
+      const tableCard = root.querySelector(".print-table-only");
+      if (!tableCard) {
+        window.print();
+        return;
+      }
+
+      // Get reports data
+      const reportsData = this.reports || [];
+
+      // Manually construct the table HTML from reports data
+      let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
+
+      // Table Header
+      tableHtml += `<thead><tr>`;
+      this.columns.filter(col => col.field !== 'actions').forEach(col => {
+        tableHtml += `<th class="text-left">${col.label}</th>`;
+      });
+      tableHtml += `</tr></thead>`;
+
+      // Table Body
+      tableHtml += `<tbody>`;
+      reportsData.forEach(row => {
+        tableHtml += `<tr>`;
+        this.columns.filter(col => col.field !== 'actions').forEach(col => {
+          let cellContent = row[col.field] || '';
+          tableHtml += `<td class="text-left">${cellContent}</td>`;
+        });
+        tableHtml += `</tr>`;
+      });
+      tableHtml += `</tbody>`;
+
+      // Table Footer (Totals)
+      const totalQuantity = reportsData.reduce((sum, report) => sum + parseFloat(report.quantity || 0), 0);
+      tableHtml += `<tfoot><tr>`;
+      tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
+      tableHtml += `<td colspan="2"></td>`; // Span for ProductCode, Name_product, Categorie
+      tableHtml += `<td class="text-left font-weight-bold">${totalQuantity.toFixed(2)}</td>`;
+      tableHtml += `</tr></tfoot>`;
+
+      tableHtml += `</table>`;
+
+      const w = window.open("", "_blank");
+      if (!w) {
+        window.print();
+        return;
+      }
+
+      const title = `${this.$t("Reports")} / ${this.$t("stock_report")}`;
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML)
+        .join("\n");
+
+      const inlineStyles = Array.from(document.querySelectorAll("style"))
+        .filter(s => !((s.textContent || "").includes("@media print")))
+        .map(s => s.outerHTML)
+        .join("\n");
+
+      const doc = w.document;
+      doc.open();
+      doc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="${window.location.origin}/" />
+    <title>${title}</title>
+    ${links}
+    ${inlineStyles}
+    <style>
+      @media print { body, body * { visibility: visible !important; } }
+      body { margin: 0.3cm; }
+      .print-header { font-weight: 600; margin-bottom: 8px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      th { background-color: #f2f2f2; }
+    </style>
+  </head>
+  <body>
+    <div class="print-header">${title}</div>
+    ${tableHtml}
+  </body>
+</html>`);
+      doc.close();
+
+      w.focus();
+      setTimeout(() => {
+        w.print();
+        w.close();
+      }, 400);
     },
 
     //------------------------------Formetted Numbers -------------------------\\

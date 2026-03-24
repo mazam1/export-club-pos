@@ -7,8 +7,8 @@
       <!-- ICON BG -->
 
       <b-col lg="3" md="6" sm="12">
-        <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
-          <i class="i-Full-Cart"></i>
+        <b-card class="card-icon-bg card-icon-bg-primary   mb-30 text-center">
+          <i class="i-Add-Cart"></i>
           <div class="content">
             <p class="text-muted mt-2 mb-0">{{$t('Purchases')}}</p>
             <p class="text-primary text-24 line-height-1 mb-2">{{provider.total_purchase}}</p>
@@ -16,7 +16,7 @@
         </b-card>
       </b-col>
       <b-col lg="3" md="6" sm="12">
-        <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
+        <b-card class="card-icon-bg card-icon-bg-primary   mb-30 text-center">
           <i class="i-Financial"></i>
           <div class="content">
             <p class="text-muted mt-2 mb-0">{{$t('TotalAmount')}}</p>
@@ -27,18 +27,18 @@
         </b-card>
       </b-col>
       <b-col lg="3" md="6" sm="12">
-        <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
+        <b-card class="card-icon-bg card-icon-bg-primary   mb-30 text-center">
           <i class="i-Money-2"></i>
           <div class="content">
             <p class="text-muted mt-2 mb-0">{{$t('TotalPaid')}}</p>
             <p
               class="text-primary text-24 line-height-1 mb-2"
-            >{{currentUser.currency}} {{formatNumber((provider.total_paid),2)}}</p>
+            >{{ formatPriceWithSymbol(currentUser.currency, provider.total_paid, 2) }}</p>
           </div>
         </b-card>
       </b-col>
       <b-col lg="3" md="6" sm="12">
-        <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
+        <b-card class="card-icon-bg card-icon-bg-primary   mb-30 text-center">
           <i class="i-Money-Bag"></i>
           <div class="content">
             <p class="text-muted mt-2 mb-0">{{$t('Due')}}</p>
@@ -78,6 +78,9 @@
                 styleClass="tableOne table-hover vgt-table"
               >
                <div slot="table-actions" class="mt-2 mb-3">
+                <b-button @click="printTableOnly('purchases')" size="sm" variant="outline-secondary ripple m-1">
+                  <i class="i-Printer"></i> {{ $t("print") }}
+                </b-button>
                 <b-button @click="Purchase_PDF()" size="sm" variant="outline-success ripple m-1">
                   <i class="i-File-Copy"></i> PDF
                 </b-button>
@@ -139,6 +142,9 @@
                 styleClass="tableOne table-hover vgt-table"
               >
                <div slot="table-actions" class="mt-2 mb-3">
+                <b-button @click="printTableOnly('returns')" size="sm" variant="outline-secondary ripple m-1">
+                  <i class="i-Printer"></i> {{ $t("print") }}
+                </b-button>
                 <b-button @click="Returns_Purchase_PDF()" size="sm" variant="outline-success ripple m-1">
                   <i class="i-File-Copy"></i> PDF
                 </b-button>
@@ -204,6 +210,9 @@
                 styleClass="tableOne table-hover vgt-table"
               >
                <div slot="table-actions" class="mt-2 mb-3">
+                <b-button @click="printTableOnly('payments')" size="sm" variant="outline-secondary ripple m-1">
+                  <i class="i-Printer"></i> {{ $t("print") }}
+                </b-button>
                 <b-button @click="Payments_PDF()" size="sm" variant="outline-success ripple m-1">
                   <i class="i-File-Copy"></i> PDF
                 </b-button>
@@ -220,7 +229,11 @@
 <script>
 import { mapActions, mapGetters } from "vuex";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting
+} from "../../../../utils/priceFormat";
 
 export default {
   data() {
@@ -250,7 +263,9 @@ export default {
         total_amount: 0,
         total_paid: 0,
         due: 0
-      }
+      },
+      // Optional price format key for frontend display (loaded from system settings/localStorage)
+      price_format_key: null
     };
   },
 
@@ -306,7 +321,6 @@ export default {
          {
           label: this.$t("Status"),
           field: "statut",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -314,7 +328,6 @@ export default {
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -377,7 +390,6 @@ export default {
          {
           label: this.$t("Status"),
           field: "statut",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -385,7 +397,6 @@ export default {
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -417,7 +428,7 @@ export default {
         },
         {
           label: this.$t("ModePaiement"),
-          field: "Reglement",
+          field: "payment_method",
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -446,17 +457,17 @@ export default {
       pdf.setFont("VazirmatnBold"); 
 
       let columns = [
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("Supplier"), dataKey: "provider_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("Total"), dataKey: "GrandTotal" },
-        { title: self.$t("Paid"), dataKey: "paid_amount" },
-        { title: self.$t("Due"), dataKey: "due" },
-        { title: self.$t("Status"), dataKey: "statut" },
-        { title: self.$t("PaymentStatus"), dataKey: "payment_status" }
+        { header: self.$t("Reference"), dataKey: "Ref" },
+        { header: self.$t("Supplier"), dataKey: "provider_name" },
+        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
+        { header: self.$t("Total"), dataKey: "GrandTotal" },
+        { header: self.$t("Paid"), dataKey: "paid_amount" },
+        { header: self.$t("Due"), dataKey: "due" },
+        { header: self.$t("Status"), dataKey: "statut" },
+        { header: self.$t("PaymentStatus"), dataKey: "payment_status" }
       ];
 
-      pdf.autoTable({
+      autoTable(pdf, {
              columns: columns,
              body: self.purchases,
              startY: 70,
@@ -471,8 +482,8 @@ export default {
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
       });
@@ -490,18 +501,18 @@ export default {
       pdf.setFont("VazirmatnBold"); 
 
       let columns = [
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("Supplier"), dataKey: "provider_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("Purchase"), dataKey: "purchase_ref" },
-        { title: self.$t("Total"), dataKey: "GrandTotal" },
-        { title: self.$t("Paid"), dataKey: "paid_amount" },
-        { title: self.$t("Due"), dataKey: "due" },
-        { title: self.$t("Status"), dataKey: "statut" },
-        { title: self.$t("PaymentStatus"), dataKey: "payment_status" }
+        { header: self.$t("Reference"), dataKey: "Ref" },
+        { header: self.$t("Supplier"), dataKey: "provider_name" },
+        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
+        { header: self.$t("Purchase"), dataKey: "purchase_ref" },
+        { header: self.$t("Total"), dataKey: "GrandTotal" },
+        { header: self.$t("Paid"), dataKey: "paid_amount" },
+        { header: self.$t("Due"), dataKey: "due" },
+        { header: self.$t("Status"), dataKey: "statut" },
+        { header: self.$t("PaymentStatus"), dataKey: "payment_status" }
       ];
 
-      pdf.autoTable({
+      autoTable(pdf, {
              columns: columns,
              body: self.returns_supplier,
              startY: 70,
@@ -516,8 +527,8 @@ export default {
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
       });
@@ -535,14 +546,14 @@ export default {
       pdf.setFont("VazirmatnBold"); 
 
       let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("Purchase"), dataKey: "purchase_Ref" },
-        { title: self.$t("ModePaiement"), dataKey: "Reglement" },
-        { title: self.$t("Amount"), dataKey: "montant" },
+        { header: self.$t("date"), dataKey: "date" },
+        { header: self.$t("Reference"), dataKey: "Ref" },
+        { header: self.$t("Purchase"), dataKey: "purchase_Ref" },
+        { header: self.$t("ModePaiement"), dataKey: "payment_method" },
+        { header: self.$t("Amount"), dataKey: "montant" },
       ];
 
-      pdf.autoTable({
+      autoTable(pdf, {
              columns: columns,
              body: self.payments,
              startY: 70,
@@ -557,8 +568,8 @@ export default {
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
       });
@@ -578,6 +589,143 @@ export default {
         return `${value[0]}.${formated.substr(0, dec)}`;
       while (formated.length < dec) formated += "0";
       return `${value[0]}.${formated}`;
+    },
+
+    // Price formatting for display only (does NOT affect calculations or stored values)
+    // Uses the global/system price_format setting when available; otherwise falls back
+    // to the existing formatNumber helper to preserve current behavior.
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = Number.isInteger(dec) ? dec : 0;
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
+        const effectiveKey = key || null;
+        return formatPriceDisplayHelper(number, decimals, effectiveKey);
+      } catch (e) {
+        return this.formatNumber(number, dec);
+      }
+    },
+
+    formatPriceWithSymbol(symbol, number, dec) {
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
+    },
+
+    //------ Print Table Only - Print data with all columns based on table type
+    printTableOnly(tableType) {
+      let title, rows, columns;
+      
+      if (tableType === 'purchases') {
+        title = `${this.$t("Reports")} / ${this.$t("SuppliersReport")} / ${this.$t("Purchases")}`;
+        rows = Array.isArray(this.purchases) ? this.purchases : [];
+        columns = this.columns_purchases;
+      } else if (tableType === 'returns') {
+        title = `${this.$t("Reports")} / ${this.$t("SuppliersReport")} / ${this.$t("Returns")}`;
+        rows = Array.isArray(this.returns_supplier) ? this.returns_supplier : [];
+        columns = this.columns_returns;
+      } else if (tableType === 'payments') {
+        title = `${this.$t("Reports")} / ${this.$t("SuppliersReport")} / ${this.$t("PurchaseInvoice")}`;
+        rows = Array.isArray(this.payments) ? this.payments : [];
+        columns = this.columns_payments;
+      } else {
+        return;
+      }
+      
+      // Build table header with all columns
+      let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
+      tableHTML += '<thead><tr>';
+      
+      columns.forEach(col => {
+        tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
+      });
+      tableHTML += '</tr></thead><tbody>';
+      
+      // Build table rows with all data - format each cell according to column type
+      rows.forEach(row => {
+        tableHTML += '<tr>';
+        columns.forEach(col => {
+          let cellValue = '';
+          
+          // Handle status fields with badges
+          if (col.field === 'statut') {
+            if (tableType === 'purchases') {
+              if (row.statut === 'received') cellValue = this.$t('Received');
+              else if (row.statut === 'pending') cellValue = this.$t('Pending');
+              else cellValue = this.$t('Ordered');
+            } else if (tableType === 'returns') {
+              if (row.statut === 'completed') cellValue = this.$t('complete');
+              else cellValue = this.$t('Pending');
+            } else {
+              cellValue = row.statut || '';
+            }
+          } else if (col.field === 'payment_status') {
+            if (row.payment_status === 'paid') cellValue = this.$t('Paid');
+            else if (row.payment_status === 'partial') cellValue = this.$t('partial');
+            else cellValue = this.$t('Unpaid');
+          } else if (['GrandTotal', 'paid_amount', 'due', 'montant'].includes(col.field)) {
+            // Format monetary values
+            cellValue = this.formatPriceDisplay(row[col.field] || 0, 2);
+          } else {
+            // Default: get value directly from row object
+            cellValue = row[col.field] || '';
+          }
+          
+          tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
+        });
+        tableHTML += '</tr>';
+      });
+      
+      tableHTML += '</tbody></table>';
+
+      const w = window.open("", "_blank");
+      if (!w) {
+        alert("Please allow popups to print");
+        return;
+      }
+
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML)
+        .join("\n");
+
+      const doc = w.document;
+      doc.open();
+      doc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="${window.location.origin}/" />
+    <title>${title}</title>
+    ${links}
+    <style>
+      /* Force visibility in print (some global POS print CSS hides body) */
+      @media print { 
+        body, body * { visibility: visible !important; }
+        @page { size: A4 landscape; margin: 0.3cm; }
+      }
+      body { margin: 0.3cm; font-family: Arial, sans-serif; }
+      .print-header { font-weight: 600; margin-bottom: 10px; font-size: 14px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 10px; }
+      th { background-color: #f5f5f5; font-weight: bold; }
+      tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+  </head>
+  <body>
+    <div class="print-header">${title}</div>
+    ${tableHTML}
+  </body>
+</html>`);
+      doc.close();
+
+      w.focus();
+      setTimeout(() => {
+        w.print();
+        w.close();
+      }, 400);
     },
 
     //------------------------------ Show Reports -------------------------\\

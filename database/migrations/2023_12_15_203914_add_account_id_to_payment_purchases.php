@@ -17,7 +17,7 @@ class AddAccountIdToPaymentPurchases extends Migration
             $table->engine = 'InnoDB';
             $table->integer('account_id')->nullable()->after('purchase_id');
             $table->foreign('account_id', 'payment_purchases_account_id')->references('id')->on('accounts')->onUpdate('RESTRICT')->onDelete('RESTRICT');
-        
+
         });
     }
 

@@ -2,35 +2,36 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\UserWarehouse;
 use App\Models\Adjustment;
 use App\Models\AdjustmentDetail;
-use App\Models\ProductVariant;
+use App\Models\CombinedProduct;
 use App\Models\Product;
 use App\Models\product_warehouse;
-use App\Models\CombinedProduct;
+use App\Models\ProductVariant;
 use App\Models\Role;
-use App\Models\Warehouse;
 use App\Models\Setting;
+use App\Models\User;
+use App\Models\UserWarehouse;
+use App\Models\Warehouse;
 use App\utils\helpers;
+use ArPHP\I18N\Arabic;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use PDF;
-use ArPHP\I18N\Arabic;
 
 class AdjustmentController extends BaseController
 {
-
-    //------------ Show All Adjustement  -----------\\
+    // ------------ Show All Adjustement  -----------\\
 
     public function index(request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', Adjustment::class);
-        $role = Auth::user()->roles()->first();
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
+        $user = Auth::user();
+        // New way: Check user's record_view field (user-level boolean)
+        // Backward compatibility: If record_view is null, fall back to role permission check
+        $view_records = $user->hasRecordView();
 
         // How many items do you want to display.
         $perPage = $request->limit;
@@ -39,22 +40,22 @@ class AdjustmentController extends BaseController
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        $helpers = new helpers();
+        $helpers = new helpers;
         // Filter fields With Params to retrieve
-        $columns = array(0 => 'Ref', 1 => 'warehouse_id', 2 => 'date');
-        $param = array(0 => 'like', 1 => '=', 2 => '=');
-        $data = array();
+        $columns = [0 => 'Ref', 1 => 'warehouse_id', 2 => 'date'];
+        $param = [0 => 'like', 1 => '=', 2 => '='];
+        $data = [];
 
         // Check If User Has Permission View  All Records
         $Adjustments = Adjustment::with('warehouse')
             ->where('deleted_at', '=', null)
             ->where(function ($query) use ($view_records) {
-                if (!$view_records) {
+                if (! $view_records) {
                     return $query->where('user_id', '=', Auth::user()->id);
                 }
             });
 
-        //Multiple Filter
+        // Multiple Filter
         $Filtred = $helpers->filter($Adjustments, $columns, $param, $request)
         // Search With Multiple Param
             ->where(function ($query) use ($request) {
@@ -68,7 +69,7 @@ class AdjustmentController extends BaseController
                 });
             });
         $totalRows = $Filtred->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $Adjustments = $Filtred->offset($offSet)
@@ -77,22 +78,23 @@ class AdjustmentController extends BaseController
             ->get();
 
         foreach ($Adjustments as $Adjustment) {
-            $item['id']             = $Adjustment->id;
-            $item['date']           = $Adjustment['date'] . ' ' . $Adjustment['time'];
-            $item['Ref']            = $Adjustment->Ref;
+            $item['id'] = $Adjustment->id;
+            $item['date'] = $Adjustment['date'].' '.$Adjustment['time'];
+            $item['Ref'] = $Adjustment->Ref;
             $item['warehouse_name'] = $Adjustment['warehouse']->name;
-            $item['items']          = $Adjustment->items;
-            $data[]                 = $item;
+            $item['items'] = $Adjustment->items;
+            $data[] = $item;
         }
 
-         //get warehouses assigned to user
-         $user_auth = auth()->user();
-         if($user_auth->is_all_warehouses){
+        // get warehouses assigned to user
+        $user_auth = auth()->user();
+        if ($user_auth->is_all_warehouses) {
             $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-         }else{
+        } else {
             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
             $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
-         }
+        }
+
         return response()->json([
             'adjustments' => $data,
             'totalRows' => $totalRows,
@@ -101,66 +103,63 @@ class AdjustmentController extends BaseController
 
     }
 
-    //------------ Store New Adjustement -----------\\
+    // ------------ Store New Adjustement -----------\\
 
     public function store(Request $request)
     {
 
         $this->authorizeForUser($request->user('api'), 'create', Adjustment::class);
 
-        
-             // define validation rules
-             $productionRules = [
-                'warehouse_id' => 'required',
-            ];
+        // define validation rules
+        $productionRules = [
+            'warehouse_id' => 'required',
+        ];
 
-             // if type prod, add validation for materiels array
-            $productionRules['details'] = [
-                'required',
-                function ($attribute, $value, $fail) use ($request) {
-                   
-                    $products_data = $request['details'];
+        // if type prod, add validation for materiels array
+        $productionRules['details'] = [
+            'required',
+            function ($attribute, $value, $fail) use ($request) {
 
+                $products_data = $request['details'];
 
-                    foreach ($products_data as $key => $value) {
+                foreach ($products_data as $key => $value) {
 
-                        $product_detail = Product::where('deleted_at', '=', null)
+                    $product_detail = Product::where('deleted_at', '=', null)
                         ->where('id', $value['product_id'])
                         ->first();
 
-                        if($product_detail->type == 'is_combo'){
+                    if ($product_detail->type == 'is_combo') {
 
-                            $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
-                        
-                            foreach ($combined_products as $combined_product) {
-                        
-                                $total_stock = product_warehouse::where('deleted_at', '=', null)
+                        $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
+
+                        foreach ($combined_products as $combined_product) {
+
+                            $total_stock = product_warehouse::where('deleted_at', '=', null)
                                 ->where('warehouse_id', $request->warehouse_id)
                                 ->where('product_id', $combined_product->combined_product_id)
                                 ->first();
-                        
-                                $unit_qty = $combined_product->quantity;
-                        
-                                if($unit_qty * $value['quantity'] > $total_stock->qte){
-                                    $fail('stock insuffisant pour le produit '.' '.$product_detail->name);
-                                    return;
-                                }
-                        
-                            }
-                        
-                        }
 
+                            $unit_qty = $combined_product->quantity;
+
+                            if ($unit_qty * $value['quantity'] > $total_stock->qte) {
+                                $fail('stock insuffisant pour le produit '.' '.$product_detail->name);
+
+                                return;
+                            }
+
+                        }
 
                     }
 
-                },
-            ];
+                }
 
-            // validate the request data
-            $validatedData = $request->validate($productionRules, [
-                'warehouse_id.required' => 'Warehouse is required',
-            ]);
+            },
+        ];
 
+        // validate the request data
+        $validatedData = $request->validate($productionRules, [
+            'warehouse_id.required' => 'Warehouse is required',
+        ]);
 
         \DB::transaction(function () use ($request) {
             $order = new Adjustment;
@@ -169,7 +168,7 @@ class AdjustmentController extends BaseController
             $order->Ref = $this->getNumberOrder();
             $order->warehouse_id = $request->warehouse_id;
             $order->notes = $request->notes;
-            $order->items = sizeof($request['details']);
+            $order->items = count($request['details']);
             $order->user_id = Auth::user()->id;
             $order->save();
 
@@ -184,7 +183,7 @@ class AdjustmentController extends BaseController
                     'type' => $value['type'],
                 ];
 
-                if ($value['type'] == "add") {
+                if ($value['type'] == 'add') {
                     if ($value['product_variant_id'] !== null) {
                         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
                             ->where('warehouse_id', $order->warehouse_id)
@@ -198,53 +197,52 @@ class AdjustmentController extends BaseController
                         }
 
                     } else {
-                            $product_detail = Product::where('deleted_at', '=', null)
+                        $product_detail = Product::where('deleted_at', '=', null)
                             ->where('id', $value['product_id'])
                             ->first();
 
-                            if($product_detail->type == 'is_single'){
+                        if ($product_detail->type == 'is_single') {
+
+                            $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                                ->where('warehouse_id', $order->warehouse_id)
+                                ->where('product_id', $value['product_id'])
+                                ->first();
+
+                            if ($product_warehouse) {
+                                $product_warehouse->qte += $value['quantity'];
+                                $product_warehouse->save();
+                            }
+                        } elseif ($product_detail->type == 'is_combo') {
+
+                            $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
+
+                            foreach ($combined_products as $combined_product) {
+
+                                $qty_combined = $combined_product->quantity * $value['quantity'];
 
                                 $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                    ->where('warehouse_id', $order->warehouse_id)
-                                    ->where('product_id', $value['product_id'])
-                                    ->first();
-        
-                                if ($product_warehouse) {
-                                    $product_warehouse->qte += $value['quantity'];
-                                    $product_warehouse->save();
-                                }
-                            }elseif($product_detail->type == 'is_combo'){
-
-                                $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
-
-                                foreach ($combined_products as $combined_product) {
-
-                                    $qty_combined = $combined_product->quantity * $value['quantity'];
-
-                                    $product_warehouse = product_warehouse::where('deleted_at', '=', null)
                                     ->where('warehouse_id', $order->warehouse_id)
                                     ->where('product_id', $combined_product->combined_product_id)
                                     ->first();
-        
-                                    if ($product_warehouse) {
-                                        $product_warehouse->qte -= $qty_combined;
-                                        $product_warehouse->save();
-                                    }
 
+                                if ($product_warehouse) {
+                                    $product_warehouse->qte -= $qty_combined;
+                                    $product_warehouse->save();
                                 }
 
-                                $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                    ->where('warehouse_id', $order->warehouse_id)
-                                    ->where('product_id', $value['product_id'])
-                                    ->first();
-        
-                                    if ($product_warehouse) {
-                                        $product_warehouse->qte += $value['quantity'];
-                                        $product_warehouse->save();
-                                    }
-
-
                             }
+
+                            $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                                ->where('warehouse_id', $order->warehouse_id)
+                                ->where('product_id', $value['product_id'])
+                                ->first();
+
+                            if ($product_warehouse) {
+                                $product_warehouse->qte += $value['quantity'];
+                                $product_warehouse->save();
+                            }
+
+                        }
                     }
                 } else {
 
@@ -261,23 +259,23 @@ class AdjustmentController extends BaseController
                         }
 
                     } else {
-                        
-                        $product_detail = Product::where('deleted_at', '=', null)
-                        ->where('id', $value['product_id'])
-                        ->first();
 
-                        if($product_detail->type == 'is_single'){
+                        $product_detail = Product::where('deleted_at', '=', null)
+                            ->where('id', $value['product_id'])
+                            ->first();
+
+                        if ($product_detail->type == 'is_single') {
 
                             $product_warehouse = product_warehouse::where('deleted_at', '=', null)
                                 ->where('warehouse_id', $order->warehouse_id)
                                 ->where('product_id', $value['product_id'])
                                 ->first();
-    
+
                             if ($product_warehouse) {
                                 $product_warehouse->qte -= $value['quantity'];
                                 $product_warehouse->save();
                             }
-                        }elseif($product_detail->type == 'is_combo'){
+                        } elseif ($product_detail->type == 'is_combo') {
 
                             $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
 
@@ -286,10 +284,10 @@ class AdjustmentController extends BaseController
                                 $qty_combined = $combined_product->quantity * $value['quantity'];
 
                                 $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $order->warehouse_id)
-                                ->where('product_id', $combined_product->combined_product_id)
-                                ->first();
-    
+                                    ->where('warehouse_id', $order->warehouse_id)
+                                    ->where('product_id', $combined_product->combined_product_id)
+                                    ->first();
+
                                 if ($product_warehouse) {
                                     $product_warehouse->qte += $qty_combined;
                                     $product_warehouse->save();
@@ -301,12 +299,11 @@ class AdjustmentController extends BaseController
                                 ->where('warehouse_id', $order->warehouse_id)
                                 ->where('product_id', $value['product_id'])
                                 ->first();
-    
-                                if ($product_warehouse) {
-                                    $product_warehouse->qte -= $value['quantity'];
-                                    $product_warehouse->save();
-                                }
 
+                            if ($product_warehouse) {
+                                $product_warehouse->qte -= $value['quantity'];
+                                $product_warehouse->save();
+                            }
 
                         }
                     }
@@ -318,26 +315,28 @@ class AdjustmentController extends BaseController
         return response()->json(['success' => true]);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
-    //
+    public function show($id)
+    {
+        //
 
     }
 
-    //--------------- Update Adjustment ----------------------\\
-
+    // --------------- Update Adjustment ----------------------\\
 
     public function update(Request $request, $id)
     {
 
         $this->authorizeForUser($request->user('api'), 'update', Adjustment::class);
-        $role = Auth::user()->roles()->first();
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
+        $user = Auth::user();
+        // New way: Check user's record_view field (user-level boolean)
+        // Backward compatibility: If record_view is null, fall back to role permission check
+        $view_records = $user->hasRecordView();
         $current_adjustment = Adjustment::findOrFail($id);
 
         // Check If User Has Permission view All Records
-        if (!$view_records) {
+        if (! $view_records) {
             // Check If User->id === Adjustment->id
             $this->authorizeForUser($request->user('api'), 'check_record', $current_adjustment);
         }
@@ -350,7 +349,7 @@ class AdjustmentController extends BaseController
 
             $old_adjustment_details = AdjustmentDetail::where('adjustment_id', $id)->get();
             $new_adjustment_details = $request['details'];
-            $length = sizeof($new_adjustment_details);
+            $length = count($new_adjustment_details);
 
             // Get Ids for new Details
             $new_products_id = [];
@@ -362,7 +361,7 @@ class AdjustmentController extends BaseController
             // Init Data with old Parametre
             foreach ($old_adjustment_details as $key => $value) {
                 $old_products_id[] = $value->id;
-                if ($value['type'] == "add") {
+                if ($value['type'] == 'add') {
 
                     if ($value['product_variant_id'] !== null) {
                         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
@@ -378,23 +377,22 @@ class AdjustmentController extends BaseController
 
                     } else {
 
-                      
                         $product_detail = Product::where('deleted_at', '=', null)
-                        ->where('id', $value['product_id'])
-                        ->first();
+                            ->where('id', $value['product_id'])
+                            ->first();
 
-                        if($product_detail->type == 'is_single'){
+                        if ($product_detail->type == 'is_single') {
 
                             $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id',  $current_adjustment->warehouse_id)
+                                ->where('warehouse_id', $current_adjustment->warehouse_id)
                                 ->where('product_id', $value['product_id'])
                                 ->first();
-    
+
                             if ($product_warehouse) {
                                 $product_warehouse->qte -= $value['quantity'];
                                 $product_warehouse->save();
                             }
-                        }elseif($product_detail->type == 'is_combo'){
+                        } elseif ($product_detail->type == 'is_combo') {
 
                             $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
 
@@ -403,10 +401,10 @@ class AdjustmentController extends BaseController
                                 $qty_combined = $combined_product->quantity * $value['quantity'];
 
                                 $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $current_adjustment->warehouse_id)
-                                ->where('product_id', $combined_product->combined_product_id)
-                                ->first();
-    
+                                    ->where('warehouse_id', $current_adjustment->warehouse_id)
+                                    ->where('product_id', $combined_product->combined_product_id)
+                                    ->first();
+
                                 if ($product_warehouse) {
                                     $product_warehouse->qte += $qty_combined;
                                     $product_warehouse->save();
@@ -418,16 +416,14 @@ class AdjustmentController extends BaseController
                                 ->where('warehouse_id', $current_adjustment->warehouse_id)
                                 ->where('product_id', $value['product_id'])
                                 ->first();
-    
-                                if ($product_warehouse) {
-                                    $product_warehouse->qte -= $value['quantity'];
-                                    $product_warehouse->save();
-                                }
 
+                            if ($product_warehouse) {
+                                $product_warehouse->qte -= $value['quantity'];
+                                $product_warehouse->save();
+                            }
 
                         }
-                    
-                       
+
                     }
                 } else {
                     if ($value['product_variant_id'] !== null) {
@@ -443,23 +439,23 @@ class AdjustmentController extends BaseController
                         }
 
                     } else {
-                        
-                        $product_detail = Product::where('deleted_at', '=', null)
-                        ->where('id', $value['product_id'])
-                        ->first();
 
-                        if($product_detail->type == 'is_single'){
+                        $product_detail = Product::where('deleted_at', '=', null)
+                            ->where('id', $value['product_id'])
+                            ->first();
+
+                        if ($product_detail->type == 'is_single') {
 
                             $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id',  $current_adjustment->warehouse_id)
+                                ->where('warehouse_id', $current_adjustment->warehouse_id)
                                 ->where('product_id', $value['product_id'])
                                 ->first();
-    
+
                             if ($product_warehouse) {
                                 $product_warehouse->qte += $value['quantity'];
                                 $product_warehouse->save();
                             }
-                        }elseif($product_detail->type == 'is_combo'){
+                        } elseif ($product_detail->type == 'is_combo') {
 
                             $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
 
@@ -468,10 +464,10 @@ class AdjustmentController extends BaseController
                                 $qty_combined = $combined_product->quantity * $value['quantity'];
 
                                 $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $current_adjustment->warehouse_id)
-                                ->where('product_id', $combined_product->combined_product_id)
-                                ->first();
-    
+                                    ->where('warehouse_id', $current_adjustment->warehouse_id)
+                                    ->where('product_id', $combined_product->combined_product_id)
+                                    ->first();
+
                                 if ($product_warehouse) {
                                     $product_warehouse->qte -= $qty_combined;
                                     $product_warehouse->save();
@@ -483,19 +479,18 @@ class AdjustmentController extends BaseController
                                 ->where('warehouse_id', $current_adjustment->warehouse_id)
                                 ->where('product_id', $value['product_id'])
                                 ->first();
-    
-                                if ($product_warehouse) {
-                                    $product_warehouse->qte += $value['quantity'];
-                                    $product_warehouse->save();
-                                }
 
+                            if ($product_warehouse) {
+                                $product_warehouse->qte += $value['quantity'];
+                                $product_warehouse->save();
+                            }
 
                         }
                     }
                 }
 
                 // Delete Detail
-                if (!in_array($old_products_id[$key], $new_products_id)) {
+                if (! in_array($old_products_id[$key], $new_products_id)) {
                     $AdjustmentDetail = AdjustmentDetail::findOrFail($value->id);
                     $AdjustmentDetail->delete();
                 }
@@ -504,7 +499,7 @@ class AdjustmentController extends BaseController
 
             // Update Data with New request
             foreach ($new_adjustment_details as $key => $product_detail) {
-                if ($product_detail['type'] == "add") {
+                if ($product_detail['type'] == 'add') {
 
                     if ($product_detail['product_variant_id'] !== null) {
                         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
@@ -519,23 +514,23 @@ class AdjustmentController extends BaseController
                         }
 
                     } else {
-                       
-                        $product_detail_type = Product::where('deleted_at', '=', null)
-                        ->where('id', $product_detail['product_id'])
-                        ->first();
 
-                        if($product_detail_type->type == 'is_single'){
+                        $product_detail_type = Product::where('deleted_at', '=', null)
+                            ->where('id', $product_detail['product_id'])
+                            ->first();
+
+                        if ($product_detail_type->type == 'is_single') {
 
                             $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id',  $request->warehouse_id)
+                                ->where('warehouse_id', $request->warehouse_id)
                                 ->where('product_id', $product_detail['product_id'])
                                 ->first();
-    
+
                             if ($product_warehouse) {
                                 $product_warehouse->qte += $product_detail['quantity'];
                                 $product_warehouse->save();
                             }
-                        }elseif($product_detail_type->type == 'is_combo'){
+                        } elseif ($product_detail_type->type == 'is_combo') {
 
                             $combined_products = CombinedProduct::where('product_id', $product_detail['product_id'])->with('product')->get();
 
@@ -544,10 +539,10 @@ class AdjustmentController extends BaseController
                                 $qty_combined = $combined_product->quantity * $product_detail['quantity'];
 
                                 $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $request->warehouse_id)
-                                ->where('product_id', $combined_product->combined_product_id)
-                                ->first();
-    
+                                    ->where('warehouse_id', $request->warehouse_id)
+                                    ->where('product_id', $combined_product->combined_product_id)
+                                    ->first();
+
                                 if ($product_warehouse) {
                                     $product_warehouse->qte -= $qty_combined;
                                     $product_warehouse->save();
@@ -559,12 +554,11 @@ class AdjustmentController extends BaseController
                                 ->where('warehouse_id', $request->warehouse_id)
                                 ->where('product_id', $product_detail['product_id'])
                                 ->first();
-    
-                                if ($product_warehouse) {
-                                    $product_warehouse->qte += $product_detail['quantity'];
-                                    $product_warehouse->save();
-                                }
 
+                            if ($product_warehouse) {
+                                $product_warehouse->qte += $product_detail['quantity'];
+                                $product_warehouse->save();
+                            }
 
                         }
                     }
@@ -582,23 +576,23 @@ class AdjustmentController extends BaseController
                         }
 
                     } else {
-                        
-                        $product_detail_type = Product::where('deleted_at', '=', null)
-                        ->where('id', $product_detail['product_id'])
-                        ->first();
 
-                        if($product_detail_type->type == 'is_single'){
+                        $product_detail_type = Product::where('deleted_at', '=', null)
+                            ->where('id', $product_detail['product_id'])
+                            ->first();
+
+                        if ($product_detail_type->type == 'is_single') {
 
                             $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id',  $request->warehouse_id)
+                                ->where('warehouse_id', $request->warehouse_id)
                                 ->where('product_id', $product_detail['product_id'])
                                 ->first();
-    
+
                             if ($product_warehouse) {
                                 $product_warehouse->qte -= $product_detail['quantity'];
                                 $product_warehouse->save();
                             }
-                        }elseif($product_detail_type->type == 'is_combo'){
+                        } elseif ($product_detail_type->type == 'is_combo') {
 
                             $combined_products = CombinedProduct::where('product_id', $product_detail['product_id'])->with('product')->get();
 
@@ -607,10 +601,10 @@ class AdjustmentController extends BaseController
                                 $qty_combined = $combined_product->quantity * $product_detail['quantity'];
 
                                 $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $request->warehouse_id)
-                                ->where('product_id', $combined_product->combined_product_id)
-                                ->first();
-    
+                                    ->where('warehouse_id', $request->warehouse_id)
+                                    ->where('product_id', $combined_product->combined_product_id)
+                                    ->first();
+
                                 if ($product_warehouse) {
                                     $product_warehouse->qte += $qty_combined;
                                     $product_warehouse->save();
@@ -622,12 +616,11 @@ class AdjustmentController extends BaseController
                                 ->where('warehouse_id', $request->warehouse_id)
                                 ->where('product_id', $product_detail['product_id'])
                                 ->first();
-    
-                                if ($product_warehouse) {
-                                    $product_warehouse->qte -= $product_detail['quantity'];
-                                    $product_warehouse->save();
-                                }
 
+                            if ($product_warehouse) {
+                                $product_warehouse->qte -= $product_detail['quantity'];
+                                $product_warehouse->save();
+                            }
 
                         }
                     }
@@ -639,7 +632,7 @@ class AdjustmentController extends BaseController
                 $orderDetails['product_variant_id'] = $product_detail['product_variant_id'];
                 $orderDetails['type'] = $product_detail['type'];
 
-                if (!in_array($product_detail['id'], $old_products_id)) {
+                if (! in_array($product_detail['id'], $old_products_id)) {
                     AdjustmentDetail::Create($orderDetails);
                 } else {
                     AdjustmentDetail::where('id', $product_detail['id'])->update($orderDetails);
@@ -659,27 +652,29 @@ class AdjustmentController extends BaseController
         return response()->json(['success' => true]);
     }
 
-    //------------ Delete Adjustement -----------\\
+    // ------------ Delete Adjustement -----------\\
 
     public function destroy(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'delete', Adjustment::class);
 
         \DB::transaction(function () use ($id, $request) {
-            $role = Auth::user()->roles()->first();
-            $view_records = Role::findOrFail($role->id)->inRole('record_view');
+            $user = Auth::user();
+            // New way: Check user's record_view field (user-level boolean)
+            // Backward compatibility: If record_view is null, fall back to role permission check
+            $view_records = $user->hasRecordView();
             $current_adjustment = Adjustment::findOrFail($id);
             $old_adjustment_details = AdjustmentDetail::where('adjustment_id', $id)->get();
 
             // Check If User Has Permission view All Records
-            if (!$view_records) {
+            if (! $view_records) {
                 // Check If User->id === current_adjustment->id
                 $this->authorizeForUser($request->user('api'), 'check_record', $current_adjustment);
             }
 
             // Init Data with old Parametre
             foreach ($old_adjustment_details as $key => $value) {
-                if ($value['type'] == "add") {
+                if ($value['type'] == 'add') {
 
                     if ($value['product_variant_id'] !== null) {
                         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
@@ -694,24 +689,23 @@ class AdjustmentController extends BaseController
                         }
 
                     } else {
-                       
 
                         $product_detail = Product::where('deleted_at', '=', null)
-                        ->where('id', $value['product_id'])
-                        ->first();
+                            ->where('id', $value['product_id'])
+                            ->first();
 
-                        if($product_detail->type == 'is_single'){
+                        if ($product_detail->type == 'is_single') {
 
                             $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id',  $current_adjustment->warehouse_id)
+                                ->where('warehouse_id', $current_adjustment->warehouse_id)
                                 ->where('product_id', $value['product_id'])
                                 ->first();
-    
+
                             if ($product_warehouse) {
                                 $product_warehouse->qte -= $value['quantity'];
                                 $product_warehouse->save();
                             }
-                        }elseif($product_detail->type == 'is_combo'){
+                        } elseif ($product_detail->type == 'is_combo') {
 
                             $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
 
@@ -720,10 +714,10 @@ class AdjustmentController extends BaseController
                                 $qty_combined = $combined_product->quantity * $value['quantity'];
 
                                 $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $current_adjustment->warehouse_id)
-                                ->where('product_id', $combined_product->combined_product_id)
-                                ->first();
-    
+                                    ->where('warehouse_id', $current_adjustment->warehouse_id)
+                                    ->where('product_id', $combined_product->combined_product_id)
+                                    ->first();
+
                                 if ($product_warehouse) {
                                     $product_warehouse->qte += $qty_combined;
                                     $product_warehouse->save();
@@ -735,12 +729,11 @@ class AdjustmentController extends BaseController
                                 ->where('warehouse_id', $current_adjustment->warehouse_id)
                                 ->where('product_id', $value['product_id'])
                                 ->first();
-    
-                                if ($product_warehouse) {
-                                    $product_warehouse->qte -= $value['quantity'];
-                                    $product_warehouse->save();
-                                }
 
+                            if ($product_warehouse) {
+                                $product_warehouse->qte -= $value['quantity'];
+                                $product_warehouse->save();
+                            }
 
                         }
                     }
@@ -758,23 +751,23 @@ class AdjustmentController extends BaseController
                         }
 
                     } else {
-                        
-                        $product_detail = Product::where('deleted_at', '=', null)
-                        ->where('id', $value['product_id'])
-                        ->first();
 
-                        if($product_detail->type == 'is_single'){
+                        $product_detail = Product::where('deleted_at', '=', null)
+                            ->where('id', $value['product_id'])
+                            ->first();
+
+                        if ($product_detail->type == 'is_single') {
 
                             $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id',  $current_adjustment->warehouse_id)
+                                ->where('warehouse_id', $current_adjustment->warehouse_id)
                                 ->where('product_id', $value['product_id'])
                                 ->first();
-    
+
                             if ($product_warehouse) {
                                 $product_warehouse->qte += $value['quantity'];
                                 $product_warehouse->save();
                             }
-                        }elseif($product_detail->type == 'is_combo'){
+                        } elseif ($product_detail->type == 'is_combo') {
 
                             $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
 
@@ -783,10 +776,10 @@ class AdjustmentController extends BaseController
                                 $qty_combined = $combined_product->quantity * $value['quantity'];
 
                                 $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $current_adjustment->warehouse_id)
-                                ->where('product_id', $combined_product->combined_product_id)
-                                ->first();
-    
+                                    ->where('warehouse_id', $current_adjustment->warehouse_id)
+                                    ->where('product_id', $combined_product->combined_product_id)
+                                    ->first();
+
                                 if ($product_warehouse) {
                                     $product_warehouse->qte -= $qty_combined;
                                     $product_warehouse->save();
@@ -798,12 +791,11 @@ class AdjustmentController extends BaseController
                                 ->where('warehouse_id', $current_adjustment->warehouse_id)
                                 ->where('product_id', $value['product_id'])
                                 ->first();
-    
-                                if ($product_warehouse) {
-                                    $product_warehouse->qte += $value['quantity'];
-                                    $product_warehouse->save();
-                                }
 
+                            if ($product_warehouse) {
+                                $product_warehouse->qte += $value['quantity'];
+                                $product_warehouse->save();
+                            }
 
                         }
                     }
@@ -821,59 +813,73 @@ class AdjustmentController extends BaseController
         return response()->json(['success' => true], 200);
     }
 
- 
-
-    //------------ Reference Number of Adjustement  -----------\\
+    // ------------ Reference Number of Adjustement  -----------\\
 
     public function getNumberOrder()
     {
-
-        $last = DB::table('adjustments')->latest('id')->first();
+        // Get prefix from settings, fallback to 'AD' if not set
+        $setting = \App\Models\Setting::where('deleted_at', '=', null)->first();
+        $prefix = !empty($setting->adjustment_prefix) ? $setting->adjustment_prefix : 'AD';
+        
+        // Get the last adjustment with a reference that starts with the prefix
+        $last = DB::table('adjustments')
+            ->where('Ref', 'like', $prefix.'_%')
+            ->latest('id')
+            ->first();
 
         if ($last) {
             $item = $last->Ref;
-            $nwMsg = explode("_", $item);
-            $inMsg = $nwMsg[1] + 1;
-            $code = $nwMsg[0] . '_' . $inMsg;
+            $nwMsg = explode('_', $item);
+            
+            // Ensure valid structure before processing
+            if (isset($nwMsg[1]) && is_numeric($nwMsg[1])) {
+                $inMsg = $nwMsg[1] + 1;
+                $code = $nwMsg[0].'_'.str_pad($inMsg, 4, '0', STR_PAD_LEFT);
+            } else {
+                $code = $prefix.'_0001'; // Fallback if reference is corrupted
+            }
         } else {
-            $code = 'AD_1111';
+            $code = $prefix.'_0001';
         }
+
         return $code;
 
     }
 
-    //---------------- Show Form Create Adjustment ---------------\\
+    // ---------------- Show Form Create Adjustment ---------------\\
 
     public function create(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Adjustment::class);
 
-          //get warehouses assigned to user
-          $user_auth = auth()->user();
-          if($user_auth->is_all_warehouses){
-             $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-          }else{
-             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-             $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
-          }
+        // get warehouses assigned to user
+        $user_auth = auth()->user();
+        if ($user_auth->is_all_warehouses) {
+            $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+        } else {
+            $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
+            $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
+        }
 
         return response()->json(['warehouses' => $warehouses]);
     }
 
-    //-------------Show Form Edit Adjustment-----------\\
+    // -------------Show Form Edit Adjustment-----------\\
 
     public function edit(Request $request, $id)
     {
 
         $this->authorizeForUser($request->user('api'), 'update', Adjustment::class);
-        $role = Auth::user()->roles()->first();
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
+        $user = Auth::user();
+        // New way: Check user's record_view field (user-level boolean)
+        // Backward compatibility: If record_view is null, fall back to role permission check
+        $view_records = $user->hasRecordView();
         $Adjustment_data = Adjustment::with('details.product')
             ->where('deleted_at', '=', null)
             ->findOrFail($id);
-        $details = array();
+        $details = [];
         // Check If User Has Permission view All Records
-        if (!$view_records) {
+        if (! $view_records) {
             // Check If User->id === Adjustment->id
             $this->authorizeForUser($request->user('api'), 'check_record', $Adjustment_data);
         }
@@ -912,12 +918,11 @@ class AdjustmentController extends BaseController
                 $data['product_id'] = $detail->product_id;
                 $data['product_variant_id'] = $detail->product_variant_id;
                 $data['code'] = $productsVariants->code;
-                $data['name'] = '['.$productsVariants->name . ']' . $detail['product']['name'];
+                $data['name'] = '['.$productsVariants->name.']'.$detail['product']['name'];
                 $data['current'] = $item_product ? $item_product->qte : 0;
                 $data['type'] = $detail->type;
                 $data['unit'] = $detail['product']['unit']->ShortName;
-                $item_product ?$data['del'] = 0:$data['del'] = 1;
-
+                $item_product ? $data['del'] = 0 : $data['del'] = 1;
 
             } else {
                 $item_product = product_warehouse::where('product_id', $detail->product_id)
@@ -925,32 +930,31 @@ class AdjustmentController extends BaseController
                     ->where('warehouse_id', $Adjustment_data->warehouse_id)
                     ->where('product_variant_id', '=', null)
                     ->first();
-                    
-                    $data['id'] = $detail->id;
-                    $data['detail_id'] = $detail_id += 1;
-                    $data['quantity'] = $detail->quantity;
-                    $data['product_id'] = $detail->product_id;
-                    $data['product_variant_id'] = null;
-                    $data['code'] = $detail['product']['code'];
-                    $data['name'] = $detail['product']['name'];
-                    $data['current'] = $item_product ? $item_product->qte : 0;
-                    $data['type'] = $detail->type;
-                    $data['unit'] = $detail['product']['unit']->ShortName;
-                    $item_product ?$data['del'] = 0:$data['del'] = 1;
+
+                $data['id'] = $detail->id;
+                $data['detail_id'] = $detail_id += 1;
+                $data['quantity'] = $detail->quantity;
+                $data['product_id'] = $detail->product_id;
+                $data['product_variant_id'] = null;
+                $data['code'] = $detail['product']['code'];
+                $data['name'] = $detail['product']['name'];
+                $data['current'] = $item_product ? $item_product->qte : 0;
+                $data['type'] = $detail->type;
+                $data['unit'] = $detail['product']['unit']->ShortName;
+                $item_product ? $data['del'] = 0 : $data['del'] = 1;
             }
 
             $details[] = $data;
         }
 
-       
-        //get warehouses assigned to user
-         $user_auth = auth()->user();
-         if($user_auth->is_all_warehouses){
+        // get warehouses assigned to user
+        $user_auth = auth()->user();
+        if ($user_auth->is_all_warehouses) {
             $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-         }else{
+        } else {
             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
             $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
-         }
+        }
 
         return response()->json([
             'details' => $details,
@@ -959,20 +963,22 @@ class AdjustmentController extends BaseController
         ]);
     }
 
-    //---------------- Get Details Adjustment-----------------\\
+    // ---------------- Get Details Adjustment-----------------\\
 
     public function Adjustment_detail(Request $request, $id)
     {
 
         $this->authorizeForUser($request->user('api'), 'view', Adjustment::class);
-        $role = Auth::user()->roles()->first();
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
+        $user = Auth::user();
+        // New way: Check user's record_view field (user-level boolean)
+        // Backward compatibility: If record_view is null, fall back to role permission check
+        $view_records = $user->hasRecordView();
         $Adjustment_data = Adjustment::with('details.product.unit')
             ->where('deleted_at', '=', null)
             ->findOrFail($id);
-        $details = array();
+        $details = [];
         // Check If User Has Permission view All Records
-        if (!$view_records) {
+        if (! $view_records) {
             // Check If User->id === Adjustment->id
             $this->authorizeForUser($request->user('api'), 'check_record', $Adjustment_data);
         }
@@ -991,7 +997,7 @@ class AdjustmentController extends BaseController
 
                 $data['quantity'] = $detail->quantity;
                 $data['code'] = $productsVariants->code;
-                $data['name'] = '['.$productsVariants->name . ']' . $detail['product']['name'];
+                $data['name'] = '['.$productsVariants->name.']'.$detail['product']['name'];
                 $data['unit'] = $detail['product']['unit']->ShortName;
                 $data['type'] = $detail->type;
 
@@ -1013,20 +1019,20 @@ class AdjustmentController extends BaseController
         ]);
     }
 
-    //-------------- adjustment_pdf -----------\\
+    // -------------- adjustment_pdf -----------\\
 
     public function adjustment_pdf(Request $request, $id)
     {
-        $details = array();
-        $helpers = new helpers();
+        $details = [];
+        $helpers = new helpers;
         $adjustment_data = Adjustment::with('details.product.unit')
             ->where('deleted_at', '=', null)
             ->findOrFail($id);
 
         $adjustment['warehouse_name'] = $adjustment_data['warehouse']->name;
-        $adjustment['Ref']    = $adjustment_data->Ref;
-        $adjustment['date']   = $adjustment_data->date . ' ' . $adjustment_data->time;
-        
+        $adjustment['Ref'] = $adjustment_data->Ref;
+        $adjustment['date'] = $adjustment_data->date.' '.$adjustment_data->time;
+
         $detail_id = 0;
         foreach ($adjustment_data['details'] as $detail) {
 
@@ -1038,23 +1044,21 @@ class AdjustmentController extends BaseController
                     ->where('id', $detail->product_variant_id)
                     ->first();
 
-                $data['quantity'] = $detail->type == 'add'? '+' . ' '.number_format($detail->quantity, 2, '.', ''):'-' . ' '.number_format($detail->quantity, 2, '.', '');
+                $data['quantity'] = $detail->type == 'add' ? '+'.' '.number_format($detail->quantity, 2, '.', '') : '-'.' '.number_format($detail->quantity, 2, '.', '');
                 $data['code'] = $productsVariants->code;
-                $data['name'] = '['.$productsVariants->name . ']' . $detail['product']['name'];
+                $data['name'] = '['.$productsVariants->name.']'.$detail['product']['name'];
                 $data['unit'] = $detail['product']['unit']->ShortName;
 
             } else {
 
-                $data['quantity'] = $detail->type == 'add'? '+' . ' '.number_format($detail->quantity, 2, '.', ''):'-' . ' '.number_format($detail->quantity, 2, '.', '');
+                $data['quantity'] = $detail->type == 'add' ? '+'.' '.number_format($detail->quantity, 2, '.', '') : '-'.' '.number_format($detail->quantity, 2, '.', '');
                 $data['code'] = $detail['product']['code'];
                 $data['name'] = $detail['product']['name'];
                 $data['unit'] = $detail['product']['unit']->ShortName;
             }
 
-            
             $details[] = $data;
         }
-
 
         $settings = Setting::where('deleted_at', '=', null)->first();
         $Html = view('pdf.adjustment_pdf', [
@@ -1063,18 +1067,17 @@ class AdjustmentController extends BaseController
             'details' => $details,
         ])->render();
 
-        $arabic = new Arabic();
+        $arabic = new Arabic;
         $p = $arabic->arIdentify($Html);
 
-        for ($i = count($p)-1; $i >= 0; $i-=2) {
-            $utf8ar = $arabic->utf8Glyphs(substr($Html, $p[$i-1], $p[$i] - $p[$i-1]));
-            $Html = substr_replace($Html, $utf8ar, $p[$i-1], $p[$i] - $p[$i-1]);
+        for ($i = count($p) - 1; $i >= 0; $i -= 2) {
+            $utf8ar = $arabic->utf8Glyphs(substr($Html, $p[$i - 1], $p[$i] - $p[$i - 1]));
+            $Html = substr_replace($Html, $utf8ar, $p[$i - 1], $p[$i] - $p[$i - 1]);
         }
 
         $pdf = PDF::loadHTML($Html);
+
         return $pdf->download('Adjustment.pdf');
 
     }
-
-
 }

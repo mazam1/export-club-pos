@@ -1,19 +1,16 @@
 <?php
 
 namespace App\Http\Controllers\hrm;
-use App\Http\Controllers\Controller;
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Department;
-use App\Models\Employee;
 use Carbon\Carbon;
-use DB;
+use Illuminate\Http\Request;
 
 class DepartmentsController extends Controller
 {
-
-    //----------- GET ALL  Department --------------\\
+    // ----------- GET ALL  Department --------------\\
 
     public function index(Request $request)
     {
@@ -27,11 +24,10 @@ class DepartmentsController extends Controller
         $order = $request->SortField;
         $dir = $request->SortType;
 
-        $departments = Department::
-            leftjoin('employees','employees.id','=','departments.department_head')
-            ->join('companies','companies.id','=','departments.company_id')
-            ->where('departments.deleted_at' , '=', null)
-            ->select('departments.*','employees.username AS employee_head','companies.name AS company_name')
+        $departments = Department::leftjoin('employees', 'employees.id', '=', 'departments.department_head')
+            ->join('companies', 'companies.id', '=', 'departments.company_id')
+            ->where('departments.deleted_at', '=', null)
+            ->select('departments.*', 'employees.username AS employee_head', 'companies.name AS company_name')
 
         // Search With Multiple Param
             ->where(function ($query) use ($request) {
@@ -40,7 +36,7 @@ class DepartmentsController extends Controller
                 });
             });
         $totalRows = $departments->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $departments = $departments->offset($offSet)
@@ -48,10 +44,9 @@ class DepartmentsController extends Controller
             ->orderBy($order, $dir)
             ->get();
 
-
         return response()->json([
             'departments' => $departments,
-            'totalRows'   => $totalRows,
+            'totalRows' => $totalRows,
         ]);
     }
 
@@ -59,74 +54,77 @@ class DepartmentsController extends Controller
     {
         $this->authorizeForUser($request->user('api'), 'create', Department::class);
 
-        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','name']);
+        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
+
         return response()->json([
-            'companies' =>$companies,
+            'companies' => $companies,
         ]);
 
     }
 
-    //----------- Store new department --------------\\
+    // ----------- Store new department --------------\\
 
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Department::class);
 
         request()->validate([
-            'department'   => 'required|string',
-            'company_id'   => 'required',
+            'department' => 'required|string',
+            'company_id' => 'required',
         ]);
 
         Department::create([
-            'department'        => $request['department'],
-            'company_id'        => $request['company_id'],
-            'department_head'   => $request['department_head']?$request['department_head']:Null,
-            ]);
+            'department' => $request['department'],
+            'company_id' => $request['company_id'],
+            'department_head' => $request['department_head'] ? $request['department_head'] : null,
+        ]);
 
         return response()->json(['success' => true]);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
+
     }
 
-    //------------ function edit -----------\\
+    // ------------ function edit -----------\\
 
-    public function edit(Request $request , $id)
+    public function edit(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Department::class);
 
-        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','name']);
+        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
+
         return response()->json([
-            'companies' =>$companies,
+            'companies' => $companies,
         ]);
 
     }
 
-    //-----------Update department --------------\\
+    // -----------Update department --------------\\
 
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Department::class);
 
         request()->validate([
-            'department'   => 'required|string',
-            'company_id'   => 'required',
+            'department' => 'required|string',
+            'company_id' => 'required',
         ]);
 
         Department::whereId($id)->update([
-            'department'        => $request['department'],
-            'company_id'        => $request['company_id'],
-            'department_head'   => $request['department_head']?$request['department_head']:Null,
+            'department' => $request['department'],
+            'company_id' => $request['company_id'],
+            'department_head' => $request['department_head'] ? $request['department_head'] : null,
         ]);
 
         return response()->json(['success' => true]);
     }
 
-    //----------- Delete  department --------------\\
+    // ----------- Delete  department --------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -143,7 +141,7 @@ class DepartmentsController extends Controller
         return response()->json(['success' => true]);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -162,9 +160,8 @@ class DepartmentsController extends Controller
 
     public function Get_all_Departments()
     {
-        $departments = Department::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','department']);
+        $departments = Department::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'department']);
 
         return response()->json($departments);
     }
-
 }

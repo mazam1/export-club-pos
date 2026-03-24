@@ -1,40 +1,38 @@
 <?php
-namespace App\Http\Controllers;
-use Twilio\Rest\Client as Client_Twilio;
-use GuzzleHttp\Client as Client_guzzle;
-use GuzzleHttp\Client as Client_termi;
-use App\Models\SMSMessage;
-use Infobip\Api\SendSmsApi;
-use Infobip\Configuration;
-use Infobip\Model\SmsAdvancedTextualRequest;
-use Infobip\Model\SmsDestination;
-use Infobip\Model\SmsTextualMessage;
-use Illuminate\Support\Str;
-use App\Models\EmailMessage;
-use App\Mail\CustomEmail;
-use App\utils\helpers;
-use App\Models\Account;
 
+namespace App\Http\Controllers;
+
+use App\Mail\CustomEmail;
+use App\Models\Account;
+use App\Models\EmailMessage;
 use App\Models\PaymentMethod;
-use App\Mail\Payment_Purchase;
 use App\Models\PaymentPurchase;
 use App\Models\Provider;
 use App\Models\Purchase;
 use App\Models\Role;
 use App\Models\Setting;
+use App\Models\sms_gateway;
+use App\Models\SMSMessage;
+use App\utils\helpers;
+use ArPHP\I18N\Arabic;
 use Carbon\Carbon;
+use DB;
+use GuzzleHttp\Client as Client_guzzle;
+use GuzzleHttp\Client as Client_termi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use App\Models\sms_gateway;
-use DB;
+use Infobip\Api\SendSmsApi;
+use Infobip\Configuration;
+use Infobip\Model\SmsAdvancedTextualRequest;
+use Infobip\Model\SmsDestination;
+use Infobip\Model\SmsTextualMessage;
 use PDF;
-use ArPHP\I18N\Arabic;
+use Twilio\Rest\Client as Client_Twilio;
 
 class PaymentPurchasesController extends BaseController
 {
-
-    //------------- Get All Payments Purchases --------------\\
+    // ------------- Get All Payments Purchases --------------\\
 
     public function index(request $request)
     {
@@ -47,20 +45,22 @@ class PaymentPurchasesController extends BaseController
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        $helpers = new helpers();
-        $role = Auth::user()->roles()->first();
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
+        $helpers = new helpers;
+        $user = Auth::user();
+        // New way: Check user's record_view field (user-level boolean)
+        // Backward compatibility: If record_view is null, fall back to role permission check
+        $view_records = $user->hasRecordView();
         // Filter fields With Params to retriever
-        $param = array(0 => 'like', 1 => '=', 2 => '=');
-        $columns = array(0 => 'Ref', 1 => 'purchase_id', 2 => 'payment_method_id');
-        $data = array();
+        $param = [0 => 'like', 1 => '=', 2 => '='];
+        $columns = [0 => 'Ref', 1 => 'purchase_id', 2 => 'payment_method_id'];
+        $data = [];
 
         // Check If User Has Permission View  All Records
-        $Payments = PaymentPurchase::with('purchase.provider','account')
+        $Payments = PaymentPurchase::with('purchase.provider', 'account', 'user')
             ->where('deleted_at', '=', null)
-            ->whereBetween('date', array($request->from, $request->to))
+            ->whereBetween('date', [$request->from, $request->to])
             ->where(function ($query) use ($view_records) {
-                if (!$view_records) {
+                if (! $view_records) {
                     return $query->where('user_id', '=', Auth::user()->id);
                 }
             })
@@ -97,7 +97,7 @@ class PaymentPurchasesController extends BaseController
             });
 
         $totalRows = $Filtred->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $Payments = $Filtred->offset($offSet)
@@ -107,13 +107,15 @@ class PaymentPurchasesController extends BaseController
 
         foreach ($Payments as $Payment) {
 
-            $item['date']          = $Payment->date;
-            $item['Ref']           = $Payment->Ref;
-            $item['Ref_Purchase']  = $Payment['purchase']->Ref;
+            $item['date'] = $Payment->date;
+            $item['Ref'] = $Payment->Ref;
+            $item['Ref_Purchase'] = $Payment['purchase']->Ref;
+            $item['purchase_id'] = $Payment['purchase']->id;
             $item['provider_name'] = $Payment['purchase']['provider']->name;
-            $item['payment_method']  = $Payment['payment_method']->name;
-            $item['montant']       = $Payment->montant;
-            $item['account_name']  = $Payment['account']?$Payment['account']->account_name:'---';
+            $item['payment_method'] = $Payment['payment_method']->name;
+            $item['montant'] = $Payment->montant;
+            $item['account_name'] = $Payment['account'] ? $Payment['account']->account_name : '---';
+            $item['user_name'] = $Payment['user'] ? $Payment['user']->username : '---';
             $data[] = $item;
         }
 
@@ -131,20 +133,22 @@ class PaymentPurchasesController extends BaseController
 
     }
 
-    //----------- Store New Payment Purchase --------------\\
+    // ----------- Store New Payment Purchase --------------\\
 
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', PaymentPurchase::class);
-        
-        if($request['montant'] > 0){
+
+        if ($request['montant'] > 0) {
             \DB::transaction(function () use ($request) {
-                $role = Auth::user()->roles()->first();
-                $view_records = Role::findOrFail($role->id)->inRole('record_view');
+                $user = Auth::user();
+                // New way: Check user's record_view field (user-level boolean)
+                // Backward compatibility: If record_view is null, fall back to role permission check
+                $view_records = $user->hasRecordView();
                 $purchase = Purchase::findOrFail($request['purchase_id']);
-        
+
                 // Check If User Has Permission view All Records
-                if (!$view_records) {
+                if (! $view_records) {
                     // Check If User->id === purchase->id
                     $this->authorizeForUser($request->user('api'), 'check_record', $purchase);
                 }
@@ -154,15 +158,15 @@ class PaymentPurchasesController extends BaseController
 
                 if ($due === 0.0 || $due < 0.0) {
                     $payment_statut = 'paid';
-                } else if ($due !== $purchase->GrandTotal) {
+                } elseif ($due !== $purchase->GrandTotal) {
                     $payment_statut = 'partial';
-                } else if ($due === $purchase->GrandTotal) {
+                } elseif ($due === $purchase->GrandTotal) {
                     $payment_statut = 'unpaid';
                 }
 
                 PaymentPurchase::create([
                     'purchase_id' => $request['purchase_id'],
-                    'account_id'  => $request['account_id']?$request['account_id']:NULL,
+                    'account_id' => $request['account_id'] ? $request['account_id'] : null,
                     'Ref' => $this->getNumberOrder(),
                     'date' => $request['date'],
                     'payment_method_id' => $request['payment_method_id'],
@@ -193,26 +197,29 @@ class PaymentPurchasesController extends BaseController
         return response()->json(['success' => true, 'message' => 'Payment Create successfully'], 200);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
-        }
 
-    //----------- Update Payment Purchases --------------\\
+    }
+
+    // ----------- Update Payment Purchases --------------\\
 
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', PaymentPurchase::class);
-        
+
         \DB::transaction(function () use ($id, $request) {
-            $role = Auth::user()->roles()->first();
-            $view_records = Role::findOrFail($role->id)->inRole('record_view');
+            $user = Auth::user();
+            // New way: Check user's record_view field (user-level boolean)
+            // Backward compatibility: If record_view is null, fall back to role permission check
+            $view_records = $user->hasRecordView();
             $payment = PaymentPurchase::findOrFail($id);
-    
+
             // Check If User Has Permission view All Records
-            if (!$view_records) {
+            if (! $view_records) {
                 // Check If User->id === payment->id
                 $this->authorizeForUser($request->user('api'), 'check_record', $payment);
             }
@@ -224,43 +231,43 @@ class PaymentPurchasesController extends BaseController
             $due = $purchase->GrandTotal - $new_total_paid;
             if ($due === 0.0 || $due < 0.0) {
                 $payment_statut = 'paid';
-            } else if ($due !== $purchase->GrandTotal) {
+            } elseif ($due !== $purchase->GrandTotal) {
                 $payment_statut = 'partial';
-            } else if ($due === $purchase->GrandTotal) {
+            } elseif ($due === $purchase->GrandTotal) {
                 $payment_statut = 'unpaid';
             }
 
-              //delete old balance
-              $account = Account::where('id', $payment->account_id)->exists();
+            // delete old balance
+            $account = Account::where('id', $payment->account_id)->exists();
 
-              if ($account) {
-                  // Account exists, perform the update
-                  $account = Account::find($payment->account_id);
-                  $account->update([
-                      'balance' => $account->balance + $payment->montant,
-                  ]);
-              }
+            if ($account) {
+                // Account exists, perform the update
+                $account = Account::find($payment->account_id);
+                $account->update([
+                    'balance' => $account->balance + $payment->montant,
+                ]);
+            }
 
             $payment->update([
                 'date' => $request['date'],
-                'account_id' => $request['account_id']?$request['account_id']:NULL,
+                'account_id' => $request['account_id'] ? $request['account_id'] : null,
                 'payment_method_id' => $request['payment_method_id'],
                 'montant' => $request['montant'],
                 'change' => $request['change'],
                 'notes' => $request['notes'],
             ]);
 
-              //update new account
+            // update new account
 
-              $new_account = Account::where('id', $request['account_id'])->exists();
+            $new_account = Account::where('id', $request['account_id'])->exists();
 
-              if ($new_account) {
-                  // Account exists, perform the update
-                  $new_account = Account::find($request['account_id']);
-                  $new_account->update([
-                      'balance' => $new_account->balance - $request['montant'],
-                  ]);
-              }
+            if ($new_account) {
+                // Account exists, perform the update
+                $new_account = Account::find($request['account_id']);
+                $new_account->update([
+                    'balance' => $new_account->balance - $request['montant'],
+                ]);
+            }
 
             $purchase->paid_amount = $new_total_paid;
             $purchase->payment_statut = $payment_statut;
@@ -271,19 +278,21 @@ class PaymentPurchasesController extends BaseController
         return response()->json(['success' => true, 'message' => 'Payment Update successfully'], 200);
     }
 
-    //----------- Delete Payment Purchase --------------\\
+    // ----------- Delete Payment Purchase --------------\\
 
     public function destroy(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'delete', PaymentPurchase::class);
-        
+
         \DB::transaction(function () use ($id, $request) {
-            $role = Auth::user()->roles()->first();
-            $view_records = Role::findOrFail($role->id)->inRole('record_view');
+            $user = Auth::user();
+            // New way: Check user's record_view field (user-level boolean)
+            // Backward compatibility: If record_view is null, fall back to role permission check
+            $view_records = $user->hasRecordView();
             $payment = PaymentPurchase::findOrFail($id);
-    
+
             // Check If User Has Permission view All Records
-            if (!$view_records) {
+            if (! $view_records) {
                 // Check If User->id === payment->id
                 $this->authorizeForUser($request->user('api'), 'check_record', $payment);
             }
@@ -294,9 +303,9 @@ class PaymentPurchasesController extends BaseController
 
             if ($due === 0.0 || $due < 0.0) {
                 $payment_statut = 'paid';
-            } else if ($due !== $purchase->GrandTotal) {
+            } elseif ($due !== $purchase->GrandTotal) {
                 $payment_statut = 'partial';
-            } else if ($due === $purchase->GrandTotal) {
+            } elseif ($due === $purchase->GrandTotal) {
                 $payment_statut = 'unpaid';
             }
 
@@ -325,8 +334,7 @@ class PaymentPurchasesController extends BaseController
 
     }
 
-
-    //----------- Reference order Payment Purchases --------------\\
+    // ----------- Reference order Payment Purchases --------------\\
 
     public function getNumberOrder()
     {
@@ -334,16 +342,17 @@ class PaymentPurchasesController extends BaseController
 
         if ($last) {
             $item = $last->Ref;
-            $nwMsg = explode("_", $item);
+            $nwMsg = explode('_', $item);
             $inMsg = $nwMsg[1] + 1;
-            $code = $nwMsg[0] . '_' . $inMsg;
+            $code = $nwMsg[0].'_'.$inMsg;
         } else {
             $code = 'INV/PR_1111';
         }
+
         return $code;
     }
 
-    //----------- Payment Purchase PDF --------------\\
+    // ----------- Payment Purchase PDF --------------\\
 
     public function Payment_purchase_pdf(Request $request, $id)
     {
@@ -359,22 +368,22 @@ class PaymentPurchasesController extends BaseController
         $payment_data['date'] = $payment->date;
         $payment_data['payment_method'] = $payment['payment_method']->name;
 
-        $helpers = new helpers();
+        $helpers = new helpers;
         $settings = Setting::where('deleted_at', '=', null)->first();
         $symbol = $helpers->Get_Currency_Code();
 
         $Html = view('pdf.payments_purchase', [
-            'symbol'  => $symbol,
+            'symbol' => $symbol,
             'setting' => $settings,
             'payment' => $payment_data,
         ])->render();
 
-        $arabic = new Arabic();
+        $arabic = new Arabic;
         $p = $arabic->arIdentify($Html);
 
-        for ($i = count($p)-1; $i >= 0; $i-=2) {
-            $utf8ar = $arabic->utf8Glyphs(substr($Html, $p[$i-1], $p[$i] - $p[$i-1]));
-            $Html = substr_replace($Html, $utf8ar, $p[$i-1], $p[$i] - $p[$i-1]);
+        for ($i = count($p) - 1; $i >= 0; $i -= 2) {
+            $utf8ar = $arabic->utf8Glyphs(substr($Html, $p[$i - 1], $p[$i] - $p[$i - 1]));
+            $Html = substr_replace($Html, $utf8ar, $p[$i - 1], $p[$i] - $p[$i - 1]);
         }
 
         $pdf = PDF::loadHTML($Html);
@@ -383,45 +392,43 @@ class PaymentPurchasesController extends BaseController
 
     }
 
-
-    //------------- Send Payment purchase on Email -----------\\
+    // ------------- Send Payment purchase on Email -----------\\
 
     public function SendEmail(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', PaymentPurchase::class);
 
-        //PaymentPurchase
+        // PaymentPurchase
         $payment = PaymentPurchase::with('purchase.provider')->findOrFail($request->id);
 
-        $helpers = new helpers();
+        $helpers = new helpers;
         $currency = $helpers->Get_Currency();
 
-        //settings
+        // settings
         $settings = Setting::where('deleted_at', '=', null)->first();
-    
-        //the custom msg of payment_received
-        $emailMessage  = EmailMessage::where('name', 'payment_sent')->first();
 
-        if($emailMessage){
+        // the custom msg of payment_received
+        $emailMessage = EmailMessage::where('name', 'payment_sent')->first();
+
+        if ($emailMessage) {
             $message_body = $emailMessage->body;
             $message_subject = $emailMessage->subject;
-        }else{
+        } else {
             $message_body = '';
             $message_subject = '';
         }
 
-    
         $payment_number = $payment->Ref;
 
-        $total_amount =  $currency .' '.number_format($payment->montant, 2, '.', ',');
-        
+        $total_amount = $currency.' '.number_format($payment->montant, 2, '.', ',');
+
         $contact_name = $payment['purchase']['provider']->name;
         $business_name = $settings->CompanyName;
 
-        //receiver email
+        // receiver email
         $receiver_email = $payment['purchase']['provider']->email;
 
-        //replace the text with tags
+        // replace the text with tags
         $message_body = str_replace('{contact_name}', $contact_name, $message_body);
         $message_body = str_replace('{business_name}', $business_name, $message_body);
         $message_body = str_replace('{payment_number}', $payment_number, $message_body);
@@ -431,78 +438,78 @@ class PaymentPurchasesController extends BaseController
         $email['body'] = $message_body;
         $email['company_name'] = $business_name;
 
-        $this->Set_config_mail(); 
+        $this->Set_config_mail();
 
         Mail::to($receiver_email)->send(new CustomEmail($email));
+
         return response()->json(['message' => 'Email sent successfully'], 200);
         // return $mail;
     }
-     
-        
-    //-------------------Sms Notifications -----------------\\
+
+    // -------------------Sms Notifications -----------------\\
 
     public function Send_SMS(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', PaymentPurchase::class);
 
-        //PaymentPurchase
+        // PaymentPurchase
         $payment = PaymentPurchase::with('purchase.provider')->findOrFail($request->id);
 
-        //settings
+        // settings
         $settings = Setting::where('deleted_at', '=', null)->first();
-    
-        $default_sms_gateway = sms_gateway::where('id' , $settings->sms_gateway)
-         ->where('deleted_at', '=', null)->first();
 
-        $helpers = new helpers();
+        $default_sms_gateway = sms_gateway::where('id', $settings->sms_gateway)
+            ->where('deleted_at', '=', null)->first();
+
+        $helpers = new helpers;
         $currency = $helpers->Get_Currency();
 
-        //the custom msg of payment_sent
-        $smsMessage  = SMSMessage::where('name', 'payment_sent')->first();
+        // the custom msg of payment_sent
+        $smsMessage = SMSMessage::where('name', 'payment_sent')->first();
 
-        if($smsMessage){
+        if ($smsMessage) {
             $message_text = $smsMessage->text;
-        }else{
+        } else {
             $message_text = '';
         }
 
         $payment_number = $payment->Ref;
 
-        $total_amount =  $currency .' '.number_format($payment->montant, 2, '.', ',');
-        
+        $total_amount = $currency.' '.number_format($payment->montant, 2, '.', ',');
+
         $contact_name = $payment['purchase']['provider']->name;
         $business_name = $settings->CompanyName;
 
-        //receiver phone
+        // receiver phone
         $receiverNumber = $payment['purchase']['provider']->phone;
 
-        //replace the text with tags
+        // replace the text with tags
         $message_text = str_replace('{contact_name}', $contact_name, $message_text);
         $message_text = str_replace('{business_name}', $business_name, $message_text);
         $message_text = str_replace('{payment_number}', $payment_number, $message_text);
         $message_text = str_replace('{total_amount}', $total_amount, $message_text);
 
-        //twilio
-        if($default_sms_gateway->title == "twilio"){
+        // twilio
+        if ($default_sms_gateway->title == 'twilio') {
             try {
-    
-                $account_sid = env("TWILIO_SID");
-                $auth_token = env("TWILIO_TOKEN");
-                $twilio_number = env("TWILIO_FROM");
-    
+
+                $account_sid = env('TWILIO_SID');
+                $auth_token = env('TWILIO_TOKEN');
+                $twilio_number = env('TWILIO_FROM');
+
                 $client = new Client_Twilio($account_sid, $auth_token);
                 $client->messages->create($receiverNumber, [
-                    'from' => $twilio_number, 
+                    'from' => $twilio_number,
                     'body' => $message_text]);
-        
+
             } catch (Exception $e) {
                 return response()->json(['message' => $e->getMessage()], 500);
             }
         }
-        //termii
-        elseif($default_sms_gateway->title == "termii"){
+        // termii
+        elseif ($default_sms_gateway->title == 'termii') {
 
-            $client = new Client_termi();
+            $client = new Client_termi;
             $url = 'https://api.ng.termii.com/api/sms/send';
 
             $payload = [
@@ -520,49 +527,47 @@ class PaymentPurchasesController extends BaseController
                 ]);
 
                 $result = json_decode($response->getBody(), true);
+
                 return response()->json($result);
             } catch (\Exception $e) {
-                Log::error("Termii SMS Error: " . $e->getMessage());
+                Log::error('Termii SMS Error: '.$e->getMessage());
+
                 return response()->json(['status' => 'error', 'message' => 'Failed to send SMS'], 500);
             }
-             
- 
+
         }
-        //---- infobip
-        elseif($default_sms_gateway->title == "infobip"){
+        // ---- infobip
+        elseif ($default_sms_gateway->title == 'infobip') {
 
-            $BASE_URL = env("base_url");
-            $API_KEY = env("api_key");
-            $SENDER = env("sender_from");
+            $BASE_URL = env('base_url');
+            $API_KEY = env('api_key');
+            $SENDER = env('sender_from');
 
-            $configuration = (new Configuration())
+            $configuration = (new Configuration)
                 ->setHost($BASE_URL)
                 ->setApiKeyPrefix('Authorization', 'App')
                 ->setApiKey('Authorization', $API_KEY);
-            
-            $client = new Client_guzzle();
-            
+
+            $client = new Client_guzzle;
+
             $sendSmsApi = new SendSMSApi($client, $configuration);
-            $destination = (new SmsDestination())->setTo($receiverNumber);
-            $message = (new SmsTextualMessage())
+            $destination = (new SmsDestination)->setTo($receiverNumber);
+            $message = (new SmsTextualMessage)
                 ->setFrom($SENDER)
                 ->setText($message_text)
                 ->setDestinations([$destination]);
-                
-            $request = (new SmsAdvancedTextualRequest())->setMessages([$message]);
-            
+
+            $request = (new SmsAdvancedTextualRequest)->setMessages([$message]);
+
             try {
                 $smsResponse = $sendSmsApi->sendSmsMessage($request);
-                echo ("Response body: " . $smsResponse);
+                echo 'Response body: '.$smsResponse;
             } catch (Throwable $apiException) {
-                echo("HTTP Code: " . $apiException->getCode() . "\n");
+                echo 'HTTP Code: '.$apiException->getCode()."\n";
             }
-            
+
         }
 
         return response()->json(['success' => true]);
     }
-
-
-
 }

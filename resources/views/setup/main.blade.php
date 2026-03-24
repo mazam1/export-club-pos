@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="/assets_setup/css/bootstrap.css">
     <link href="https://fonts.googleapis.com/css?family=Quicksand" rel="stylesheet">
+    <link rel="icon" href="/assets_setup/favicon.ico">
     <link rel="stylesheet" href="/assets_setup/css/style.css">
     <link rel="stylesheet" href="/assets_setup/css/fontawesome.min.css">
     <link rel="stylesheet" href="/assets_setup/css/font-awesome-animation.css">

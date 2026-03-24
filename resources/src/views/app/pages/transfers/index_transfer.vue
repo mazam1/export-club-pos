@@ -28,9 +28,10 @@
         nextLabel: 'next',
         prevLabel: 'prev',
       }"
-        styleClass="tableOne table-hover vgt-table"
+        :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
+
       >
-        <div slot="selected-row-actions">
+        <div slot="selected-row-actions" v-if="currentUserPermissions && currentUserPermissions.includes('transfer_delete')">
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
         </div>
         <div slot="table-actions" class="mt-2 mb-3">
@@ -64,31 +65,70 @@
         </div>
 
         <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
+          <span v-if="props.column.field == 'date'">
+            {{ formatDisplayDate(props.row.date) }}
+          </span>
+          <span v-else-if="props.column.field == 'actions'">
+            <div>
+              <b-dropdown
+                id="dropdown-right"
+                variant="link"
+                text="right align"
+                toggle-class="text-decoration-none"
+                size="lg"
+                right
+                no-caret
+              >
+                <template v-slot:button-content class="_r_btn border-0">
+                  <span class="_dot _r_block-dot bg-dark"></span>
+                  <span class="_dot _r_block-dot bg-dark"></span>
+                  <span class="_dot _r_block-dot bg-dark"></span>
+                </template>
 
-            <a title="PDF" v-b-tooltip.hover @click="download_transfer_pdf(props.row , props.row.id)">
-              <i class="i-File-TXT text-25 text-primary cursor-pointer"></i>
-            </a>
+                <b-dropdown-item
+                  title="PDF"
+                  @click="download_transfer_pdf(props.row, props.row.id)"
+                >
+                  <i class="nav-icon i-File-TXT font-weight-bold mr-2"></i>
+                  {{$t('DownloadPdf')}}
+                </b-dropdown-item>
 
-            <a title="View" v-b-tooltip.hover @click="showDetails(props.row.id)">
-              <i class="i-Eye text-25 text-info cursor-pointer"></i>
-            </a>
-            <router-link
-              v-if="currentUserPermissions && currentUserPermissions.includes('transfer_edit')"
-              title="Edit"
-              v-b-tooltip.hover
-              :to="{ name:'edit_transfer', params: { id: props.row.id } }"
-            >
-              <i class="i-Edit text-25 text-success"></i>
-            </router-link>
-            <a
-              title="Delete"
-              v-b-tooltip.hover
-              v-if="currentUserPermissions && currentUserPermissions.includes('transfer_delete')"
-              @click="Remove_Transfer(props.row.id)"
-            >
-              <i class="i-Close-Window text-25 text-danger"></i>
-            </a>
+                <b-dropdown-item
+                  title="View"
+                  :to="{ name: 'detail_transfer', params: { id: props.row.id } }"
+                >
+                  <i class="nav-icon i-Eye font-weight-bold mr-2"></i>
+                  {{$t('View')}}
+                </b-dropdown-item>
+
+                <b-dropdown-item
+                  v-if="currentUserPermissions && currentUserPermissions.includes('transfer_edit')"
+                  title="Edit"
+                  :to="{ name:'edit_transfer', params: { id: props.row.id } }"
+                >
+                  <i class="nav-icon i-Edit font-weight-bold mr-2"></i>
+                  {{$t('Edit')}}
+                </b-dropdown-item>
+
+                <b-dropdown-item
+                  v-if="props.row.approval_status === 'pending' && currentUserPermissions && currentUserPermissions.includes('transfer_edit')"
+                  title="Approve"
+                  @click="Approve_Transfer(props.row.id)"
+                >
+                  <i class="nav-icon i-Check font-weight-bold mr-2"></i>
+                  {{$t('Approve')}}
+                </b-dropdown-item>
+
+                <b-dropdown-item
+                  v-if="currentUserPermissions && currentUserPermissions.includes('transfer_delete')"
+                  title="Delete"
+                  @click="Remove_Transfer(props.row.id)"
+                >
+                  <i class="nav-icon i-Close-Window font-weight-bold mr-2"></i>
+                  {{$t('Delete')}}
+                </b-dropdown-item>
+              </b-dropdown>
+            </div>
           </span>
           <div v-else-if="props.column.field == 'statut'">
             <span
@@ -100,6 +140,20 @@
               class="badge badge-outline-warning"
             >{{$t('Sent')}}</span>
             <span v-else class="badge badge-outline-danger">{{$t('Pending')}}</span>
+          </div>
+          <div v-else-if="props.column.field == 'approval_status'">
+            <span
+              v-if="!props.row.approval_status || props.row.approval_status === 'approved'"
+              class="badge badge-outline-success"
+            >{{ $t('Approved') }}</span>
+            <span
+              v-else-if="props.row.approval_status === 'pending'"
+              class="badge badge-outline-warning"
+            >{{ $t('Pending_Approval') }}</span>
+            <span
+              v-else-if="props.row.approval_status === 'rejected'"
+              class="badge badge-outline-danger"
+            >{{ $t('Rejected') }}</span>
           </div>
         </template>
       </vue-good-table>
@@ -178,85 +232,6 @@
       </div>
     </b-sidebar>
 
-    <!-- Transfer Details -->
-    <b-modal ok-only size="lg" id="showDetails" :title="$t('TransferDetail')">
-      <b-row>
-        <b-col lg="5" md="12" sm="12" class="mt-3">
-          <table class="table table-hover table-bordered table-sm">
-            <tbody>
-              <!-- date -->
-              <tr>
-                <td>{{$t('date')}}</td>
-                <th>{{transfer.date}}</th>
-              </tr>
-              <!-- Reference -->
-              <tr>
-                <td>{{$t('Reference')}}</td>
-                <th>{{transfer.Ref}}</th>
-              </tr>
-              <!-- From warehouse -->
-              <tr>
-                <td>{{$t('FromWarehouse')}}</td>
-                <th>{{transfer.from_warehouse}}</th>
-              </tr>
-              <!-- To warehouse -->
-              <tr>
-                <td>{{$t('ToWarehouse')}}</td>
-                <th>{{transfer.to_warehouse}}</th>
-              </tr>
-              <!-- Grand Total -->
-              <tr>
-                <td>{{$t('Total')}}</td>
-                <th>{{currentUser.currency}}{{formatNumber(transfer.GrandTotal ,2)}}</th>
-              </tr>
-              <!-- Status -->
-              <tr>
-                <td>{{$t('Status')}}</td>
-                <th>
-                  <span
-                    v-if="transfer.statut == 'completed'"
-                    class="badge badge-outline-success"
-                  >{{$t('complete')}}</span>
-                  <span
-                    v-else-if="transfer.statut == 'sent'"
-                    class="badge badge-outline-warning"
-                  >{{$t('Sent')}}</span>
-                  <span v-else class="badge badge-outline-danger">{{$t('Pending')}}</span>
-                </th>
-              </tr>
-            </tbody>
-          </table>
-        </b-col>
-        <b-col lg="7" md="12" sm="12" class="mt-3">
-          <div class="table-responsive">
-            <table class="table table-hover table-bordered table-sm">
-              <thead>
-                <tr>
-                  <th scope="col">{{$t('ProductName')}}</th>
-                  <th scope="col">{{$t('CodeProduct')}}</th>
-                  <th scope="col">{{$t('Quantity')}}</th>
-                  <th scope="col">{{$t('SubTotal')}}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="detail in details">
-                  <td>{{detail.name}}</td>
-                  <td>{{detail.code}}</td>
-                  <td>{{formatNumber(detail.quantity ,2)}} {{detail.unit}}</td>
-                  <td>{{currentUser.currency}} {{detail.total.toFixed(2)}}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </b-col>
-      </b-row>
-         <hr v-show="transfer.note">
-          <b-row class="mt-4">
-           <b-col md="12">
-             <p>{{transfer.note}}</p>
-           </b-col>
-        </b-row>
-    </b-modal>
   </div>
 </template>
 
@@ -264,7 +239,8 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
+import Util from '../../../../utils';
 
 export default {
   metaInfo: {
@@ -281,6 +257,7 @@ export default {
         page: 1,
         perPage: 10
       },
+      showDropdown: false,
       selectedIds: [],
       search: "",
       totalRows: "",
@@ -292,13 +269,18 @@ export default {
       Filter_Ref: "",
       Filter_From: "",
       Filter_To: "",
-      details: [],
       warehouses: [],
-      transfers: [],
-      transfer: {
-        GrandTotal: ""
-      }
+      transfers: []
     };
+  },
+
+  mounted() {
+    this.$root.$on("bv::dropdown::show", bvEvent => {
+      this.showDropdown = true;
+    });
+    this.$root.$on("bv::dropdown::hide", bvEvent => {
+      this.showDropdown = false;
+    });
   },
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
@@ -345,14 +327,18 @@ export default {
         {
           label: this.$t("Status"),
           field: "statut",
-          html: true,
+          tdClass: "text-left",
+          thClass: "text-left"
+        },
+        {
+          label: this.$t("Approval"),
+          field: "approval_status",
           tdClass: "text-left",
           thClass: "text-left"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false
@@ -471,6 +457,13 @@ export default {
       while (formated.length < dec) formated += "0";
       return `${value[0]}.${formated}`;
     },
+    //----------------------------------------- Format Display Date (for tables) -------------------------------\\
+    formatDisplayDate(value) {
+      if (!value) return '';
+      // Get date format from Vuex store (loaded from database) or fallback
+      const dateFormat = this.$store.getters.getDateFormat || Util.getDateFormat(this.$store);
+      return Util.formatDisplayDate(value, dateFormat);
+    },
 
     //------ Reset Filter
     Reset_Filter() {
@@ -528,22 +521,6 @@ export default {
         });
     },
 
-    //----------------------------------- Get Details Transfer ------------------------------\\
-    showDetails(id) {
-      // Start the progress bar.
-      NProgress.start();
-      NProgress.set(0.1);
-      axios
-        .get("transfers/" + id)
-        .then(response => {
-          this.transfer = response.data.transfer;
-          this.details = response.data.details;
-          Fire.$emit("Get_Details_Transfer");
-        })
-        .catch(response => {
-          Fire.$emit("Get_Details_Transfer");
-        });
-    },
 
     //-------------------------------------- Transfer PDF ------------------------------\\
     Transfer_PDF() {
@@ -551,61 +528,127 @@ export default {
       let pdf = new jsPDF("p", "pt");
 
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
+      try {
+        pdf.addFont(fontPath, "Vazirmatn", "normal");
+        pdf.addFont(fontPath, "Vazirmatn", "bold");
+      } catch(e) {}
+      pdf.setFont("Vazirmatn", "normal");
 
-      let columns = [
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("FromWarehouse"), dataKey: "from_warehouse" },
-        { title: self.$t("ToWarehouse"), dataKey: "to_warehouse" },
-        { title: self.$t("Items"), dataKey: "items" },
-        { title: self.$t("Status"), dataKey: "statut" },
-        { title: self.$t("Total"), dataKey: "GrandTotal" }
+      const headers = [
+        self.$t("Reference"),
+        self.$t("FromWarehouse"),
+        self.$t("ToWarehouse"),
+        self.$t("Items"),
+        self.$t("Status"),
+        self.$t("Total")
       ];
 
-       // Calculate totals
-       let totalGrandTotal = self.transfers.reduce((sum, transfer) => sum + parseFloat(transfer.GrandTotal || 0), 0);
+      const body = (self.transfers || []).map(transfer => ([
+        transfer.Ref,
+        transfer.from_warehouse,
+        transfer.to_warehouse,
+        transfer.items,
+        transfer.statut,
+        transfer.GrandTotal
+      ]));
+
+      // Calculate totals
+      let totalGrandTotal = self.transfers.reduce((sum, transfer) => sum + parseFloat(transfer.GrandTotal || 0), 0);
      
-      let footer = [{
-        Ref: self.$t("Total"),
-        from_warehouse: '',
-        to_warehouse: '',
-        items: '',
-        statut: '',
-        GrandTotal: `${totalGrandTotal.toFixed(2)}`,
-       
-      }];
+      const footer = [[
+        self.$t("Total"),
+        '',
+        '',
+        '',
+        '',
+        totalGrandTotal.toFixed(2)
+      ]];
 
+      const marginX = 40;
+      const rtl =
+        (self.$i18n && ['ar','fa','ur','he'].includes(self.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
 
-      pdf.autoTable({
-        columns: columns,
-        body: self.transfers,
+      autoTable(pdf, {
+        head: [headers],
+        body: body,
         foot: footer,
-        startY: 70,
-        theme: "grid", 
-        didDrawPage: (data) => {
-          pdf.setFont("VazirmatnBold");
-          pdf.setFontSize(18);
-          pdf.text("Transfer List", 40, 25);   
-        },
-        styles: {
-          font: "VazirmatnBold", 
-          halign: "center", // 
-        },
-        headStyles: {
-          fillColor: [200, 200, 200], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
-        footStyles: {
-          fillColor: [230, 230, 230], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        footStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+
+          // Header banner
+          pdf.setFillColor(63,81,181);
+          pdf.rect(0, 0, pageW, 60, 'F');
+
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = self.$t('ListTransfers');
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
+
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
       });
 
       pdf.save("Transfer_List.pdf");
 
+    },
+
+    //---------------------------------- Approve Transfer ----------------------\\
+    Approve_Transfer(id) {
+      this.$swal({
+        title: this.$t("Approve_Transfer"),
+        text: this.$t("Are_you_sure_you_want_to_approve_this_transfer"),
+        type: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#28a745",
+        cancelButtonColor: "#6c757d",
+        cancelButtonText: this.$t("Cancel"),
+        confirmButtonText: this.$t("Approve")
+      }).then(result => {
+        if (result.value) {
+          // Start the progress bar.
+          NProgress.start();
+          NProgress.set(0.1);
+          axios
+            .post("transfers/" + id + "/approve")
+            .then(() => {
+              this.$swal(
+                this.$t("Success"),
+                this.$t("Transfer_approved_successfully"),
+                "success"
+              );
+
+              Fire.$emit("Approve_Transfer");
+            })
+            .catch(() => {
+              // Complete the animation of theprogress bar.
+              setTimeout(() => NProgress.done(), 500);
+              this.$swal(
+                this.$t("Failed"),
+                this.$t("Failed_to_approve_transfer"),
+                "warning"
+              );
+            });
+        }
+      });
     },
 
     //---------------------------------- Delete Transfer ----------------------\\
@@ -696,13 +739,15 @@ export default {
   created: function() {
     this.Get_Transfers(1);
 
-    Fire.$on("Get_Details_Transfer", () => {
-      this.$bvModal.show("showDetails");
-      // Complete the animation of theprogress bar.
-      setTimeout(() => NProgress.done(), 500);
+    Fire.$on("Delete_Transfer", () => {
+      setTimeout(() => {
+        this.Get_Transfers(this.serverParams.page);
+        // Complete the animation of theprogress bar.
+        setTimeout(() => NProgress.done(), 500);
+      }, 500);
     });
 
-    Fire.$on("Delete_Transfer", () => {
+    Fire.$on("Approve_Transfer", () => {
       setTimeout(() => {
         this.Get_Transfers(this.serverParams.page);
         // Complete the animation of theprogress bar.

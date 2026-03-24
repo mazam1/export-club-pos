@@ -5,31 +5,24 @@ namespace App\Http\Controllers;
 use App\Models\Language;
 use App\Models\Setting;
 use App\Models\Translate;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-
 
 class LanguageController extends Controller
 {
-
-
     public function load_language(Request $request)
     {
         $languages = Language::where('is_active', true)->get(['name', 'locale', 'flag']);
 
         return response()->json($languages);
 
-
     }
 
-      public function index(Request $request)
+    public function index(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
 
         return Language::all();
     }
-
 
     public function store(Request $request)
     {
@@ -38,21 +31,21 @@ class LanguageController extends Controller
         $request->validate([
             'name' => 'required|string|max:100',
             'locale' => 'required|string|max:10|unique:languages',
-            'flag' => 'nullable|image|mimes:png,jpg,jpeg,svg|max:2048',
+            // Laravel 12: image rule excludes SVG by default; use file + mimes for SVG support
+            'flag' => 'nullable|file|mimes:png,jpg,jpeg,svg|max:2048',
         ]);
 
         if ($request->hasFile('flag')) {
 
             $image = $request->file('flag');
-            $filename = rand(11111111, 99999999) . $image->getClientOriginalName();
+            $filename = rand(11111111, 99999999).$image->getClientOriginalName();
 
             $image_resize = Image::make($image->getRealPath());
-            $image_resize->save(public_path('/flags/' . $filename));
+            $image_resize->save(public_path('/flags/'.$filename));
 
         } else {
             $filename = 'no-image.png';
         }
-
 
         return Language::create([
             'name' => $request->name,
@@ -68,15 +61,16 @@ class LanguageController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:100',
-            'locale' => 'required|string|max:10|unique:languages,locale,' . $language->id,
-            'flag' => 'nullable|image|mimes:png,jpg,jpeg,svg|max:2048',
+            'locale' => 'required|string|max:10|unique:languages,locale,'.$language->id,
+            // Laravel 12: image rule excludes SVG by default; use file + mimes for SVG support
+            'flag' => 'nullable|file|mimes:png,jpg,jpeg,svg|max:2048',
         ]);
 
         // Handle flag upload
-       if ($request->hasFile('flag')) {
+        if ($request->hasFile('flag')) {
             // Delete old flag if not default
             if ($language->flag && $language->flag !== 'no-image.png') {
-                $oldPath = public_path('/flags/' . $language->flag);
+                $oldPath = public_path('/flags/'.$language->flag);
                 if (file_exists($oldPath)) {
                     @unlink($oldPath);
                 }
@@ -84,8 +78,8 @@ class LanguageController extends Controller
 
             $image = $request->file('flag');
             $extension = strtolower($image->getClientOriginalExtension());
-            $filename = rand(11111111, 99999999) . '.' . $extension;
-            $destination = public_path('/flags/' . $filename);
+            $filename = rand(11111111, 99999999).'.'.$extension;
+            $destination = public_path('/flags/'.$filename);
 
             if ($extension === 'svg') {
                 // Just move the SVG without resizing
@@ -99,7 +93,6 @@ class LanguageController extends Controller
             $filename = $language->flag;
         }
 
-
         // Update fields
         $language->update([
             'name' => $request->name,
@@ -110,8 +103,7 @@ class LanguageController extends Controller
         return response()->json(['success' => true, 'language' => $language]);
     }
 
-
-    public function destroy(Language $language)
+    public function destroy(Request $request, Language $language)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
 
@@ -129,7 +121,7 @@ class LanguageController extends Controller
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
 
         // Set all languages to not default
-         Language::query()->update(['is_default' => false]);
+        Language::query()->update(['is_default' => false]);
 
         // Set the selected language as default
         $language = Language::findOrFail($id);
@@ -153,8 +145,6 @@ class LanguageController extends Controller
         ]);
     }
 
-
-
     public function setDefaultByLocale(Request $request, $locale)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
@@ -163,7 +153,7 @@ class LanguageController extends Controller
         $language = Language::where('locale', $locale)->firstOrFail();
 
         // Skip if already default
-        if (!$language->is_default) {
+        if (! $language->is_default) {
             // Set this one as default
             $language->update(['is_default' => true]);
 
@@ -183,7 +173,6 @@ class LanguageController extends Controller
         ]);
     }
 
-
     public function setLocaleActive(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
@@ -193,7 +182,7 @@ class LanguageController extends Controller
 
         // Toggle the is_active value
         $language->update([
-            'is_active' => !$language->is_active,
+            'is_active' => ! $language->is_active,
         ]);
 
         return response()->json([
@@ -202,8 +191,6 @@ class LanguageController extends Controller
             'new_status' => $language->is_active,
         ]);
     }
-
-
 
     public function get_translate(Request $request, $locale)
     {
@@ -219,7 +206,7 @@ class LanguageController extends Controller
         if ($search) {
             $enKeysQuery->where(function ($q) use ($search) {
                 $q->where('key', 'like', "%$search%")
-                ->orWhere('value', 'like', "%$search%");
+                    ->orWhere('value', 'like', "%$search%");
             });
         }
 
@@ -231,7 +218,7 @@ class LanguageController extends Controller
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($q) use ($search) {
                     $q->where('key', 'like', "%$search%")
-                    ->orWhere('value', 'like', "%$search%");
+                        ->orWhere('value', 'like', "%$search%");
                 });
             })
             ->whereNotIn('key', $enKeyList)
@@ -296,7 +283,6 @@ class LanguageController extends Controller
         ]);
     }
 
-
     public function delete_translate(Request $request, $locale, $key)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
@@ -306,16 +292,16 @@ class LanguageController extends Controller
             ->where('key', $key)
             ->first();
 
-        if (!$translation) {
+        if (! $translation) {
             return response()->json([
                 'message' => 'Translation not found.',
             ], 404);
         }
 
-         // Prevent deleting default/original keys
+        // Prevent deleting default/original keys
         if ($translation->is_default) {
             return response()->json([
-                'message' => 'You cannot delete a default/original translation key.'
+                'message' => 'You cannot delete a default/original translation key.',
             ], 403);
         }
 
@@ -326,11 +312,4 @@ class LanguageController extends Controller
             'message' => 'Translation deleted successfully.',
         ]);
     }
-
-
-
-
-
-
-
 }

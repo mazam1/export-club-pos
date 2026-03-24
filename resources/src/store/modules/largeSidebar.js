@@ -3,11 +3,15 @@ const state = {
     isSideNavOpen: true,
     isSecondarySideNavOpen: false,
     isActiveSecondarySideNav: false
-  }
+  },
+  sidebarLayout: localStorage.getItem('sidebarLayout') || 'vertical', // 'horizontal' or 'vertical'
+  verticalSidebarCollapsed: localStorage.getItem('verticalSidebarCollapsed') === 'true' || false
 };
 
 const getters = {
-  getSideBarToggleProperties: state => state.sidebarToggleProperties
+  getSideBarToggleProperties: state => state.sidebarToggleProperties,
+  getSidebarLayout: state => state.sidebarLayout,
+  getVerticalSidebarCollapsed: state => state.verticalSidebarCollapsed
 };
 
 const actions = {
@@ -22,6 +26,12 @@ const actions = {
   },
   changeSecondarySidebarPropertiesViaOverlay({commit}) {
     commit("toggleSecondarySidebarPropertiesViaOverlay");
+  },
+  setSidebarLayout({commit}, layout) {
+    commit("setSidebarLayout", layout);
+  },
+  setVerticalSidebarCollapsed({commit}, collapsed) {
+    commit("setVerticalSidebarCollapsed", collapsed);
   }
 };
 
@@ -40,6 +50,14 @@ const mutations = {
   toggleSecondarySidebarPropertiesViaOverlay(state) {
     state.sidebarToggleProperties.isSecondarySideNavOpen = !state
       .sidebarToggleProperties.isSecondarySideNavOpen;
+  },
+  setSidebarLayout(state, layout) {
+    state.sidebarLayout = layout;
+    localStorage.setItem('sidebarLayout', layout);
+  },
+  setVerticalSidebarCollapsed(state, collapsed) {
+    state.verticalSidebarCollapsed = collapsed;
+    localStorage.setItem('verticalSidebarCollapsed', collapsed);
   }
 };
 

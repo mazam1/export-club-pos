@@ -9,9 +9,9 @@ class PurchaseReturn extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'date', 'Ref', 'GrandTotal','time',
+        'date', 'Ref', 'GrandTotal', 'time',
         'user_id', 'discount', 'shipping',
-        'warehouse_id','purchase_id', 'provider_id', 'notes', 'TaxNet', 'tax_rate', 'statut',
+        'warehouse_id', 'purchase_id', 'provider_id', 'notes', 'TaxNet', 'tax_rate', 'statut',
         'paid_amount', 'payment_statut', 'created_at', 'updated_at', 'deleted_at',
     ];
 
@@ -62,5 +62,4 @@ class PurchaseReturn extends Model
     {
         return $this->hasMany('App\Models\PaymentPurchaseReturns');
     }
-
 }

@@ -12,12 +12,11 @@ class Language extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'name','locale','flag','is_default','is_active'
+        'name', 'locale', 'flag', 'is_default', 'is_active',
     ];
 
     protected $casts = [
-        'is_default'  => 'integer',
-        'is_active'  => 'integer',
+        'is_default' => 'integer',
+        'is_active' => 'integer',
     ];
-
 }

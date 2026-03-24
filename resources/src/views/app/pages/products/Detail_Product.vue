@@ -47,11 +47,20 @@
                 </tr>
                 <tr v-if="product.type == 'is_single' || product.type == 'is_combo'">
                   <td>{{$t('Cost')}}</td>
-                  <th>{{currentUser.currency}} {{formatNumber(product.cost ,2)}}</th>
+                  <th>{{ formatPriceWithSymbol(currentUser && currentUser.currency, product.cost, 2) }}</th>
                 </tr>
                 <tr v-if="product.type != 'is_variant'">
                   <td>{{$t('Price')}}</td>
-                  <th>{{currentUser.currency}} {{formatNumber(product.price ,2)}}</th>
+                  <th>{{ formatPriceWithSymbol(currentUser && currentUser.currency, product.price, 2) }}</th>
+                </tr>
+                <tr v-if="product.type != 'is_variant'">
+                  <td>{{ $t('Wholesale_Price') }}</td>
+                  <th>{{ formatPriceWithSymbol(currentUser && currentUser.currency, product.wholesale_price, 2) }}</th>
+                </tr>
+
+                <tr v-if="product.type != 'is_variant'">
+                  <td>{{ $t('MinPrice') }}</td>
+                  <th>{{ formatPriceWithSymbol(currentUser && currentUser.currency, product.min_price, 2) }}</th>
                 </tr>
                 <tr v-if="product.type != 'is_service'">
                   <td>{{$t('Unit')}}</td>
@@ -65,6 +74,12 @@
                   <td>{{$t('TaxMethod')}}</td>
                   <th>{{product.tax_method}}</th>
                 </tr>
+
+                <tr>
+                  <td>{{$t('Discount')}}</td>
+                  <th>{{product.discount}}</th>
+                </tr>
+
                 <tr v-if="product.type != 'is_service'"> 
                   <td>{{$t('StockAlert')}}</td>
                   <th>
@@ -72,6 +87,11 @@
                       class="badge badge-outline-warning"
                     >{{formatNumber(product.stock_alert ,2)}}</span>
                   </th>
+                </tr>
+
+                <tr v-if="product.type != 'is_service' && product.weight"> 
+                  <td>{{$t('Weight')}}</td>
+                  <th>{{formatNumber(product.weight ,2)}}</th>
                 </tr>
 
                 <!-- Warranty & Guarantee -->
@@ -122,7 +142,7 @@
           </b-col>
 
           <!-- product variant -->
-          <b-col md="5" class="mt-4" v-if="product.type == 'is_variant'">
+          <b-col md="12" class="mt-4" v-if="product.type == 'is_variant'">
             <table class="table table-hover table-sm">
               <thead>
                 <tr>
@@ -130,14 +150,18 @@
                   <th>{{$t('Variant_Name')}}</th>
                   <th>{{$t('Variant_cost')}}</th>
                   <th>{{$t('Variant_price')}}</th>
+                  <th>{{$t('Wholesale_Price')}}</th>
+                  <th>{{$t('Min_Selling_Price')}}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="product_variant_data in product.products_variants_data">
                   <td>{{product_variant_data.code}}</td>
                   <td>{{product_variant_data.name}}</td>
-                  <td>{{currentUser.currency}} {{product_variant_data.cost}}</td>
-                  <td>{{currentUser.currency}} {{product_variant_data.price}}</td>
+                  <td>{{ formatPriceWithSymbol(currentUser && currentUser.currency, product_variant_data.cost, 2) }}</td>
+                  <td>{{ formatPriceWithSymbol(currentUser && currentUser.currency, product_variant_data.price, 2) }}</td>
+                  <td>{{ formatPriceWithSymbol(currentUser && currentUser.currency, product_variant_data.wholesale, 2) }}</td>
+                  <td>{{ formatPriceWithSymbol(currentUser && currentUser.currency, product_variant_data.min_price, 2) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -196,6 +220,10 @@
 <script>
 import VueBarcode from "vue-barcode";
 import { mapActions, mapGetters } from "vuex";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting
+} from "../../../../utils/priceFormat";
 
 export default {
   metaInfo: {
@@ -211,7 +239,9 @@ export default {
       isLoading: true,
       product: {},
       roles: {},
-      variants: []
+      variants: [],
+      // Optional price format key for frontend display (loaded from system settings/localStorage)
+      price_format_key: null
     };
   },
   computed: {
@@ -235,6 +265,28 @@ export default {
       return `${value[0]}.${formated}`;
     },
 
+    // Price formatting for display only (does NOT affect calculations or stored values)
+    // Uses the global/system price_format setting when available; otherwise falls back
+    // to the existing formatNumber helper to preserve current behavior.
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = Number.isInteger(dec) ? dec : 2;
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
+        return formatPriceDisplayHelper(number, decimals, key);
+      } catch (e) {
+        return this.formatNumber(number, dec);
+      }
+    },
+
+    formatPriceWithSymbol(symbol, number, dec) {
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
+    },
+
      //------- printproduct
     print_product() {
        this.$htmlToPaper('print_product');
@@ -244,7 +296,7 @@ export default {
     showDetails() {
       let id = this.$route.params.id;
       axios
-        .get(`get_product_detail/${id}`)
+        .get(`get_product_detail_api/${id}`)
         .then(response => {
           this.product = response.data;
           this.isLoading = false;

@@ -10,13 +10,13 @@ class Holiday extends Model
     use HasFactory;
 
     protected $dates = ['deleted_at'];
-    
+
     protected $fillable = [
-        'title','company_id','start_date','end_date','description'
+        'title', 'company_id', 'start_date', 'end_date', 'description',
     ];
 
     protected $casts = [
-        'company_id'  => 'integer',
+        'company_id' => 'integer',
     ];
 
     public function company()

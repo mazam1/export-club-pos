@@ -791,21 +791,46 @@ export default {
           // this.convert_unit();
            for(var k=0; k<this.units.length; k++){
               if (this.units[k].id == this.detail.sale_unit_id) {
-                if(this.units[k].operator == '/'){
-                  this.details[i].stock       = this.detail.fix_stock  * this.units[k].operator_value;
-                  this.details[i].unitSale    = this.units[k].ShortName;
+                // Safely coerce values to avoid NaN on stock calculation
+                var unit = this.units[k];
+                var fixStockCandidate = (this.detail.fix_stock !== undefined && this.detail.fix_stock !== null && this.detail.fix_stock !== '')
+                  ? this.detail.fix_stock
+                  : this.details[i].fix_stock;
+                var fixStock = parseFloat(fixStockCandidate);
+                if (!isFinite(fixStock)) {
+                  fixStock = parseFloat(this.details[i].stock);
+                }
+                if (!isFinite(fixStock)) {
+                  fixStock = 0;
+                }
+                var opValue = parseFloat(unit.operator_value);
+                if (!isFinite(opValue) || opValue === 0) {
+                  opValue = 1;
+                }
+
+                if (this.details[i].product_type === 'is_service') {
+                  this.details[i].unitSale = '----';
+                } else if(unit.operator == '/'){
+                  this.details[i].stock    = parseFloat((fixStock * opValue).toFixed(4));
+                  this.details[i].unitSale = unit.ShortName;
 
                 }else{
-                  this.details[i].stock       = this.detail.fix_stock  / this.units[k].operator_value;
-                  this.details[i].unitSale    = this.units[k].ShortName;
+                  this.details[i].stock    = parseFloat((fixStock / opValue).toFixed(4));
+                  this.details[i].unitSale = unit.ShortName;
                 }
               }
             }
                     
-            if (this.details[i].stock < this.details[i].quantity) {
-            this.details[i].quantity = this.details[i].stock;
-            } else {
-              this.details[i].quantity =1;
+            if (this.details[i].product_type !== 'is_service') {
+              var currentQty = parseFloat(this.details[i].quantity);
+              if (!isFinite(currentQty) || currentQty < 1) {
+                currentQty = 1;
+              }
+              if (this.details[i].stock < currentQty) {
+                this.details[i].quantity = this.details[i].stock;
+              } else {
+                this.details[i].quantity = currentQty;
+              }
             }
           
           this.details[i].Unit_price = this.detail.Unit_price;
@@ -1079,21 +1104,24 @@ export default {
     Verified_Qty(detail, id) {
       for (var i = 0; i < this.details.length; i++) {
         if (this.details[i].detail_id === id) {
-          if (isNaN(detail.quantity)) {
-            this.details[i].quantity = detail.qte_copy;
+          if (detail.product_type === 'is_service') {
+            var svcQty = parseFloat(detail.quantity);
+            if (!isFinite(svcQty) || svcQty < 1) { svcQty = 1; }
+            this.details[i].quantity = svcQty;
+            continue;
           }
 
-          if (detail.etat == "new" && detail.quantity > detail.stock) {
+          var qty = parseFloat(detail.quantity);
+          if (!isFinite(qty) || qty < 1) { qty = 1; }
+
+          var stock = parseFloat(detail.stock);
+          if (!isFinite(stock)) { stock = 0; }
+
+          if (qty > stock) {
             this.makeToast("warning", this.$t("LowStock"), this.$t("Warning"));
-            this.details[i].quantity = detail.stock;
-          } else if (
-            detail.etat == "current" &&
-            detail.quantity > detail.stock + detail.qte_copy
-          ) {
-            this.makeToast("warning", this.$t("LowStock"), this.$t("Warning"));
-            this.details[i].quantity = detail.qte_copy;
+            this.details[i].quantity = stock;
           } else {
-            this.details[i].quantity = detail.quantity;
+            this.details[i].quantity = qty;
           }
         }
       }
@@ -1107,12 +1135,15 @@ export default {
     increment(detail, id) {
       for (var i = 0; i < this.details.length; i++) {
         if (this.details[i].detail_id == id) {
-          if (detail.etat == "new" && detail.quantity + 1 > detail.stock) {
-            this.makeToast("warning", this.$t("LowStock"), this.$t("Warning"));
-          } else if (
-            detail.etat == "current" &&
-            detail.quantity + 1 > detail.stock + detail.qte_copy
-          ) {
+          if (detail.product_type === 'is_service') {
+            this.formatNumber(this.details[i].quantity++, 2);
+            continue;
+          }
+          var stock = parseFloat(detail.stock);
+          if (!isFinite(stock)) { stock = 0; }
+          var nextQty = parseFloat(detail.quantity) + 1;
+          if (!isFinite(nextQty)) { nextQty = 1; }
+          if (nextQty > stock) {
             this.makeToast("warning", this.$t("LowStock"), this.$t("Warning"));
           } else {
             this.formatNumber(this.details[i].quantity++, 2);
@@ -1128,25 +1159,10 @@ export default {
     decrement(detail, id) {
       for (var i = 0; i < this.details.length; i++) {
         if (this.details[i].detail_id == id) {
-          if (detail.quantity - 1 > 0) {
-            if (detail.etat == "new" && detail.quantity - 1 > detail.stock) {
-              this.makeToast(
-                "warning",
-                this.$t("LowStock"),
-                this.$t("Warning")
-              );
-            } else if (
-              detail.etat == "current" &&
-              detail.quantity - 1 > detail.stock + detail.qte_copy
-            ) {
-              this.makeToast(
-                "warning",
-                this.$t("LowStock"),
-                this.$t("Warning")
-              );
-            } else {
-              this.formatNumber(this.details[i].quantity--, 2);
-            }
+          var current = parseFloat(detail.quantity);
+          if (!isFinite(current)) { current = 1; }
+          if (current - 1 >= 1) {
+            this.formatNumber(this.details[i].quantity--, 2);
           }
         }
       }
@@ -1333,9 +1349,9 @@ export default {
 
     Get_Product_Details(product_id, variant_id) {
       axios.get("/show_product_data/" + product_id +"/"+ variant_id).then(response => {
-        this.product.discount = 0;
-        this.product.DiscountNet = 0;
-        this.product.discount_Method = "2";
+        this.product.discount           = response.data.discount;
+        this.product.DiscountNet        = response.data.DiscountNet;
+        this.product.discount_Method    = response.data.discount_method;
         this.product.etat = "new";
         this.product.del = 0;
         this.product.product_id = response.data.id;

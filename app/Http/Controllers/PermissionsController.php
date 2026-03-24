@@ -4,16 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Permission;
 use App\Models\Role;
-use App\Models\User;
 use App\utils\helpers;
 use Carbon\Carbon;
-use DB;
 use Illuminate\Http\Request;
 
 class PermissionsController extends BaseController
 {
-
-    //----------- GET ALL Roles --------------\\
+    // ----------- GET ALL Roles --------------\\
 
     public function index(Request $request)
     {
@@ -25,7 +22,7 @@ class PermissionsController extends BaseController
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        $helpers = new helpers();
+        $helpers = new helpers;
 
         $roles = Role::where('deleted_at', '=', null)
         // Search With Multiple Param
@@ -36,7 +33,7 @@ class PermissionsController extends BaseController
                 });
             });
         $totalRows = $roles->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $roles = $roles->offset($offSet)
@@ -50,7 +47,7 @@ class PermissionsController extends BaseController
         ]);
     }
 
-    //----------- Store new Role --------------\\
+    // ----------- Store new Role --------------\\
 
     public function store(Request $request)
     {
@@ -63,7 +60,7 @@ class PermissionsController extends BaseController
 
             \DB::transaction(function () use ($request) {
 
-                //-- Create New Role
+                // -- Create New Role
                 $Role = new Role;
                 $Role->name = $request['role']['name'];
                 $Role->label = $request['role']['name'];
@@ -97,14 +94,15 @@ class PermissionsController extends BaseController
 
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
-        }
 
-    //----------- Update Role --------------\\
+    }
+
+    // ----------- Update Role --------------\\
 
     public function update(Request $request, $id)
     {
@@ -125,7 +123,7 @@ class PermissionsController extends BaseController
 
                 foreach ($permissions as $permission_slug) {
 
-                    //get the permission object by name
+                    // get the permission object by name
                     $perm = Permission::firstOrCreate(['name' => $permission_slug]);
                     $data[] = $perm->id;
                 }
@@ -146,7 +144,7 @@ class PermissionsController extends BaseController
 
     }
 
-    //----------- Delete Role --------------\\
+    // ----------- Delete Role --------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -155,10 +153,11 @@ class PermissionsController extends BaseController
         Role::whereId($id)->update([
             'deleted_at' => Carbon::now(),
         ]);
+
         return response()->json(['success' => true]);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -171,26 +170,27 @@ class PermissionsController extends BaseController
                 'deleted_at' => Carbon::now(),
             ]);
         }
+
         return response()->json(['success' => true]);
     }
 
-
-    //----------- GET ALL Roles without paginate --------------\\
+    // ----------- GET ALL Roles without paginate --------------\\
 
     public function getRoleswithoutpaginate()
     {
         $roles = Role::where('deleted_at', null)->get(['id', 'name']);
+
         return response()->json($roles);
     }
 
-    //------------- Show Form Edit Permissions -----------\\
+    // ------------- Show Form Edit Permissions -----------\\
 
     public function edit(Request $request, $id)
     {
 
         $this->authorizeForUser($request->user('api'), 'update', Role::class);
 
-        if($id != '1'){
+        if ($id != '1') {
             $Role = Role::with('permissions')->where('deleted_at', '=', null)->findOrFail($id);
             if ($Role) {
                 $item['name'] = $Role->name;
@@ -202,16 +202,16 @@ class PermissionsController extends BaseController
                     }
                 }
             }
+
             return response()->json([
                 'permissions' => $data,
                 'role' => $item,
             ]);
-            
-        }else{
+
+        } else {
             return response()->json([
                 'success' => false,
             ], 401);
         }
     }
-
 }

@@ -165,7 +165,6 @@ export default {
         {
           label: this.$t("Status"),
           field: "status",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -173,7 +172,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false

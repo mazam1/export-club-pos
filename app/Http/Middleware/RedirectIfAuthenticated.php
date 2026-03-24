@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Providers\RouteServiceProvider;
 use Closure;
 use Illuminate\Support\Facades\Auth;
 
@@ -12,27 +11,27 @@ class RedirectIfAuthenticated
      * Handle an incoming request.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
      * @param  string|null  $guard
      * @return mixed
      */
     public function handle($request, Closure $next, $guard = null)
     {
-        switch ($guard) {
-            case 'store':
-                if (Auth::guard($guard)->check()) {
-                    return redirect('/store/home');
-                }
-                break;
-            default:
-                if (Auth::guard($guard)->check()) {
+        // If session is not valid, do not redirect
+        if (! $request->hasSession() || ! $request->session()->isStarted()) {
+            return $next($request);
+        }
+    
+        // Extra safety: ensure user is REALLY authenticated
+        if (Auth::guard($guard)->check() && $request->user()) {
+            switch ($guard) {
+                case 'store':
+                    return redirect('/online_store');
+                default:
                     return redirect('/');
-                }
-                break;
+            }
         }
     
         return $next($request);
     }
     
-
 }

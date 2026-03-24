@@ -68,7 +68,7 @@
                         v-model="transfer.to_warehouse"
                         :reduce="label => label.value"
                         :placeholder="$t('Choose_Warehouse')"
-                        :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
+                        :options="to_warehouses.map(to_warehouses => ({label: to_warehouses.name, value: to_warehouses.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
@@ -485,6 +485,7 @@ export default {
         tax_method: ""
       },
       warehouses: [],
+      to_warehouses: [],
       products: [],
       units: [],
       symbol: "",
@@ -1038,9 +1039,9 @@ export default {
 
     Get_Product_Details(product_id, variant_id) {
       axios.get("/show_product_data/" + product_id +"/"+ variant_id).then(response => {
-        this.product.discount = 0;
-        this.product.DiscountNet = 0;
-        this.product.discount_Method = "2";
+        this.product.discount           = response.data.discount;
+        this.product.DiscountNet        = response.data.DiscountNet;
+        this.product.discount_Method    = response.data.discount_method;
         this.product.product_id = response.data.id;
         this.product.name = response.data.name;
         this.product.Net_cost = response.data.Net_cost;
@@ -1067,8 +1068,9 @@ export default {
     Get_Elements() {
       axios
         .get("transfers/create")
-        .then(response => {
+        .then(response => { 
           this.warehouses = response.data.warehouses;
+          this.to_warehouses = response.data.to_warehouses;
           this.isLoading = false;
         })
         .catch(response => {

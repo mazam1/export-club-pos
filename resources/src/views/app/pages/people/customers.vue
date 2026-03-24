@@ -4,11 +4,11 @@
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
     <div v-else>
       <div class="mb-5">
-        <span class="alert alert-danger" v-show="clients_without_ecommerce > 0 && (getallmodules && getallmodules.some(module => module.name === module_name))">
-          There are <strong>{{ clients_without_ecommerce}}</strong> 
-          customers not having an account in the online store.
+        <span class="alert alert-danger" v-show="clients_without_ecommerce > 0">
+          {{$t('There_are')}} <strong>{{ clients_without_ecommerce}}</strong> 
+          {{$t('Customers_without_ecommerce_notice')}}
           <router-link  to="/app/People/Customers_without_ecommerce">
-          View Details
+          {{$t('View_Details')}}
           </router-link>
         </span>
       </div>
@@ -38,7 +38,7 @@
       }"
        :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
       >
-        <div slot="selected-row-actions">
+        <div slot="selected-row-actions" v-if="currentUserPermissions.includes('Customers_delete')">
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
         </div>
         <div slot="table-actions" class="mt-2 mb-3">
@@ -59,15 +59,14 @@
               >
               <i class="i-File-Excel"></i> EXCEL
           </vue-excel-xlsx>
-          <b-button
-            @click="Show_import_clients()"
-            size="sm"
-            variant="info m-1"
+         <router-link
             v-if="currentUserPermissions && currentUserPermissions.includes('customers_import')"
+            :to="{ name: 'Import_Customers' }"
+            class="btn btn-info btn-sm m-1"
           >
             <i class="i-Download"></i>
-            {{ $t("Import_Customers") }}
-          </b-button>
+            Import Customers
+          </router-link>
           <b-button
             @click="New_Client()"
             size="sm"
@@ -80,31 +79,45 @@
         </div>
 
         <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
+          <span v-if="props.column.field == 'opening_balance'">
+            <span :class="props.row.opening_balance > 0 ? 'text-danger font-weight-bold' : ''">
+              {{ formatPriceWithSymbol(currentUser.currency, props.row.opening_balance || 0, 2) }}
+            </span>
+          </span>
+          <span v-else-if="props.column.field == 'credit_limit'">
+            <span class="text-info font-weight-bold">
+              {{ (props.row.credit_limit && props.row.credit_limit > 0)
+                  ? formatPriceWithSymbol(currentUser.currency, props.row.credit_limit, 2)
+                  : $t('No_limit') }}
+            </span>
+          </span>
+          <span v-else-if="props.column.field == 'actions'">
             <div>
               <b-dropdown
                 id="dropdown-right"
-                variant="link"
-                text="right align"
+                variant="primary"
+                text="Action"
                 toggle-class="text-decoration-none"
-                size="lg"
+                size="sm"
                 right
                 no-caret
               >
-                <template v-slot:button-content class="_r_btn border-0">
-                  <span class="_dot _r_block-dot bg-dark"></span>
-                  <span class="_dot _r_block-dot bg-dark"></span>
-                  <span class="_dot _r_block-dot bg-dark"></span>
+                <template v-slot:button-content>
+                  {{$t('Action')}}
                 </template>
+
+                 <b-dropdown-item @click="$router.push({ name: 'CustomerLedger', params: { id: props.row.id } })">
+                  <i class="nav-icon i-Receipt font-weight-bold mr-2"></i>
+                 {{$t('Customer_Ledger')}}
+                </b-dropdown-item>
 
                 <b-dropdown-item
                  v-if="props.row.client_ecommerce == 'yes' && 
-                 (currentUserPermissions && currentUserPermissions.includes('Customers_edit')) &&
-                 (getallmodules && getallmodules.some(module => module.name === module_name))"
+                 (currentUserPermissions && currentUserPermissions.includes('Customers_edit'))"
                   @click="Edit_Online_Store_Account(props.row)"
                 >
-                  <i class="nav-icon i-Edit font-weight-bold mr-2"></i>
-                  Edit Online Store Account
+                <i class="nav-icon i-Edit font-weight-bold mr-2"></i>
+                  {{$t('Edit_Online_Store_Account')}}
                 </b-dropdown-item>
 
                 <b-dropdown-item
@@ -123,20 +136,18 @@
                   {{$t('pay_all_sell_return_due_at_a_time')}}
                 </b-dropdown-item>
 
-                 <b-dropdown-item
-                  @click="showDetails(props.row)"
+                 <b-dropdown-item 
+                  @click="$router.push({ name: 'CustomerDetails', params: { id: props.row.id } })"
                 >
                   <i class="nav-icon i-Eye font-weight-bold mr-2"></i>
                   {{$t('Customer_details')}}
                 </b-dropdown-item>
-               
-                <b-dropdown-item
-                  @click="show_credit_card_details(props.row.id)"
-                >
-                  <i class="nav-icon i-Credit-Card2 font-weight-bold mr-2"></i>
-                  {{$t('credit_card_info')}}
-                </b-dropdown-item>
 
+                <b-dropdown-item @click="openPointsModal(props.row)">
+                  <i class="nav-icon i-Edit font-weight-bold mr-2"></i>
+                  {{$t('Adjust_Customer_Points')}}
+                </b-dropdown-item>
+               
                 <b-dropdown-item
                  v-if="currentUserPermissions && currentUserPermissions.includes('Customers_edit')"
                   @click="Edit_Client(props.row)"
@@ -211,19 +222,118 @@
       </div>
     </b-sidebar>
 
+    <b-modal
+      id="adjust-points-modal"
+      ref="pointsModal"
+      :title="$t('Adjust_Customer_Points')"
+      hide-footer
+    >
+      <b-form @submit.prevent="updateCustomerPoints">
+        <b-form-group :label="$t('Points')">
+          <b-form-input
+            v-model.number="adjustPointsForm.points"
+            type="text"
+            required
+          />
+        </b-form-group>
+
+        <div class="text-right">
+          <b-button variant="secondary" @click="$refs.pointsModal.hide()">
+            {{ $t('Cancel') }}
+          </b-button>
+          <b-button variant="primary" type="submit">
+             {{ $t('Save') }}
+          </b-button>
+        </div>
+      </b-form>
+    </b-modal>
+
+
     <!-- Modal Pay_due-->
-    <validation-observer ref="ref_pay_due">
-      <b-modal
-        hide-footer
-        size="md"
-        id="modal_Pay_due"
-        title="Pay Due"
-      >
+    <b-modal
+      hide-footer
+      size="lg"
+      id="modal_Pay_due"
+      title="Pay Due"
+    >
+      <validation-observer ref="ref_pay_due">
         <b-form @submit.prevent="Submit_Payment_sell_due">
           <b-row>
+            <!-- Customer Name -->
+            <b-col lg="12" md="12" sm="12" class="mb-3">
+              <h5 class="text-primary"><i class="i-User mr-2"></i>{{ payment.client_name }}</h5>
+            </b-col>
+
+            <!-- Summary Cards -->
+            <b-col lg="12" md="12" sm="12" class="mb-4">
+              <b-row>
+                <!-- Opening Balance Card -->
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-card 
+                    class="text-center shadow-sm border-left-primary"
+                    :class="{'border-left-danger': payment.opening_balance > 0}"
+                  >
+                    <div class="mb-2">
+                      <i class="i-Calendar-4 text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                    <h6 class="text-muted mb-2">{{ $t('Opening_Balance') }}</h6>
+                    <h4 class="mb-0" :class="payment.opening_balance > 0 ? 'text-danger font-weight-bold' : 'text-success'">
+                      {{ formatPriceWithSymbol(currentUser.currency, payment.opening_balance || 0, 2) }}
+                    </h4>
+                    <small class="text-muted">{{ $t('Previous_Dues') }}</small>
+                  </b-card>
+                </b-col>
+
+                <!-- Sales Due Card -->
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-card 
+                    class="text-center shadow-sm border-left-warning"
+                    :class="{'border-left-danger': payment.due > 0}"
+                  >
+                    <div class="mb-2">
+                      <i class="i-Shopping-Cart text-warning" style="font-size: 2rem;"></i>
+                    </div>
+                    <h6 class="text-muted mb-2">Sales Due</h6>
+                    <h4 class="mb-0" :class="payment.due > 0 ? 'text-danger font-weight-bold' : 'text-success'">
+                      {{ formatPriceWithSymbol(currentUser.currency, payment.due || 0, 2) }}
+                    </h4>
+                    <small class="text-muted">Current Sales</small>
+                  </b-card>
+                </b-col>
+
+                <!-- Total Due Card -->
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-card 
+                    class="text-center shadow-sm border-left-danger"
+                    :class="{'border-left-success': totalDue <= 0}"
+                  >
+                    <div class="mb-2">
+                      <i class="i-Money-Bag text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                    <h6 class="text-muted mb-2">Total Due</h6>
+                    <h4 class="mb-0 font-weight-bold" :class="totalDue > 0 ? 'text-danger' : 'text-success'">
+                      {{ formatPriceWithSymbol(currentUser.currency, totalDue, 2) }}
+                    </h4>
+                    <small class="text-muted">Grand Total</small>
+                  </b-card>
+                </b-col>
+              </b-row>
+            </b-col>
+
+            <!-- Payment Allocation Info -->
+            <b-col lg="12" md="12" sm="12" class="mb-3">
+              <b-alert variant="info" show class="mb-0">
+                <div class="d-flex align-items-center">
+                  <i class="i-Information mr-2" style="font-size: 1.5rem;"></i>
+                  <div>
+                    <strong>{{ $t('Payment_Allocation') }}:</strong> {{ $t('Payment_Allocation_description') }}
+                  </div>
+                </div>
+              </b-alert>
+            </b-col>
           
             <!-- Paying Amount  -->
-            <b-col lg="6" md="12" sm="12">
+            <b-col lg="12" md="12" sm="12" class="mt-3">
               <validation-provider
                 name="Amount"
                 :rules="{ required: true , regex: /^\d*\.?\d*$/}"
@@ -239,7 +349,9 @@
                     aria-describedby="Amount-feedback"
                   ></b-form-input>
                   <b-form-invalid-feedback id="Amount-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                  <span class="badge badge-danger">{{$t('Due')}} : {{currentUser.currency}} {{payment.due}}</span>
+                  <small class="text-muted mt-1 d-block">
+                    Maximum payment: <strong>{{ formatPriceWithSymbol(currentUser.currency, totalDue, 2) }}</strong>
+                  </small>
                 </b-form-group>
               </validation-provider>
             </b-col>
@@ -264,7 +376,7 @@
             </b-col>
 
              <!-- Account -->
-             <b-col lg="6" md="6" sm="12">
+             <b-col lg="12" md="6" sm="12">
               <validation-provider name="Account">
                 <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
                   <v-select
@@ -300,8 +412,8 @@
 
           </b-row>
         </b-form>
-      </b-modal>
-    </validation-observer>
+      </validation-observer>
+    </b-modal>
 
     <!-- Modal Pay_return_Due-->
     <validation-observer ref="ref_pay_return_due">
@@ -315,7 +427,7 @@
           <b-row>
           
             <!-- Paying Amount -->
-            <b-col lg="6" md="12" sm="12">
+            <b-col lg="12" md="12" sm="12">
               <validation-provider
                 name="Amount"
                 :rules="{ required: true , regex: /^\d*\.?\d*$/}"
@@ -338,7 +450,7 @@
 
 
             <!-- Payment choice -->
-            <b-col lg="6" md="12" sm="12">
+            <b-col lg="12" md="12" sm="12">
               <validation-provider name="Payment choice" :rules="{ required: true}">
                 <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice')+ ' ' + '*'">
                   <v-select
@@ -356,7 +468,7 @@
             </b-col>
 
             <!-- Account -->
-            <b-col lg="6" md="6" sm="12">
+            <b-col lg="12" md="12" sm="12">
               <validation-provider name="Account">
                 <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
                   <v-select
@@ -412,27 +524,24 @@
 
            <table
                 class="change mt-3"
-                style=" font-size: 10px;"
+                style=" font-size: 10px;width: 100%;"
               >
-                <thead>
-                  <tr style="background: #eee; ">
-                    <!-- <th style="text-align: left;" colspan="1">{{$t('PayeBy')}}:</th> -->
-                    <th style="text-align: left;" colspan="2">{{$t('Amount')}}:</th>
-                    <th style="text-align: right;" colspan="2">{{$t('Due')}}:</th>
-                  </tr>
-                </thead>
-
                 <tbody>
                   <tr>
-                    <!-- <td style="text-align: left;" colspan="1">{{payment.Reglement}}</td> -->
-                    <td
-                      style="text-align: left;"
-                      colspan="2"
-                    >{{formatNumber(payment.amount ,2)}}</td>
-                    <td
-                      style="text-align: right;"
-                      colspan="2"
-                    >{{formatNumber(payment.due - payment.amount ,2)}}</td>
+                    <th style="text-align: left; background: #eee; width: 50%;">{{$t('Payment_Method')}}:</th>
+                    <td style="text-align: right; width: 50%;">{{ paymentMethodName }}</td>
+                  </tr>
+                  <tr>
+                    <th style="text-align: left; background: #eee;">{{$t('Amount')}}:</th>
+                    <td style="text-align: right;">{{ formatPriceWithSymbol(currentUser.currency, payment.amount, 2) }}</td>
+                  </tr>
+                  <tr>
+                    <th style="text-align: left; background: #eee;">{{$t('Due_Before')}}:</th>
+                    <td style="text-align: right;">{{ formatPriceWithSymbol(currentUser.currency, totalDue, 2) }}</td>
+                  </tr>
+                  <tr>
+                    <th style="text-align: left; background: #eee;">{{$t('Due_After')}}:</th>
+                    <td style="text-align: right;">{{ formatPriceWithSymbol(currentUser.currency, totalDue - (parseFloat(payment.amount) || 0), 2) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -493,156 +602,6 @@
       </button>
     </b-modal>
 
-    <!-- Modal Create & Edit Customer -->
-    <validation-observer ref="Create_Customer">
-      <b-modal hide-footer size="lg" id="New_Customer" :title="editmode?$t('Edit'):$t('Add')">
-        <b-form @submit.prevent="Submit_Customer">
-          <b-row>
-            <!-- Customer Name -->
-            <b-col md="6" sm="12">
-              <validation-provider
-                name="Name Customer"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('CustomerName') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="name-feedback"
-                    label="name"
-                    :placeholder="$t('CustomerName')"
-                    v-model="client.name"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-            
-             <!-- Customer Email -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Email')">
-                  <b-form-input
-                    label="email"
-                    v-model="client.email"
-                    :placeholder="$t('Email')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Customer Phone -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Phone')">
-                  <b-form-input
-                    label="Phone"
-                    v-model="client.phone"
-                    :placeholder="$t('Phone')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Customer Country -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Country')">
-                  <b-form-input
-                    label="Country"
-                    v-model="client.country"
-                    :placeholder="$t('Country')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Customer City -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('City')">
-                  <b-form-input
-                    label="City"
-                    v-model="client.city"
-                    :placeholder="$t('City')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-             <!-- Customer Tax Number -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Tax_Number')">
-                  <b-form-input
-                    label="Tax Number"
-                    v-model="client.tax_number"
-                    :placeholder="$t('Tax_Number')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Customer Adress -->
-            <b-col md="12" sm="12">
-                <b-form-group :label="$t('Adress')">
-                  <textarea
-                    label="Adress"
-                    class="form-control"
-                    rows="4"
-                    v-model="client.adresse"
-                    :placeholder="$t('Adress')"
-                 ></textarea>
-                </b-form-group>
-            </b-col>
-
-            <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing">{{$t('submit')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
-            </b-col>
-
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
-
-    <!-- Modal show_credit_card_details -->
-    <b-modal ok-only size="lg" id="show_credit_card_details" :title="$t('Saved_Credit_Card_Info')">
-      <b-row>
-
-        <b-col md="12" v-if="savedPaymentMethods && savedPaymentMethods.length > 0">
-            <div class="mt-3"><span >Saved Credit Card Info For This Client </span></div>    
-            <table class="table table-hover mt-3">
-              <thead>
-                <tr>
-                  <th>Last 4 digits</th>
-                  <th>Type</th>
-                  <th>Exp</th>
-                  <th>Action</th>
-
-                </tr>
-              </thead>
-
-              <tbody>
-                <tr v-for="card in savedPaymentMethods" :class="{ 'bg-selected-card': isSelectedCard(card) }">
-                  <td>**** {{card.last4}}</td>
-                  <td>{{card.type}}</td>
-                  <td>{{card.exp}}</td>
-                  <td>
-                      <b-button variant="outline-primary" @click="selectCard(card)" v-if="!isSelectedCard(card) && card_id != card.card_id">
-                        <span>
-                          <i class="i-Drag-Up"></i> 
-                          Set as default
-                        </span>
-                      </b-button>
-                        <span v-if="isSelectedCard(card) || card_id == card.card_id"><i class="i-Yes" style=" font-size: 20px; "></i> 
-                        Default credit card  </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-        </b-col>
-
-        <b-col md="12" v-else>
-            <div class="mt-3"><span >Customer don't have credit card saved </span></div>    
-        </b-col>
-
-       
-      </b-row>
-    </b-modal>
 
     <!-- Modal Show Customer Details -->
     <b-modal ok-only size="md" id="showDetails" :title="$t('CustomerDetails')">
@@ -702,8 +661,34 @@
                 <td>{{$t('Total_Sell_Return_Due')}}</td>
                 <th>{{currentUser.currency}} {{client.return_Due}}</th>
               </tr>
+
+              <tr>
+                <!-- Points -->
+                <td>{{$t('Points')}}</td>
+                <th>{{client.points}}</th>
+              </tr>
+
             </tbody>
           </table>
+          
+          <!-- Custom Fields Section -->
+          <div v-if="clientCustomFields && clientCustomFields.length > 0" class="mt-4">
+            <h6 class="text-primary mb-3">
+              <i class="i-Data-Settings mr-2"></i>
+              {{ $t('CustomFields') }}
+            </h6>
+            <table class="table table-striped table-md">
+              <tbody>
+                <tr v-for="field in clientCustomFields" :key="field.id">
+                  <td>{{ field.name }}</td>
+                  <th>{{ getCustomFieldDisplayValue(field) }}</th>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else-if="clientCustomFields && clientCustomFields.length === 0" class="mt-4">
+            <p class="text-muted">{{ $t('NoCustomFields') || 'No custom fields defined for customers.' }}</p>
+          </div>
         </b-col>
       </b-row>
     </b-modal>
@@ -719,7 +704,7 @@
               <b-form-invalid-feedback
                 id="File-feedback"
                 class="d-block"
-              >{{$t('field_must_be_in_csv_format')}}</b-form-invalid-feedback>
+              >File must be in xlsx format </b-form-invalid-feedback>
             </b-form-group>
           </b-col>
 
@@ -732,7 +717,7 @@
 
           <b-col md="6" sm="12">
             <b-button
-              :href="'/import/exemples/import_clients.csv'"
+              :href="'/import/exemples/import_clients.xlsx'"
               variant="info"
               size="sm"
               block
@@ -794,7 +779,7 @@
             <b-col md="12" sm="12">
               <validation-provider
                 name="email Customer"
-                :rules="{ required: true}"
+                :rules="{ required: true, email: true }"
                 v-slot="validationContext"
               >
                 <b-form-group :label="$t('Email') + ' ' + '*'">
@@ -857,7 +842,11 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting
+} from "../../../../utils/priceFormat";
 
 export default {
   metaInfo: {
@@ -865,11 +854,6 @@ export default {
   },
   data() {
     return {
-
-      savedPaymentMethods: [],
-      selectedCard:null,
-      card_id:'',
-      customer_id:'',
 
       clients_without_ecommerce:'',
       module_name:'',
@@ -895,6 +879,7 @@ export default {
         account_id: "",
         date:"",
         due: "",
+        opening_balance: 0,
         amount: "",
         notes: "",
         payment_method_id: "",
@@ -911,6 +896,7 @@ export default {
         payment_method_id: "",
       },
       company_info:{},
+      price_format_key: null,
       selectedIds: [],
       totalRows: "",
       search: "",
@@ -934,7 +920,12 @@ export default {
         city: "",
         adresse: "",
         tax_number: "",
+        is_royalty_eligible: "",
 
+      },
+      adjustPointsForm: {
+        customer_id: null,
+        points: 0
       },
       client_store: {
         name: "",
@@ -943,6 +934,7 @@ export default {
         NewPassword: null,
       },
       email_exist : "",
+      clientCustomFields: [],
     };
   },
 
@@ -956,15 +948,33 @@ export default {
   },
 
   computed: {
-    ...mapGetters(["currentUserPermissions", "currentUser","getallmodules"]),
+    ...mapGetters(["currentUserPermissions", "currentUser"]),
 
 
-    isSelectedCard() {
-      return card => this.selectedCard === card;
+    totalDue() {
+      const openingBalance = parseFloat(this.payment.opening_balance) || 0;
+      const salesDue = parseFloat(this.payment.due) || 0;
+      return openingBalance + salesDue;
+    },
+
+    paymentMethodName() {
+      if (!this.payment.payment_method_id || !this.payment_methods.length) {
+        return '-';
+      }
+      const methodId = parseInt(this.payment.payment_method_id);
+      const method = this.payment_methods.find(m => parseInt(m.id) === methodId);
+      return method ? method.name : '-';
     },
 
     columns() {
       return [
+        {
+          label: this.$t("Action"),
+          field: "actions",
+          tdClass: "text-left",
+          thClass: "text-left",
+          sortable: false
+        },
         {
           label: this.$t("Code"),
           field: "code",
@@ -991,11 +1001,28 @@ export default {
           thClass: "text-left"
         },
         {
-          label: this.$t("Tax_Number"),
-          field: "tax_number",
+          label: this.$t("Points"),
+          field: "points",
           tdClass: "text-left",
           thClass: "text-left"
         },
+          {
+          label: this.$t("Credit_Limit"),
+          field: "credit_limit",
+          type: "decimal",
+          tdClass: "text-left",
+          thClass: "text-left",
+          sortable: false
+        },
+        {
+          label: this.$t("Opening_Balance"),
+          field: "opening_balance",
+          type: "decimal",
+          tdClass: "text-left",
+          thClass: "text-left",
+          sortable: false
+        },
+      
         {
           label: this.$t("Total_Sale_Due"),
           field: "due",
@@ -1011,15 +1038,6 @@ export default {
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
-        },
-
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          html: true,
-          tdClass: "text-right",
-          thClass: "text-right",
-          sortable: false
         }
       ];
     }
@@ -1027,24 +1045,34 @@ export default {
 
   methods: {
 
-    //------------- Submit Validation Create & Edit Customer
-    Submit_Customer() {
-      this.$refs.Create_Customer.validate().then(success => {
-        if (!success) {
-          this.makeToast(
+    openPointsModal(customer) {
+      this.adjustPointsForm.customer_id = customer.id;
+      this.adjustPointsForm.points = customer.points; // preload existing
+      this.$refs.pointsModal.show();
+    },
+
+    updateCustomerPoints() {
+      axios.post(`customers/${this.adjustPointsForm.customer_id}/update-points`, {
+        points: this.adjustPointsForm.points
+      }).then(() => {
+        this.makeToast(
+            "success",
+            'Points updated successfully',
+            'success'
+          );
+
+        this.$refs.pointsModal.hide();
+        this.Get_Clients(this.serverParams.page);
+      }).catch((error) => {
+        this.makeToast(
             "danger",
-            this.$t("Please_fill_the_form_correctly"),
+            'Error updating points',
             this.$t("Failed")
           );
-        } else {
-          if (!this.editmode) {
-            this.Create_Client();
-          } else {
-            this.Update_Client();
-          }
-        }
       });
     },
+
+
 
      //-------------------------------- Reset Form -------------------------------\\
      reset_Form_account_store() {
@@ -1208,49 +1236,84 @@ export default {
       });
     },
 
+    //------ Format Number
+    formatNumber(value) {
+      if (value === null || value === undefined) return '0.00';
+      const num = parseFloat(value) || 0;
+      return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    },
+
     //--------------------------------- Customers PDF -------------------------------\\
     clients_PDF() {
       var self = this;
       let pdf = new jsPDF("p", "pt");
 
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold");
+      try {
+        pdf.addFont(fontPath, "Vazirmatn", "normal");
+        pdf.addFont(fontPath, "Vazirmatn", "bold");
+      } catch(e) {}
+      pdf.setFont("Vazirmatn", "normal");
 
-      let columns = [
-        { title: self.$t("Code"), dataKey: "code" },
-        { title: self.$t("Name"), dataKey: "name" },
-        { title: self.$t("Phone"), dataKey: "phone" },
-        { title: self.$t("Country"), dataKey: "country" },
-        { title: self.$t("City"), dataKey: "city" },
-        { title: self.$t("Total_Sale_Due"), dataKey: "due" },
-        { title: self.$t("Total_Sell_Return_Due"), dataKey: "return_Due" },
+      const headers = [
+        self.$t("Code"),
+        self.$t("Name"),
+        self.$t("Phone"),
+        self.$t("City"),
+        "Points",
+        self.$t("Total_Sale_Due"),
+        self.$t("Total_Sell_Return_Due")
       ];
 
-      pdf.autoTable({
-        columns: columns,
-        body: self.clients,
-        startY: 70,
-        theme: "grid", 
-        didDrawPage: (data) => {
-          pdf.setFont("VazirmatnBold");
-          pdf.setFontSize(18);
-          pdf.text("Customer List", 40, 25);   
-        },
-        styles: {
-          font: "VazirmatnBold", 
-          halign: "center", // 
-        },
-        headStyles: {
-          fillColor: [200, 200, 200], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
-        footStyles: {
-          fillColor: [230, 230, 230], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
+      const body = (self.clients || []).map(client => ([
+        client.code,
+        client.name,
+        client.phone,
+        client.city,
+        client.points,
+        client.due,
+        client.return_Due
+      ]));
+
+      const marginX = 40;
+      const rtl =
+        (self.$i18n && ['ar','fa','ur','he'].includes(self.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+
+      autoTable(pdf, {
+        head: [headers],
+        body: body,
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+
+          // Header banner
+          pdf.setFillColor(63,81,181);
+          pdf.rect(0, 0, pageW, 60, 'F');
+
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = self.$t('CustomersList') || 'Customer List';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
+
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
       });
 
       pdf.save("Customer_List.pdf");
@@ -1331,102 +1394,47 @@ export default {
       }
     },
 
-    //----------------------------------------Submit  import clients-----------------\\
+   //----------------------------------------Submit  import clients-----------------\\
     Submit_import() {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
-      var self = this;
-      self.ImportProcessing = true;
-      self.data.append("clients", self.import_clients);
+
+      this.ImportProcessing = true;
+      this.data.append("clients", this.import_clients);
+
       axios
-        .post("clients/import/csv", self.data)
+        .post("clients/import/csv", this.data)
         .then(response => {
-          self.ImportProcessing = false;
+          this.ImportProcessing = false;
+          NProgress.done();
+
           if (response.data.status === true) {
-            this.makeToast(
-              "success",
-              this.$t("Successfully_Imported"),
-              this.$t("Success")
-            );
+            this.makeToast("success", this.$t("Successfully_Imported"), this.$t("Success"));
             Fire.$emit("Event_import");
-          } else if (response.data.status === false) {
-            this.makeToast(
-              "danger",
-              this.$t("field_must_be_in_csv_format"),
-              this.$t("Failed")
-            );
+          } else {
+            // Show message returned from backend
+            this.makeToast("danger", response.data.message || this.$t("Import_failed"), this.$t("Failed"));
           }
-          // Complete the animation of theprogress bar.
-          NProgress.done();
         })
         .catch(error => {
-          self.ImportProcessing = false;
+          this.ImportProcessing = false;
           NProgress.done();
-            this.makeToast(
-              "danger",
-              this.$t("Please_follow_the_import_instructions"),
-              this.$t("Failed")
-            );
+
+          if (error.response) {
+            // Show Laravel validation error
+            if (error.response.status === 422 && error.response.data.errors) {
+              const firstError = Object.values(error.response.data.errors)[0][0];
+              this.makeToast("danger", firstError, this.$t("Failed"));
+            } else {
+              // Other backend exceptions
+              const message = error.response.data.message || this.$t("Please_follow_the_import_instructions");
+              this.makeToast("danger", message, this.$t("Failed"));
+            }
+          } else {
+            // Network error or no response
+            this.makeToast("danger", this.$t("Network_or_server_error"), this.$t("Failed"));
+          }
         });
-    },
-
-    //----------------------------------- show_credit_card_details -------------------------------\\
-
-     show_credit_card_details(id){
-
-        NProgress.start();
-        NProgress.set(0.1);
-        this.customer_id = id;
-        this.savedPaymentMethods = [];
-        this.selectedCard = null
-        this.card_id = '';
-        // Check if the customer has saved payment methods
-         axios.get(`/retrieve-customer?customerId=${id}`)
-            .then(response => {
-                // If the customer has saved payment methods, display them
-                this.savedPaymentMethods = response.data.data;
-                this.card_id = response.data.customer_default_source;
-
-                setTimeout(() => {
-                  Fire.$emit("get_credit_card_details");
-                }, 500);
-            })
-            .catch(error => {
-                // If the customer does not have saved payment methods, show the card element for them to enter their payment information
-               this.savedPaymentMethods = [];
-               this.card_id = '';
-
-                setTimeout(() => {
-                  Fire.$emit("get_credit_card_details");
-                }, 500);
-            });
-
-    },
-
-    selectCard(card) {
-      this.selectedCard = card;
-      this.card_id = card.card_id;
-
-       axios
-        .post("update-customer-stripe", {
-          customer_id: this.customer_id,
-          card_id: this.card_id,
-         
-        })
-        .then(response => {
-
-          this.makeToast(
-            "success",
-            this.$t("Credit_card_changed_successfully"),
-            this.$t("Success")
-          );
-
-        })
-        .catch(error => {
-            this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-        });
-      
     },
 
     //----------------------------------- Show Details Client -------------------------------\\
@@ -1435,23 +1443,68 @@ export default {
       NProgress.start();
       NProgress.set(0.1);
       this.client = client;
-      Fire.$emit("Get_Details_customers");
+      
+      // Load custom fields and their values
+      Promise.all([
+        axios.get("custom-fields?entity_type=client"),
+        axios.get("custom-field-values", {
+          params: {
+            entity_type: "App\\Models\\Client",
+            entity_id: client.id
+          }
+        })
+      ])
+        .then(([fieldsResponse, valuesResponse]) => {
+          const allFields = fieldsResponse.data.custom_fields || [];
+          const fieldValues = valuesResponse.data.success && valuesResponse.data.values 
+            ? valuesResponse.data.values 
+            : {};
+
+          // Map all custom fields with their values (or empty if no value)
+          this.clientCustomFields = allFields.map(field => {
+            const fieldValue = fieldValues[field.id];
+            return {
+              id: field.id,
+              name: field.name,
+              field_type: field.field_type,
+              value: fieldValue ? fieldValue.value : null
+            };
+          });
+
+          NProgress.done();
+          Fire.$emit("Get_Details_customers");
+        })
+        .catch(error => {
+          console.error('Error loading custom fields:', error);
+          this.clientCustomFields = [];
+          NProgress.done();
+          Fire.$emit("Get_Details_customers");
+        });
     },
 
-    //------------------------------ Show Modal (create Client) -------------------------------\\
+    //----------------------------------- Get Custom Field Display Value -------------------------------\\
+    getCustomFieldDisplayValue(field) {
+      if (!field.value && field.value !== 0 && field.value !== false) {
+        return '-';
+      }
+      
+      if (field.field_type === 'checkbox') {
+        return field.value === '1' || field.value === 1 || field.value === true 
+          ? this.$t('Yes') 
+          : this.$t('No');
+      }
+      
+      return field.value;
+    },
+
+    //------------------------------ Navigate to Create Customer Page -------------------------------\\
     New_Client() {
-      this.reset_Form();
-      this.editmode = false;
-      this.$bvModal.show("New_Customer");
+      this.$router.push({ name: 'Create_Customer' });
     },
 
-    //------------------------------ Show Modal (Edit Client) -------------------------------\\
+    //------------------------------ Navigate to Edit Customer Page -------------------------------\\
     Edit_Client(client) {
-      this.Get_Clients(this.serverParams.page);
-      this.reset_Form();
-      this.client = client;
-      this.editmode = true;
-      this.$bvModal.show("New_Customer");
+      this.$router.push({ name: 'Edit_Customer', params: { id: client.id } });
     },
 
    
@@ -1466,7 +1519,8 @@ export default {
           tax_number: this.client.tax_number,
           country: this.client.country,
           city: this.client.city,
-          adresse: this.client.adresse
+          adresse: this.client.adresse,
+          is_royalty_eligible: this.client.is_royalty_eligible
         })
         .then(response => {
           Fire.$emit("Event_Customer");
@@ -1496,7 +1550,8 @@ export default {
           tax_number: this.client.tax_number,
           country: this.client.country,
           city: this.client.city,
-          adresse: this.client.adresse
+          adresse: this.client.adresse,
+          is_royalty_eligible: this.client.is_royalty_eligible
         })
         .then(response => {
           Fire.$emit("Event_Customer");
@@ -1524,7 +1579,8 @@ export default {
         country: "",
         tax_number: "",
         city: "",
-        adresse: ""
+        adresse: "",
+        is_royalty_eligible: "",
       };
     },
 
@@ -1615,7 +1671,7 @@ export default {
             this.$t("Please_fill_the_form_correctly"),
             this.$t("Failed")
           );
-        } else if (this.payment.amount > this.payment.due) {
+        } else if (this.payment.amount > this.totalDue) {
           this.makeToast(
             "warning",
             this.$t("Paying_amount_is_greater_than_Total_Due"),
@@ -1635,7 +1691,7 @@ export default {
     Verified_paidAmount() {
       if (isNaN(this.payment.amount)) {
         this.payment.amount = 0;
-      } else if (this.payment.amount > this.payment.due) {
+      } else if (this.payment.amount > this.totalDue) {
         this.makeToast(
           "warning",
           this.$t("Paying_amount_is_greater_than_Total_Due"),
@@ -1653,6 +1709,7 @@ export default {
         account_id: "",
         date: "",
         due: "",
+        opening_balance: 0,
         amount: "",
         notes: "",
         payment_method_id: "",
@@ -1666,7 +1723,8 @@ export default {
       this.payment.client_name = row.name;
       this.payment.account_id = null;
       this.payment.payment_method_id = null;
-      this.payment.due = row.due;
+      this.payment.due = row.due || 0;
+      this.payment.opening_balance = row.opening_balance || 0;
       this.payment.date = new Date().toISOString().slice(0, 10);
       setTimeout(() => {
         this.$bvModal.show("modal_Pay_due");
@@ -1693,6 +1751,19 @@ export default {
      //---------------------------------------- Submit_Pay_due-------------------------------\\
     Submit_Pay_due() {
       this.paymentProcessing = true;
+      // Store payment data for receipt before closing modal
+      const paymentDataForReceipt = {
+        client_id: this.payment.client_id,
+        client_name: this.payment.client_name,
+        account_id: this.payment.account_id,
+        date: this.payment.date,
+        due: this.payment.due,
+        opening_balance: this.payment.opening_balance,
+        amount: this.payment.amount,
+        notes: this.payment.notes,
+        payment_method_id: this.payment.payment_method_id,
+      };
+      
       axios
         .post("clients_pay_due", {
           client_id: this.payment.client_id,
@@ -1702,7 +1773,17 @@ export default {
           account_id: this.payment.account_id,
         })
         .then(response => {
-          Fire.$emit("Event_pay_due");
+          // Update payment object with stored data for receipt
+          Object.assign(this.payment, paymentDataForReceipt);
+          
+          // Close payment modal and show receipt
+          this.$bvModal.hide("modal_Pay_due");
+          setTimeout(() => {
+            this.$bvModal.show("Show_invoice");
+          }, 300);
+          
+          // Refresh clients data without affecting receipt
+          this.Get_Clients(this.serverParams.page);
 
           this.makeToast(
             "success",
@@ -1830,18 +1911,29 @@ export default {
         });
     },
 
-     //------------------------------Formetted Numbers -------------------------\\
-    formatNumber(number, dec) {
-      const value = (typeof number === "string"
-        ? number
-        : number.toString()
-      ).split(".");
-      if (dec <= 0) return value[0];
-      let formated = value[1] || "";
-      if (formated.length > dec)
-        return `${value[0]}.${formated.substr(0, dec)}`;
-      while (formated.length < dec) formated += "0";
-      return `${value[0]}.${formated}`;
+    //------------------------------ Price Formatting -------------------------\\
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = Number.isInteger(dec) ? dec : 2;
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
+        const effectiveKey = key || null;
+        return formatPriceDisplayHelper(number, decimals, effectiveKey);
+      } catch (e) {
+        const n = Number(number || 0);
+        return n.toLocaleString(undefined, {
+          minimumFractionDigits: dec || 2,
+          maximumFractionDigits: dec || 2
+        });
+      }
+    },
+
+    formatPriceWithSymbol(symbol, number, dec) {
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
     },
 
 
@@ -1863,12 +1955,10 @@ export default {
       this.$bvModal.show("showDetails");
     });
 
+    // Event_pay_due is now handled directly in Submit_Pay_due method
+    // This listener is kept for backwards compatibility but is no longer needed
     Fire.$on("Event_pay_due", () => {
-      setTimeout(() => {
-        this.Get_Clients(this.serverParams.page);
-        this.$bvModal.hide("modal_Pay_due");
-      }, 500);
-       this.$bvModal.show("Show_invoice");
+      // Handled in Submit_Pay_due method now
     });
 
     Fire.$on("Event_pay_return_due", () => {
@@ -1890,7 +1980,6 @@ export default {
     Fire.$on("Event_Customer", () => {
       setTimeout(() => {
         this.Get_Clients(this.serverParams.page);
-        this.$bvModal.hide("New_Customer");
       }, 500);
     });
 
@@ -1909,3 +1998,36 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.border-left-primary {
+  border-left: 4px solid #007bff !important;
+}
+
+.border-left-warning {
+  border-left: 4px solid #ffc107 !important;
+}
+
+.border-left-danger {
+  border-left: 4px solid #dc3545 !important;
+}
+
+.border-left-success {
+  border-left: 4px solid #28a745 !important;
+}
+
+.shadow-sm {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+.card {
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+</style>
+
+

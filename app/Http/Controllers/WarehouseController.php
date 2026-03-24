@@ -3,17 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\product_warehouse;
+use App\Models\ProductVariant;
 use App\Models\Warehouse;
 use Carbon\Carbon;
-use DB;
 use Illuminate\Http\Request;
 
 class WarehouseController extends Controller
 {
-
-    //----------- GET ALL  Warehouse --------------\\
+    // ----------- GET ALL  Warehouse --------------\\
 
     public function index(Request $request)
     {
@@ -41,7 +39,7 @@ class WarehouseController extends Controller
                 });
             });
         $totalRows = $warehouses->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $warehouses = $warehouses->offset($offSet)
@@ -55,7 +53,7 @@ class WarehouseController extends Controller
         ]);
     }
 
-    //----------- Store new Warehouse --------------\\
+    // ----------- Store new Warehouse --------------\\
 
     public function store(Request $request)
     {
@@ -67,16 +65,16 @@ class WarehouseController extends Controller
 
         \DB::transaction(function () use ($request) {
 
-            $Warehouse          = new Warehouse;
-            $Warehouse->name    = $request['name'];
-            $Warehouse->mobile  = $request['mobile'];
+            $Warehouse = new Warehouse;
+            $Warehouse->name = $request['name'];
+            $Warehouse->mobile = $request['mobile'];
             $Warehouse->country = $request['country'];
-            $Warehouse->city    = $request['city'];
-            $Warehouse->zip     = $request['zip'];
-            $Warehouse->email   = $request['email'];
+            $Warehouse->city = $request['city'];
+            $Warehouse->zip = $request['zip'];
+            $Warehouse->email = $request['email'];
             $Warehouse->save();
 
-            $products = Product::where('deleted_at', '=', null)->get(['id','type']);
+            $products = Product::where('deleted_at', '=', null)->get(['id', 'type']);
 
             if ($products) {
                 foreach ($products as $product) {
@@ -89,18 +87,18 @@ class WarehouseController extends Controller
                         foreach ($Product_Variants as $product_variant) {
 
                             $product_warehouse[] = [
-                                'product_id'         => $product->id,
-                                'warehouse_id'       => $Warehouse->id,
+                                'product_id' => $product->id,
+                                'warehouse_id' => $Warehouse->id,
                                 'product_variant_id' => $product_variant->id,
-                                'manage_stock'       => $product->type == 'is_service'?0:1,
+                                'manage_stock' => $product->type == 'is_service' ? 0 : 1,
                             ];
                         }
                     } else {
                         $product_warehouse[] = [
-                            'product_id'         => $product->id,
-                            'warehouse_id'       => $Warehouse->id,
+                            'product_id' => $product->id,
+                            'warehouse_id' => $Warehouse->id,
                             'product_variant_id' => null,
-                            'manage_stock'       => $product->type == 'is_service'?0:1,
+                            'manage_stock' => $product->type == 'is_service' ? 0 : 1,
                         ];
                     }
 
@@ -113,14 +111,15 @@ class WarehouseController extends Controller
         return response()->json(['success' => true]);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
-        }
 
-    //-----------Update Warehouse --------------\\
+    }
+
+    // -----------Update Warehouse --------------\\
 
     public function update(Request $request, $id)
     {
@@ -138,10 +137,11 @@ class WarehouseController extends Controller
             'zip' => $request['zip'],
             'email' => $request['email'],
         ]);
+
         return response()->json(['success' => true]);
     }
 
-    //----------- Delete  Warehouse --------------\\
+    // ----------- Delete  Warehouse --------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -162,7 +162,7 @@ class WarehouseController extends Controller
         return response()->json(['success' => true]);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -186,12 +186,12 @@ class WarehouseController extends Controller
         return response()->json(['success' => true]);
     }
 
-    //----------- GET ALL  Warehouse --------------\\
+    // ----------- GET ALL  Warehouse --------------\\
 
     public function Get_Warehouses()
     {
         $Warehouses = Warehouse::where('deleted_at', '=', null)->get();
+
         return response()->json($Warehouses);
     }
-
 }

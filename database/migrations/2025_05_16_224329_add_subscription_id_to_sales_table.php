@@ -15,10 +15,10 @@ return new class extends Migration
             $table->integer('subscription_id')->nullable()->after('warehouse_id')->index('subscription_id');
 
             $table->foreign('subscription_id', 'sales_subscription_id_foreign')
-                  ->references('id')
-                  ->on('subscriptions')
-                  ->onUpdate('RESTRICT')
-                  ->onDelete('RESTRICT');
+                ->references('id')
+                ->on('subscriptions')
+                ->onUpdate('RESTRICT')
+                ->onDelete('RESTRICT');
         });
     }
 

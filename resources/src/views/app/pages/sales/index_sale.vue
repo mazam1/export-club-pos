@@ -29,7 +29,7 @@
       }"
         :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
       >
-        <div slot="selected-row-actions">
+        <div slot="selected-row-actions" v-if="currentUserPermissions.includes('Sales_delete')">
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
         </div>
         <div slot="table-actions" class="mt-2 mb-3">
@@ -158,9 +158,14 @@
                   {{$t('email_notification')}}
                 </b-dropdown-item>
 
-                 <b-dropdown-item title="SMS" @click="Sale_SMS(props.row.id)">
+                <b-dropdown-item title="SMS" @click="Sale_SMS(props.row.id)">
                   <i class="nav-icon i-Speach-Bubble font-weight-bold mr-2"></i>
                   {{$t('sms_notification')}}
+                </b-dropdown-item>
+
+                <b-dropdown-item title="Attach Documents" @click="Manage_Documents(props.row.id)">
+                  <i class="nav-icon i-File font-weight-bold mr-2"></i>
+                  {{$t('Attach_Documents')}}
                 </b-dropdown-item>
 
                 <b-dropdown-item
@@ -173,6 +178,9 @@
                 </b-dropdown-item>
               </b-dropdown>
             </div>
+          </span>
+          <span v-else-if="props.column.field == 'date'">
+            {{ formatDisplayDate(props.row.date) }}
           </span>
           <div v-else-if="props.column.field == 'statut'">
             <span
@@ -220,6 +228,15 @@
 
             <span v-else-if="props.row.shipping_status == 'cancelled'" class="badge badge-outline-danger">{{$t('Cancelled')}}</span>
           </div>
+          <span v-else-if="props.column.field == 'GrandTotal'">
+            {{ formatPriceWithSymbol(currentUser.currency, props.row.GrandTotal, 2) }}
+          </span>
+          <span v-else-if="props.column.field == 'paid_amount'">
+            {{ formatPriceWithSymbol(currentUser.currency, props.row.paid_amount, 2) }}
+          </span>
+          <span v-else-if="props.column.field == 'due'">
+            {{ formatPriceWithSymbol(currentUser.currency, props.row.due, 2) }}
+          </span>
            <div v-else-if="props.column.field == 'Ref'">
               <router-link
                 :to="'/app/sales/detail/'+props.row.id"
@@ -227,7 +244,12 @@
                 <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
               </router-link> <br>
               <small v-if="props.row.sale_has_return == 'yes'"><i class="text-15 text-danger i-Back"></i></small>
-              
+            </div>
+            <div v-else-if="props.column.field == 'documents'">
+              <span v-if="props.row.documents_count > 0" class="badge badge-info">
+                <i class="i-File"></i> {{props.row.documents_count}}
+              </span>
+              <span v-else class="text-muted">-</span>
             </div>
         </template>
       </vue-good-table>
@@ -370,7 +392,7 @@
                 <tr v-for="payment in payments">
                   <td>{{payment.date}}</td>
                   <td>{{payment.Ref}}</td>
-                  <td>{{currentUser.currency}} {{formatNumber(payment.montant,2)}}</td>
+                  <td>{{ formatPriceWithSymbol(currentUser.currency, payment.montant, 2) }}</td>
                   <td>{{payment.payment_method?payment.payment_method.name:'---'}}</td>
                   <td>
                     <div role="group" aria-label="Basic example" class="btn-group">
@@ -538,70 +560,6 @@
               >{{parseFloat(payment.received_amount - payment.montant).toFixed(2)}}</p>
             </b-col>
 
-            <b-col lg="12" md="12" sm="12">
-              <b-card v-show="(payment.payment_method_id == '1' || payment.payment_method_id == 1) && !EditPaiementMode">
-                <div v-once class="typo__p" v-if="submit_showing_credit_card">
-                  <div class="spinner sm spinner-primary mt-3"></div>
-                </div>
-                <div v-if="displaySavedPaymentMethods && !submit_showing_credit_card">
-                  <div class="mt-3"><span class="mr-3">Saved Credit Card Info For This Client </span>
-                  <b-button variant="outline-info" @click="show_new_credit_card()">
-                      <span>
-                        <i class="i-Two-Windows"></i>
-                        New Credit Card
-                      </span>
-                  </b-button>
-
-                  </div>
-                  <table class="table table-hover mt-3">
-                    <thead>
-                      <tr>
-                        <th>Last 4 digits</th>
-                        <th>Type</th>
-                        <th>Exp</th>
-                        <th>Action</th>
-
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      <tr v-for="card in savedPaymentMethods" :class="{ 'bg-selected-card': isSelectedCard(card) }">
-                        <td>**** {{card.last4}}</td>
-                        <td>{{card.type}}</td>
-                        <td>{{card.exp}}</td>
-                        <td>
-                            <b-button variant="outline-primary" @click="selectCard(card)" v-if="!isSelectedCard(card) && card_id != card.card_id">
-                              <span>
-                                <i class="i-Drag-Up"></i> 
-                                Use This
-                              </span>
-                            </b-button>
-                              <i v-if="isSelectedCard(card) || card_id == card.card_id" class="i-Yes" style=" font-size: 20px; "></i> 
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div v-if="displayFormNewCard && !submit_showing_credit_card">
-                  <form id="payment-form">
-                    <label for="card-element" class="leading-7 text-sm text-gray-600">
-                      {{$t('Credit_Card_Info')}}
-                      <b-button variant="outline-info" @click="show_saved_credit_card()" v-if="savedPaymentMethods.length > 0">
-                        <span>
-                              <i class="i-Two-Windows"></i>
-                              Use Saved Credit Card
-                            </span>
-                        </b-button>
-                      </label>
-                    <div id="card-element">
-                    </div>
-                    <div id="card-errors" class="is-invalid" role="alert"></div>
-                  </form>
-                </div>
-              </b-card>
-          </b-col>
-
             <!-- Account -->
             <b-col lg="6" md="6" sm="12">
               <validation-provider name="Account">
@@ -717,126 +675,690 @@
     </validation-observer>
 
     <!-- Modal Show Invoice POS-->
-    <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Invoice_POS')">
-        <div id="invoice-POS">
-          <div style="max-width:400px;margin:0px auto">
-          <div class="info" >
-            <div class="invoice_logo text-center mb-2">
-              <img :src="'/images/'+invoice_pos.setting.logo" alt width="60" height="60">
-            </div>
-            <p>
-                <span>{{$t('date')}} : {{invoice_pos.sale.date}} <br></span>
-                <span v-show="pos_settings.show_address">{{$t('Adress')}} : {{invoice_pos.setting.CompanyAdress}} <br></span>
-                <span v-show="pos_settings.show_email">{{$t('Email')}} : {{invoice_pos.setting.email}} <br></span>
-                <span v-show="pos_settings.show_phone">{{$t('Phone')}} : {{invoice_pos.setting.CompanyPhone}} <br></span>
-                <span v-show="pos_settings.show_customer">{{$t('Customer')}} : {{invoice_pos.sale.client_name}} <br></span>
-                <span v-show="pos_settings.show_Warehouse">{{$t('warehouse')}} : {{invoice_pos.sale.warehouse_name}} <br></span>
+    <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Invoice_POS')" @shown="renderZatcaQr">
+      <div id="invoice-POS">
+        <div style="max-width:400px;margin:0px auto">
+
+          <!-- Layout 1 - Standard -->
+          <div v-if="currentReceiptLayout === 1">
+            <div class="info">
+              <div class="invoice_logo text-center mb-2">
+                <img
+                  v-show="pos_settings.show_logo !== 0"
+                  :src="'/images/'+invoice_pos.setting.logo"
+                  alt
+                  :width="pos_settings.logo_size || 60"
+                  :height="pos_settings.logo_size || 60"
+                >
+              </div>
+              <p>
+                <span v-show="pos_settings.show_store_name !== 0">
+                  <strong>{{invoice_pos.setting.CompanyName}}</strong><br>
+                </span>
+                <span v-if="invoice_pos.sale && invoice_pos.sale.Ref && pos_settings.show_reference !== 0">
+                  {{$t('Reference')}} : {{invoice_pos.sale.Ref}}<br>
+                </span>
+                <span v-show="pos_settings.show_date !== 0">
+                  {{$t('date')}} : {{invoice_pos.sale.date}}<br>
+                </span>
+                <span v-show="pos_settings.show_seller !== 0">
+                  {{$t('Seller')}} : {{invoice_pos.sale.seller_name}}<br>
+                </span>
+                <span v-show="pos_settings.show_address">
+                  {{$t('Adress')}} : {{invoice_pos.setting.CompanyAdress}}<br>
+                </span>
+                <span v-show="pos_settings.show_email">
+                  {{$t('Email')}} : {{invoice_pos.setting.email}}<br>
+                </span>
+                <span v-show="pos_settings.show_phone">
+                  {{$t('Phone')}} : {{invoice_pos.setting.CompanyPhone}}<br>
+                </span>
+                <span v-show="pos_settings.show_customer">
+                  {{$t('Customer')}} : {{invoice_pos.sale.client_name}}<br>
+                </span>
+                <span v-show="pos_settings.show_Warehouse">
+                  {{$t('warehouse')}} : {{invoice_pos.sale.warehouse_name}}<br>
+                </span>
               </p>
-          </div>
+            </div>
 
-          <table>
-            <tbody>
-              <tr v-for="detail_invoice in invoice_pos.details">
-                <td colspan="3">
-                  {{detail_invoice.name}}
-                  <br v-show="detail_invoice.is_imei && detail_invoice.imei_number !==null">
-                  <span v-show="detail_invoice.is_imei && detail_invoice.imei_number !==null ">{{$t('IMEI_SN')}} : {{detail_invoice.imei_number}}</span>
-                  <br>
-                  <span>{{formatNumber(detail_invoice.quantity,2)}} {{detail_invoice.unit_sale}} x {{formatNumber(detail_invoice.total/detail_invoice.quantity,2)}}</span>
-                </td>
-                <td style="text-align:right;vertical-align:bottom">{{formatNumber(detail_invoice.total,2)}}</td>
-              </tr>
+            <table style="width: 100%;">
+              <tbody>
+                <tr v-for="detail_invoice in invoice_pos.details">
+                  <td colspan="3">
+                    {{detail_invoice.name}}
+                    <br v-show="detail_invoice.is_imei && detail_invoice.imei_number !==null">
+                    <span v-show="detail_invoice.is_imei && detail_invoice.imei_number !==null ">
+                      {{$t('IMEI_SN')}} : {{detail_invoice.imei_number}}
+                    </span>
+                    <br>
+                    <span>
+                      {{formatNumber(detail_invoice.quantity,2)}} {{detail_invoice.unit_sale}}
+                      x
+                      {{ formatPriceDisplay(detail_invoice.total/detail_invoice.quantity,2) }}
+                    </span>
+                  </td>
+                  <td style="text-align:right;vertical-align:bottom">
+                    {{ formatPriceDisplay(detail_invoice.total,2) }}
+                  </td>
+                </tr>
 
+                <!-- Subtotal (before tax/discount/shipping) -->
+                <tr style="margin-top:10px">
+                  <td colspan="3" class="total">{{$t('pos.Subtotal')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoiceSubtotal, 2) }}
+                  </td>
+                </tr>
 
-              <tr style="margin-top:10px" v-show="pos_settings.show_discount">
-                <td colspan="3" class="total">{{$t('OrderTax')}}</td>
-                <td style="text-align:right;" class="total">{{invoice_pos.symbol}} {{formatNumber(invoice_pos.sale.taxe ,2)}} ({{formatNumber(invoice_pos.sale.tax_rate,2)}} %)</td>
-              </tr>
+                <tr style="margin-top:10px" v-show="pos_settings.show_tax">
+                  <td colspan="3" class="total">{{$t('OrderTax')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.taxe ,2) }}
+                    ({{formatNumber(invoice_pos.sale.tax_rate,2)}} %)
+                  </td>
+                </tr>
 
-              <tr style="margin-top:10px" v-show="pos_settings.show_discount">
-                <td colspan="3" class="total">{{$t('Discount')}}</td>
-                <td style="text-align:right;" class="total">{{invoice_pos.symbol}} {{formatNumber(invoice_pos.sale.discount ,2)}}</td>
-              </tr>
+                <tr style="margin-top:10px" v-show="pos_settings.show_discount">
+                  <td colspan="3" class="total">{{$t('Discount')}}</td>
+                  <td style="text-align:right;" class="total">
+                    <!-- If percentage: show percent value AND manual discount amount; else amount only -->
+                    <template v-if="String(invoice_pos.sale.discount_Method || '2') === '1'">
+                      {{ formatNumber(invoice_pos.sale.discount, 2) }}%
+                      ({{ formatPriceWithSymbol(invoice_pos.symbol, manualSaleDiscountAmount ,2) }})
+                    </template>
+                    <template v-else>
+                      {{ formatPriceWithSymbol(invoice_pos.symbol, manualSaleDiscountAmount ,2) }}
+                    </template>
+                  </td>
+                </tr>
 
-              <tr style="margin-top:10px" v-show="pos_settings.show_discount">
-                <td colspan="3" class="total">{{$t('Shipping')}}</td>
-                <td style="text-align:right;" class="total">{{invoice_pos.symbol}} {{formatNumber(invoice_pos.sale.shipping ,2)}}</td>
-              </tr>
+                <tr
+                  style="margin-top:2px"
+                  v-show="pos_settings.show_discount && invoice_pos.sale.discount_from_points && Number(invoice_pos.sale.discount_from_points) > 0"
+                >
+                  <td colspan="3" class="total">{{$t('Discount_from_Points')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.discount_from_points ,2) }}
+                  </td>
+                </tr>
 
-              <tr style="margin-top:10px">
-                <td colspan="3" class="total">{{$t('Total')}}</td>
-                <td style="text-align:right;" class="total">{{invoice_pos.symbol}} {{formatNumber(invoice_pos.sale.GrandTotal ,2)}}</td>
-              </tr>
+                <tr style="margin-top:10px" v-show="pos_settings.show_shipping">
+                  <td colspan="3" class="total">{{$t('Shipping')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.shipping ,2) }}
+                  </td>
+                </tr>
 
-                  <tr v-show="invoice_pos.sale.paid_amount < invoice_pos.sale.GrandTotal">
-                    <td colspan="3" class="total">{{$t('Paid')}}</td>
-                    <td
-                      style="text-align:right;"
-                      class="total"
-                    >{{invoice_pos.symbol}} {{formatNumber(invoice_pos.sale.paid_amount ,2)}}</td>
-                  </tr>
+                <tr style="margin-top:10px">
+                  <td colspan="3" class="total">{{$t('Total')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.GrandTotal ,2) }}
+                  </td>
+                </tr>
 
-                  <tr v-show="invoice_pos.sale.paid_amount < invoice_pos.sale.GrandTotal">
-                    <td colspan="3" class="total">{{$t('Due')}}</td>
-                    <td
-                      style="text-align:right;"
-                      class="total"
-                    >{{invoice_pos.symbol}} {{parseFloat(invoice_pos.sale.GrandTotal - invoice_pos.sale.paid_amount).toFixed(2)}}</td>
-                  </tr>
-            </tbody>
-          </table>
+                <tr v-show="pos_settings.show_paid !== 0">
+                  <td colspan="3" class="total">{{$t('Paid')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.paid_amount ,2) }}
+                  </td>
+                </tr>
 
-           <table
-                class="change mt-3"
-                style=" font-size: 10px;"
-                v-show="invoice_pos.sale.paid_amount > 0"
+                <tr v-show="pos_settings.show_due !== 0">
+                  <td colspan="3" class="total">{{$t('Due')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, (invoice_pos.sale.GrandTotal - invoice_pos.sale.paid_amount), 2) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table
+              class="change mt-3"
+              style="font-size: 10px;width: 100%;"
+              v-show="pos_settings.show_payments !== 0 && invoice_pos.sale.paid_amount > 0"
+            >
+              <thead>
+                <tr style="background: #eee;">
+                  <th style="text-align: left;" colspan="1">{{$t('PayeBy')}}:</th>
+                  <th style="text-align: center;" colspan="2">{{$t('Amount')}}:</th>
+                  <th style="text-align: right;" colspan="1">{{$t('Change')}}:</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="payment_pos in payments">
+                  <td style="text-align: left;" colspan="1">
+                    {{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}
+                  </td>
+                  <td style="text-align: center;" colspan="2">
+                    {{ formatPriceDisplay(payment_pos.montant ,2) }}
+                  </td>
+                  <td style="text-align: right;" colspan="1">
+                    {{ formatPriceDisplay(payment_pos.change ,2) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div id="legalcopy" class="ml-2">
+              <p class="legal" v-show="pos_settings.show_note">
+                <strong>{{pos_settings.note_customer}}</strong>
+              </p>
+              <!-- ZATCA (Fatoorah) QR Code (responsive) -->
+              <div
+                v-if="invoice_pos.setting && invoice_pos.setting.zatca_enabled && invoice_pos.zatca_qr && pos_settings.show_zatca_qr !== 0"
+                class="mt-2 text-center"
               >
-                <thead>
-                  <tr style="background: #eee; ">
-                    <th style="text-align: left;" colspan="1">{{$t('PayeBy')}}:</th>
-                    <th style="text-align: center;" colspan="2">{{$t('Amount')}}:</th>
-                    <th style="text-align: right;" colspan="1">{{$t('Change')}}:</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  <tr v-for="payment_pos in payments">
-                    <td style="text-align: left;" colspan="1">{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
-                    <td
-                      style="text-align: center;"
-                      colspan="2"
-                    >{{formatNumber(payment_pos.montant ,2)}}</td>
-                    <td
-                      style="text-align: right;"
-                      colspan="1"
-                    >{{formatNumber(payment_pos.change ,2)}}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-          <div id="legalcopy" class="ml-2">
-            <p class="legal" v-show="pos_settings.show_note">
-               <strong>{{pos_settings.note_customer}}</strong>
-            </p>
-            <div id="bar" v-show="pos_settings.show_barcode">
-              <barcode
-                class="barcode"
-                :format="barcodeFormat"
-                :value="invoice_pos.sale.Ref"
-                textmargin="0"
-                fontoptions="bold"
-                fontSize= "15"
-                height= "25"
-                width= "1"
-              ></barcode>
-            </div>
+                <div class="zatca-qr">
+                  <div class="zatca-qr-title">ZATCA</div>
+                  <div ref="zatcaQrcode"></div>
+                </div>
+              </div>
+              <!-- Barcode from Ref -->
+              <div
+                v-if="pos_settings.show_barcode !== 0 && invoice_pos.sale && invoice_pos.sale.Ref"
+                class="mt-2 text-center"
+              >
+                <barcode
+                  :value="invoice_pos.sale.Ref"
+                  :format="barcodeFormat"
+                  textmargin="0"
+                  fontSize="12"
+                  height="40"
+                  width="1"
+                ></barcode>
+              </div>
             </div>
           </div>
+
+          <!-- Layout 2 - Compact -->
+          <div v-else-if="currentReceiptLayout === 2">
+            <div class="info text-center">
+              <div class="invoice_logo mb-1" v-show="pos_settings.show_logo !== 0">
+                <img
+                  :src="'/images/'+invoice_pos.setting.logo"
+                  alt
+                  :width="pos_settings.logo_size || 60"
+                  :height="pos_settings.logo_size || 60"
+                >
+              </div>
+              <div v-show="pos_settings.show_store_name !== 0">
+                {{invoice_pos.setting.CompanyName}}
+              </div>
+              <small v-show="pos_settings.show_address">
+                {{invoice_pos.setting.CompanyAdress}}
+              </small>
+              <br v-show="pos_settings.show_address">
+              <small v-show="pos_settings.show_phone">
+                {{invoice_pos.setting.CompanyPhone}}
+              </small>
+              <br v-show="pos_settings.show_phone">
+              <small v-show="pos_settings.show_email">
+                {{invoice_pos.setting.email}}
+              </small>
+              <div class="mt-1">
+                <small
+                  v-if="invoice_pos.sale && invoice_pos.sale.Ref && pos_settings.show_reference !== 0"
+                >
+                  {{$t('Reference')}} : {{invoice_pos.sale.Ref}}
+                </small>
+                <br v-if="invoice_pos.sale && invoice_pos.sale.Ref && pos_settings.show_reference !== 0">
+                <small v-show="pos_settings.show_date !== 0">
+                  {{$t('date')}} : {{invoice_pos.sale.date}}
+                </small>
+                <br>
+                <small v-show="pos_settings.show_seller !== 0">
+                  {{$t('Seller')}} : {{invoice_pos.sale.seller_name}}
+                </small>
+                <br>
+                <small v-show="pos_settings.show_customer">
+                  {{$t('Customer')}} : {{invoice_pos.sale.client_name}}
+                </small>
+                <br>
+                <small v-show="pos_settings.show_Warehouse">
+                  {{$t('warehouse')}} : {{invoice_pos.sale.warehouse_name}}
+                </small>
+              </div>
+            </div>
+
+            <table class="table_data mt-2" style="width:100%; font-size:11px;">
+              <thead>
+                <tr>
+                  <th style="text-align:left">{{$t('ProductName')}}</th>
+                  <th style="text-align:center">{{$t('Quantity')}}</th>
+                  <th style="text-align:right">{{$t('Price')}}</th>
+                  <th style="text-align:right">{{$t('Total')}}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="detail_invoice in invoice_pos.details">
+                  <td>
+                    {{detail_invoice.name}}
+                    <br v-show="detail_invoice.is_imei && detail_invoice.imei_number !==null">
+                    <small
+                      v-show="detail_invoice.is_imei && detail_invoice.imei_number !==null "
+                    >
+                      {{$t('IMEI_SN')}} : {{detail_invoice.imei_number}}
+                    </small>
+                  </td>
+                  <td style="text-align:center">
+                    {{formatNumber(detail_invoice.quantity,2)}} {{detail_invoice.unit_sale}}
+                  </td>
+                  <td style="text-align:right">
+                    {{formatNumber(detail_invoice.total/detail_invoice.quantity,2)}}
+                  </td>
+                  <td style="text-align:right">
+                    {{formatNumber(detail_invoice.total,2)}}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table class="table_data mt-2" style="width:100%; font-size:11px;">
+              <tbody>
+                <tr>
+                  <td class="total">{{$t('pos.Subtotal')}}</td>
+                  <td style="text-align:right" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoiceSubtotal, 2) }}
+                  </td>
+                </tr>
+                <tr v-show="pos_settings.show_tax">
+                  <td class="total">{{$t('OrderTax')}}</td>
+                  <td style="text-align:right" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.taxe ,2) }}
+                    ({{formatNumber(invoice_pos.sale.tax_rate,2)}} %)
+                  </td>
+                </tr>
+                <tr v-show="pos_settings.show_discount">
+                  <td class="total">{{$t('Discount')}}</td>
+                  <td style="text-align:right" class="total">
+                    <!-- If percentage: show percent value AND manual discount amount; else amount only -->
+                    <template v-if="String(invoice_pos.sale.discount_Method || '2') === '1'">
+                      {{ formatNumber(invoice_pos.sale.discount, 2) }}%
+                      ({{ formatPriceWithSymbol(invoice_pos.symbol, manualSaleDiscountAmount ,2) }})
+                    </template>
+                    <template v-else>
+                      {{ formatPriceWithSymbol(invoice_pos.symbol, manualSaleDiscountAmount ,2) }}
+                    </template>
+                  </td>
+                </tr>
+                <tr
+                  v-show="pos_settings.show_discount && invoice_pos.sale.discount_from_points && Number(invoice_pos.sale.discount_from_points) > 0"
+                >
+                  <td class="total">{{$t('Discount_from_Points')}}</td>
+                  <td style="text-align:right" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.discount_from_points ,2) }}
+                  </td>
+                </tr>
+                <tr v-show="pos_settings.show_shipping">
+                  <td class="total">{{$t('Shipping')}}</td>
+                  <td style="text-align:right" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.shipping ,2) }}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="total">{{$t('Total')}}</td>
+                  <td style="text-align:right" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.GrandTotal ,2) }}
+                  </td>
+                </tr>
+                <tr v-show="pos_settings.show_paid !== 0">
+                  <td class="total">{{$t('Paid')}}</td>
+                  <td style="text-align:right" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.paid_amount ,2) }}
+                  </td>
+                </tr>
+                <tr v-show="pos_settings.show_due !== 0">
+                  <td class="total">{{$t('Due')}}</td>
+                  <td style="text-align:right" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, (invoice_pos.sale.GrandTotal - invoice_pos.sale.paid_amount), 2) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table
+              class="change mt-2"
+              style="font-size: 10px;width: 100%;"
+              v-show="pos_settings.show_payments !== 0 && invoice_pos.sale.paid_amount > 0"
+            >
+              <thead>
+                <tr style="background: #eee;">
+                  <th style="text-align: left;" colspan="1">{{$t('PayeBy')}}:</th>
+                  <th style="text-align: center;" colspan="2">{{$t('Amount')}}:</th>
+                  <th style="text-align: right;" colspan="1">{{$t('Change')}}:</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="payment_pos in payments">
+                  <td style="text-align: left;" colspan="1">
+                    {{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}
+                  </td>
+                  <td style="text-align: center;" colspan="2">
+                    {{formatNumber(payment_pos.montant ,2)}}
+                  </td>
+                  <td style="text-align: right;" colspan="1">
+                    {{formatNumber(payment_pos.change ,2)}}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div id="legalcopy" class="ml-2">
+              <p class="legal" v-show="pos_settings.show_note">
+                <strong>{{pos_settings.note_customer}}</strong>
+              </p>
+              <div
+                v-if="invoice_pos.setting && invoice_pos.setting.zatca_enabled && invoice_pos.zatca_qr && pos_settings.show_zatca_qr !== 0"
+                class="mt-2 text-center"
+              >
+                <div class="zatca-qr">
+                  <div class="zatca-qr-title">ZATCA</div>
+                  <div ref="zatcaQrcode"></div>
+                </div>
+              </div>
+              <!-- Barcode from Ref -->
+              <div
+                v-if="pos_settings.show_barcode !== 0 && invoice_pos.sale && invoice_pos.sale.Ref"
+                class="mt-2 text-center"
+              >
+                <barcode
+                  :value="invoice_pos.sale.Ref"
+                  :format="barcodeFormat"
+                  textmargin="0"
+                  fontSize="12"
+                  height="40"
+                  width="1"
+                ></barcode>
+              </div>
+            </div>
+          </div>
+
+          <!-- Layout 3 - Detailed -->
+          <div v-else>
+            <div class="info mb-2">
+              <div class="d-flex justify-content-between">
+                <div>
+                  <strong v-show="pos_settings.show_store_name !== 0">
+                    {{invoice_pos.setting.CompanyName}}
+                  </strong>
+                  <br>
+                  <span v-show="pos_settings.show_address">
+                    {{invoice_pos.setting.CompanyAdress}}
+                  </span>
+                  <br v-show="pos_settings.show_address">
+                  <span v-show="pos_settings.show_phone">
+                    {{invoice_pos.setting.CompanyPhone}}
+                  </span>
+                  <br v-show="pos_settings.show_phone">
+                  <span v-show="pos_settings.show_email">
+                    {{invoice_pos.setting.email}}
+                  </span>
+                </div>
+                <div class="invoice_logo text-center mb-2" v-show="pos_settings.show_logo !== 0">
+                  <img
+                    :src="'/images/'+invoice_pos.setting.logo"
+                    alt
+                    :width="pos_settings.logo_size || 60"
+                    :height="pos_settings.logo_size || 60"
+                  >
+                </div>
+              </div>
+              <div class="mt-2" style="font-size:11px;">
+                <div
+                  v-if="invoice_pos.sale && invoice_pos.sale.Ref && pos_settings.show_reference !== 0"
+                >
+                  {{$t('Reference')}} : {{invoice_pos.sale.Ref}}
+                </div>
+                <div v-show="pos_settings.show_date !== 0">
+                  {{$t('date')}} : {{invoice_pos.sale.date}}
+                </div>
+                <div v-show="pos_settings.show_seller !== 0">
+                  {{$t('Seller')}} : {{invoice_pos.sale.seller_name}}
+                </div>
+                <div v-show="pos_settings.show_customer">
+                  {{$t('Customer')}} : {{invoice_pos.sale.client_name}}
+                </div>
+                <div v-show="pos_settings.show_Warehouse">
+                  {{$t('warehouse')}} : {{invoice_pos.sale.warehouse_name}}
+                </div>
+              </div>
+            </div>
+
+            <table class="table_data w-100 mb-2" style="font-size:11px;">
+              <tbody>
+                <tr v-for="detail_invoice in invoice_pos.details">
+                  <td colspan="2">
+                    <strong>{{detail_invoice.name}}</strong>
+                    <br v-show="detail_invoice.is_imei && detail_invoice.imei_number !==null">
+                    <span
+                      v-show="detail_invoice.is_imei && detail_invoice.imei_number !==null "
+                    >
+                      {{$t('IMEI_SN')}} : {{detail_invoice.imei_number}}
+                    </span>
+                    <br>
+                    <small>
+                      {{formatNumber(detail_invoice.quantity,2)}} {{detail_invoice.unit_sale}}
+                      x
+                      {{ formatPriceDisplay(detail_invoice.total/detail_invoice.quantity,2) }}
+                    </small>
+                  </td>
+                  <td style="text-align:right;vertical-align:bottom">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, detail_invoice.total, 2) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table class="table_data w-100 mt-2" style="font-size:11px;">
+              <tbody>
+                <tr>
+                  <td class="total">{{$t('pos.Subtotal')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoiceSubtotal, 2) }}
+                  </td>
+                </tr>
+                <tr v-show="pos_settings.show_tax">
+                  <td class="total">{{$t('OrderTax')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.taxe ,2) }}
+                    ({{formatNumber(invoice_pos.sale.tax_rate,2)}} %)
+                  </td>
+                </tr>
+                <tr v-show="pos_settings.show_discount">
+                  <td class="total">{{$t('Discount')}}</td>
+                  <td style="text-align:right;" class="total">
+                    <!-- If percentage: show percent value AND manual discount amount; else amount only -->
+                    <template v-if="String(invoice_pos.sale.discount_Method || '2') === '1'">
+                      {{ formatNumber(invoice_pos.sale.discount, 2) }}%
+                      ({{ formatPriceWithSymbol(invoice_pos.symbol, manualSaleDiscountAmount ,2) }})
+                    </template>
+                    <template v-else>
+                      {{ formatPriceWithSymbol(invoice_pos.symbol, manualSaleDiscountAmount ,2) }}
+                    </template>
+                  </td>
+                </tr>
+                <tr
+                  v-show="pos_settings.show_discount && invoice_pos.sale.discount_from_points && Number(invoice_pos.sale.discount_from_points) > 0"
+                >
+                  <td class="total">{{$t('Discount_from_Points')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.discount_from_points ,2) }}
+                  </td>
+                </tr>
+                <tr v-show="pos_settings.show_shipping">
+                  <td class="total">{{$t('Shipping')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.shipping ,2) }}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="total">{{$t('Total')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.GrandTotal ,2) }}
+                  </td>
+                </tr>
+                <tr v-show="pos_settings.show_paid !== 0">
+                  <td class="total">{{$t('Paid')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.paid_amount ,2) }}
+                  </td>
+                </tr>
+                <tr v-show="pos_settings.show_due !== 0">
+                  <td class="total">{{$t('Due')}}</td>
+                  <td style="text-align:right;" class="total">
+                    {{ formatPriceWithSymbol(invoice_pos.symbol, (invoice_pos.sale.GrandTotal - invoice_pos.sale.paid_amount), 2) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table
+              class="change mt-3"
+              style="font-size: 10px;width: 100%;"
+              v-show="pos_settings.show_payments !== 0 && invoice_pos.sale.paid_amount > 0"
+            >
+              <thead>
+                <tr style="background: #eee;">
+                  <th style="text-align: left;" colspan="1">{{$t('PayeBy')}}:</th>
+                  <th style="text-align: center;" colspan="2">{{$t('Amount')}}:</th>
+                  <th style="text-align: right;" colspan="1">{{$t('Change')}}:</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="payment_pos in payments">
+                  <td style="text-align: left;" colspan="1">
+                    {{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}
+                  </td>
+                  <td style="text-align: center;" colspan="2">
+                    {{formatNumber(payment_pos.montant ,2)}}
+                  </td>
+                  <td style="text-align: right;" colspan="1">
+                    {{formatNumber(payment_pos.change ,2)}}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div id="legalcopy" class="ml-2">
+              <p class="legal" v-show="pos_settings.show_note">
+                <strong>{{pos_settings.note_customer}}</strong>
+              </p>
+              <div
+                v-if="invoice_pos.setting && invoice_pos.setting.zatca_enabled && invoice_pos.zatca_qr && pos_settings.show_zatca_qr !== 0"
+                class="mt-2 text-center"
+              >
+                <div class="zatca-qr">
+                  <div class="zatca-qr-title">ZATCA</div>
+                  <div ref="zatcaQrcode"></div>
+                </div>
+              </div>
+              <!-- Barcode from Ref -->
+              <div
+                v-if="pos_settings.show_barcode !== 0 && invoice_pos.sale && invoice_pos.sale.Ref"
+                class="mt-2 text-center"
+              >
+                <barcode
+                  :value="invoice_pos.sale.Ref"
+                  :format="barcodeFormat"
+                  textmargin="0"
+                  fontSize="12"
+                  height="40"
+                  width="1"
+                ></barcode>
+              </div>
+            </div>
+          </div>
+
         </div>
-      <button @click="print_it()" class="btn btn-outline-primary">
+      </div>
+      <button @click="print_it()" class="btn btn-outline-primary mt-3">
         <i class="i-Billing"></i>
         {{$t('print')}}
       </button>
+    </b-modal>
+
+    <!-- Modal Manage Documents -->
+    <b-modal
+      hide-footer
+      size="lg"
+      id="Manage_Documents"
+      :title="$t('Attach_Documents')"
+    >
+      <b-row>
+        <!-- Upload Section -->
+        <b-col lg="12" md="12" sm="12" class="mb-3">
+          <b-form-group :label="$t('Upload_Documents')">
+            <b-form-file
+              v-model="selectedFiles"
+              :placeholder="$t('Choose_files_or_drop_them_here')"
+              :drop-placeholder="$t('Drop_files_here')"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
+              @change="onFileChange"
+            ></b-form-file>
+          </b-form-group>
+          <b-button
+            variant="primary"
+            size="sm"
+            @click="Upload_Documents"
+            :disabled="!selectedFiles || selectedFiles.length === 0 || uploadProcessing"
+          >
+            <i class="i-Upload"></i> {{$t('Upload')}}
+          </b-button>
+          <div v-if="uploadProcessing" class="mt-2">
+            <div class="spinner sm spinner-primary"></div>
+          </div>
+        </b-col>
+
+        <!-- Documents List -->
+        <b-col lg="12" md="12" sm="12">
+          <h5>{{$t('Attached_Documents')}}</h5>
+          <div class="table-responsive">
+            <table class="table table-hover table-bordered table-sm">
+              <thead>
+                <tr>
+                  <th scope="col">{{$t('File_Name')}}</th>
+                  <th scope="col">{{$t('Size')}}</th>
+                  <th scope="col">{{$t('Uploaded_Date')}}</th>
+                  <th scope="col">{{$t('Action')}}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="documents.length <= 0">
+                  <td colspan="4" class="text-center">{{$t('NodataAvailable')}}</td>
+                </tr>
+                <tr v-for="document in documents" :key="document.id">
+                  <td>
+                    <i class="i-File mr-1"></i>
+                    {{document.name}}
+                  </td>
+                  <td>{{formatFileSize(document.size)}}</td>
+                  <td>{{formatDateTime(document.created_at)}}</td>
+                  <td>
+                    <div role="group" aria-label="Document actions" class="btn-group">
+                      <button
+                        title="Download"
+                        class="btn btn-icon btn-success btn-sm"
+                        @click="Download_Document(document)"
+                      >
+                        <i class="i-Download"></i>
+                      </button>
+                      <button
+                        title="Delete"
+                        class="btn btn-icon btn-danger btn-sm"
+                        @click="Remove_Document(document.id)"
+                      >
+                        <i class="i-Close"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </b-col>
+      </b-row>
     </b-modal>
   </div>
 </template>
@@ -845,10 +1367,14 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import vueEasyPrint from "vue-easy-print";
 import VueBarcode from "vue-barcode";
-import { loadStripe } from "@stripe/stripe-js";
+import Util from "../../../../utils";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting
+} from "../../../../utils/priceFormat";
 export default {
   components: {
     vueEasyPrint,
@@ -859,20 +1385,11 @@ export default {
   },
   data() {
     return {
-      stripe_key:'',
-      stripe: {},
-      cardElement: {},
       pos_settings:{},
       paymentProcessing: false,
       Submit_Processing_shipment:false,
 
-      savedPaymentMethods: [],
-      hasSavedPaymentMethod: false,
-      useSavedPaymentMethod: false,
-      selectedCard:null,
-      card_id:'',
-      is_new_credit_card: false,
-      submit_showing_credit_card: false,
+      
 
       isLoading: true,
       serverParams: {
@@ -922,12 +1439,17 @@ export default {
           CompanyName: "",
           CompanyAdress: "",
           email: "",
-          CompanyPhone: ""
-        }
+          CompanyPhone: "",
+          vat_number: "",
+          company_name_ar: "",
+          zatca_enabled: false
+        },
+        zatca_qr: ""
       },
       accounts: [],
       payments: [],
       payment: {},
+      zatcaRendered: false,
       Sale_id: "",
       limit: "10",
       sale: {},
@@ -945,7 +1467,13 @@ export default {
         message: "",
         client_name: "",
         Ref: ""
-      }
+      },
+      documents: [],
+      selectedFiles: [],
+      uploadProcessing: false,
+      // Optional price format key for frontend display (loaded from system settings/localStorage)
+      price_format_key: null,
+      currentSaleId: null
     };
   },
    mounted() {
@@ -959,28 +1487,93 @@ export default {
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
 
-    displaySavedPaymentMethods() {
-      if(this.hasSavedPaymentMethod){
-        return true;
-      }else{
-        return false;
+    // Normalize POS receipt layout selection (1, 2, or 3)
+    currentReceiptLayout() {
+      const raw = this.pos_settings && this.pos_settings.receipt_layout != null
+        ? this.pos_settings.receipt_layout
+        : 1;
+      const n = Number(raw) || 1;
+      return [1, 2, 3].includes(n) ? n : 1;
+    },
+
+    // Calculate order-level discount amount for invoice display based on discount_Method
+    // Manual discount amount only (excluding discount from points)
+    manualSaleDiscountAmount() {
+      try {
+        const sale = (this.invoice_pos && this.invoice_pos.sale) ? this.invoice_pos.sale : {};
+        const discMethod = String(sale.discount_Method || '2');
+        const discVal = Number(sale.discount || 0);
+        const taxNet = Number(sale.taxe || sale.TaxNet || 0);
+        const shipping = Number(sale.shipping || 0);
+        const grand = Number(sale.GrandTotal || 0);
+
+        // Reconstruct subtotal before discount: subtotal = GrandTotal - shipping - TaxNet
+        const subtotal = grand - shipping - taxNet;
+        if (!Number.isFinite(subtotal) || subtotal <= 0) {
+          return 0;
+        }
+
+        if (discMethod === '1') {
+          // Percentage discount: use subtotal * %
+          return parseFloat((subtotal * (discVal / 100)).toFixed(2));
+        }
+        // Fixed discount
+        return parseFloat(Math.min(discVal, subtotal).toFixed(2));
+      } catch (e) {
+        return 0;
       }
     },
 
-    displayFormNewCard() {
-      if(this.useSavedPaymentMethod){
-        return false;
-      }else{
-        return true;
+    // Total discount amount (manual + points) – kept for compatibility if needed elsewhere
+    saleDiscountAmount() {
+      try {
+        const sale = (this.invoice_pos && this.invoice_pos.sale) ? this.invoice_pos.sale : {};
+        const discMethod = String(sale.discount_Method || '2');
+        const discVal = Number(sale.discount || 0);
+        const taxNet = Number(sale.taxe || sale.TaxNet || 0);
+        const shipping = Number(sale.shipping || 0);
+        const grand = Number(sale.GrandTotal || 0);
+
+        // Reconstruct subtotal before discount: subtotal = GrandTotal - shipping - TaxNet
+        const subtotal = grand - shipping - taxNet;
+        if (!Number.isFinite(subtotal) || subtotal <= 0) {
+          return 0;
+        }
+
+        if (discMethod === '1') {
+          // Percentage discount: use subtotal * %
+          return parseFloat((subtotal * (discVal / 100)).toFixed(2));
+        }
+        // Fixed discount
+        return parseFloat(Math.min(discVal, subtotal).toFixed(2));
+      } catch (e) {
+        return 0;
       }
     },
 
-    isSelectedCard() {
-      return card => this.selectedCard === card;
+    // Receipt subtotal (sum of invoice detail totals; before order tax/discount/shipping)
+    invoiceSubtotal() {
+      try {
+        const details = (this.invoice_pos && Array.isArray(this.invoice_pos.details)) ? this.invoice_pos.details : [];
+        return details.reduce((sum, d) => {
+          const n = Number(d && d.total != null ? d.total : 0);
+          return sum + (Number.isFinite(n) ? n : 0);
+        }, 0);
+      } catch (e) {
+        return 0;
+      }
     },
+
 
     columns() {
       return [
+        {
+          label: this.$t("Action"),
+          field: "actions",
+          tdClass: "text-right",
+          thClass: "text-right",
+          sortable: false
+        },
         {
           label: this.$t("date"),
           field: "date",
@@ -1014,7 +1607,6 @@ export default {
         {
           label: this.$t("Status"),
           field: "statut",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left"
         },
@@ -1042,106 +1634,35 @@ export default {
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left"
         },
         {
           label: this.$t("Shipping_status"),
           field: "shipping_status",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left"
         },
         {
-          label: this.$t("Action"),
-          field: "actions",
-          html: true,
-          tdClass: "text-right",
-          thClass: "text-right",
+          label: this.$t("Documents"),
+          field: "documents",
+          tdClass: "text-left",
+          thClass: "text-left",
           sortable: false
         }
       ];
     }
   },
+  watch: {
+    'invoice_pos.zatca_qr'(val){
+      if(val){
+        this.$nextTick(() => this.renderZatcaQr());
+      }
+    }
+  },
   methods: {
 
-     async Selected_PaymentMethod(value) {
-      if (value == '1' || value == 1) {
-        this.savedPaymentMethods = [];
-        this.submit_showing_credit_card = true;
-        this.selectedCard = null
-        this.card_id = '';
-        // Check if the customer has saved payment methods
-        await axios.get(`/retrieve-customer?customerId=${this.sale.client_id}`)
-            .then(response => {
-                // If the customer has saved payment methods, display them
-                this.savedPaymentMethods = response.data.data;
-                this.card_id = response.data.customer_default_source;
-                this.hasSavedPaymentMethod = true;
-                this.useSavedPaymentMethod = true;
-                this.is_new_credit_card = false;
-                this.submit_showing_credit_card = false;
-            })
-            .catch(error => {
-                // If the customer does not have saved payment methods, show the card element for them to enter their payment information
-                this.hasSavedPaymentMethod = false;
-                this.useSavedPaymentMethod = false;
-                this.is_new_credit_card = true;
-                this.card_id = '';
-
-                setTimeout(() => {
-                    this.loadStripe_payment();
-                }, 1000);
-                this.submit_showing_credit_card = false;
-            });
-
-         
-        }else{
-          this.hasSavedPaymentMethod = false;
-          this.useSavedPaymentMethod = false;
-          this.is_new_credit_card = false;
-        }
-
-    },
-
-    show_saved_credit_card() {
-      this.hasSavedPaymentMethod = true;
-      this.useSavedPaymentMethod = true;
-      this.is_new_credit_card = false;
-      this.Selected_PaymentMethod(1);
-    },
-
-    show_new_credit_card() {
-      this.selectedCard = null;
-      this.card_id = '';
-      this.useSavedPaymentMethod = false;
-      this.hasSavedPaymentMethod = false;
-      this.is_new_credit_card = true;
-
-      setTimeout(() => {
-        this.loadStripe_payment();
-      }, 500);
-    },
-
-    selectCard(card) {
-      this.selectedCard = card;
-      this.card_id = card.card_id;
-    },
-
-    async loadStripe_payment() {
-      this.stripe = await loadStripe(`${this.stripe_key}`);
-      const elements = this.stripe.elements();
-      this.cardElement = elements.create("card", {
-        classes: {
-          base:
-            "bg-gray-100 rounded border border-gray-300 focus:border-indigo-500 text-base outline-none text-gray-700 p-3 leading-8 transition-colors duration-200 ease-in-out"
-        }
-      });
-      this.cardElement.mount("#card-element");
-    },
-
-
+  
     //------------------------------ Print -------------------------\\
     print_it() {
       var divContents = document.getElementById("invoice-POS").innerHTML;
@@ -1322,71 +1843,182 @@ export default {
       return `${value[0]}.${formated}`;
     },
 
-    
+    // Price formatting for display only (does NOT affect calculations or stored values)
+    // Uses the global/system price_format setting when available; otherwise falls back
+    // to the existing formatNumber helper to preserve current behavior.
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = Number.isInteger(dec) ? dec : 0;
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
+        const effectiveKey = key || null;
+        return formatPriceDisplayHelper(number, decimals, effectiveKey);
+      } catch (e) {
+        return this.formatNumber(number, dec);
+      }
+    },
+
+    formatPriceWithSymbol(symbol, number, dec) {
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
+    },
+
+    //----------------------------------------- Format File Size -------------------------------\\
+    formatFileSize(bytes) {
+      if (bytes === 0 || bytes === null || bytes === undefined) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    },
+
+    //----------------------------------------- Format Date Time -------------------------------\\
+    formatDateTime(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return value;
+
+      const pad = n => (n < 10 ? '0' + n : n);
+      const year = d.getFullYear();
+      const month = pad(d.getMonth() + 1);
+      const day = pad(d.getDate());
+      const hours = pad(d.getHours());
+      const minutes = pad(d.getMinutes());
+
+      return `${year}-${month}-${day} ${hours}:${minutes}`;
+    },
+    //----------------------------------------- Format Display Date (for tables) -------------------------------\\
+    formatDisplayDate(value) {
+      if (!value) return '';
+      // Get date format from Vuex store (loaded from database) or fallback
+      const dateFormat = this.$store.getters.getDateFormat || Util.getDateFormat(this.$store);
+      return Util.formatDisplayDate(value, dateFormat);
+    },
+
     //----------------------------------- Sales PDF ------------------------------\\
     
     Sales_PDF() {
-      var self = this;
-      let pdf = new jsPDF("p", "pt");
+      const pdf = new jsPDF('p','pt');
+      const fontPath = '/fonts/Vazirmatn-Bold.ttf';
+      try { 
+        pdf.addFont(fontPath,'Vazirmatn','normal'); 
+        pdf.addFont(fontPath,'Vazirmatn','bold'); 
+      } catch(e){}
+      pdf.setFont('Vazirmatn','normal');
 
-      const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
-
-      let columns = [
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("Customer"), dataKey: "client_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("Status"), dataKey: "statut" },
-        { title: self.$t("Total"), dataKey: "GrandTotal" },
-        { title: self.$t("Paid"), dataKey: "paid_amount" },
-        { title: self.$t("Due"), dataKey: "due" },
-        { title: self.$t("PaymentStatus"), dataKey: "payment_status" },
+      const headers = [ 
+        this.$t('Reference'), 
+        this.$t('Customer'), 
+        this.$t('warehouse'), 
+        this.$t('Status'), 
+        this.$t('Total'), 
+        this.$t('Paid'), 
+        this.$t('Due'), 
+        this.$t('PaymentStatus') 
       ];
+      
+      const body = (this.sales||[]).map(r => [ 
+        r.Ref, 
+        r.client_name, 
+        r.warehouse_name, 
+        r.statut, 
+        r.GrandTotal, 
+        r.paid_amount, 
+        r.due, 
+        r.payment_status 
+      ]);
 
-      let totalGrandTotal = self.sales.reduce((sum, sale) => sum + parseFloat(sale.GrandTotal || 0), 0);
-      let totalPaidAmount = self.sales.reduce((sum, sale) => sum + parseFloat(sale.paid_amount || 0), 0);
-      let totalDue = self.sales.reduce((sum, sale) => sum + parseFloat(sale.due || 0), 0);
+      const totals = (this.sales||[]).reduce((a,r) => ({
+        t: a.t + parseFloat(r.GrandTotal||0),
+        p: a.p + parseFloat(r.paid_amount||0),
+        d: a.d + parseFloat(r.due||0)
+      }), {t:0,p:0,d:0});
+      
+      const foot = [[ 
+        this.$t('Total'), 
+        '', 
+        '', 
+        '', 
+        totals.t.toFixed(2), 
+        totals.p.toFixed(2), 
+        totals.d.toFixed(2), 
+        '' 
+      ]];
 
-      let footer = [{
-        Ref: self.$t("Total"),
-        client_name: '',
-        warehouse_name: '',
-        statut: '',
-        GrandTotal: `${totalGrandTotal.toFixed(2)}`,
-        paid_amount: `${totalPaidAmount.toFixed(2)}`,
-        due: `${totalDue.toFixed(2)}`,
-        payment_status: '',
-      }];
+      const marginX = 40;
+      const rtl = (this.$i18n && ['ar','fa','ur','he'].includes(this.$i18n.locale)) || 
+                  (typeof document!=='undefined' && document.documentElement.dir==='rtl');
 
-      pdf.autoTable({
-        columns: columns,
-        body: self.sales,
-        foot: footer,
-        startY: 70,
-        theme: "grid", 
-        didDrawPage: (data) => {
-          pdf.setFont("VazirmatnBold");
-          pdf.setFontSize(18);
-          pdf.text("Sales List", 40, 25);   
+      autoTable(pdf, {
+        head: [headers], 
+        body, 
+        foot: foot, 
+        startY: 110, 
+        theme: 'striped', 
+        margin: { left: marginX, right: marginX },
+        styles: { 
+          font: 'Vazirmatn', 
+          fontSize: 9, 
+          cellPadding: 4, 
+          halign: rtl ? 'right' : 'left', 
+          textColor: 33 
         },
-        styles: {
-          font: "VazirmatnBold", 
-          halign: "center", // 
+        headStyles: { 
+          font: 'Vazirmatn', 
+          fontStyle: 'bold', 
+          fillColor: [63,81,181], 
+          textColor: 255 
         },
-        headStyles: {
-          fillColor: [200, 200, 200], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
+        alternateRowStyles: { 
+          fillColor: [245,247,250] 
         },
-        footStyles: {
-          fillColor: [230, 230, 230], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
+        footStyles: { 
+          font: 'Vazirmatn', 
+          fontStyle: 'bold', 
+          fillColor: [63,81,181], 
+          textColor: 255 
         },
+        columnStyles: { 
+          0: { halign: rtl ? 'right' : 'left' },  // Reference
+          1: { halign: rtl ? 'right' : 'left' },  // Customer
+          2: { halign: rtl ? 'right' : 'left' },  // Warehouse
+          3: { halign: rtl ? 'right' : 'left' },  // Status
+          4: { halign: 'left' },                  // Total
+          5: { halign: 'left' },                  // Paid
+          6: { halign: 'left' },                  // Due
+          7: { halign: rtl ? 'right' : 'left' }   // Payment Status
+        },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+          
+          // Header banner
+          pdf.setFillColor(63,81,181);
+          pdf.rect(0, 0, pageW, 60, 'F');
+          
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = this.$t('ListSales') || 'Sales List';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' }) 
+              : pdf.text(title, marginX, 38);
+          
+          // Reset text color
+          pdf.setTextColor(33);
+          
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' }) 
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
       });
 
-      pdf.save("Sales_List.pdf");
+      pdf.save('Sales_List.pdf');
     },
 
 
@@ -1401,10 +2033,14 @@ export default {
           this.invoice_pos = response.data;
           this.payments = response.data.payments;
           this.pos_settings = response.data.pos_settings;
+          this.zatcaRendered = false;
           setTimeout(() => {
             // Complete the animation of the  progress bar.
             NProgress.done();
             this.$bvModal.show("Show_invoice");
+            this.$nextTick(() => {
+              this.renderZatcaQr();
+            });
           }, 500);
 
           if(response.data.pos_settings.is_printable){
@@ -1416,6 +2052,99 @@ export default {
           // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
         });
+    },
+
+    //---------------------------------- Get_pos_Settings ----------------\\
+    get_pos_Settings() {
+      axios
+        .get("get_pos_Settings")
+        .then(response => {
+          if (response.data && response.data.pos_settings) {
+            this.pos_settings = response.data.pos_settings;
+          }
+        })
+        .catch(error => {
+          // Silently fail if settings can't be loaded
+        });
+    },
+
+    // Render ZATCA QR code if enabled
+    renderZatcaQr() {
+      try {
+        if (!this.invoice_pos || !this.invoice_pos.setting || !this.invoice_pos.setting.zatca_enabled || !this.invoice_pos.zatca_qr) return;
+        const mount = this.$refs.zatcaQrcode;
+        if (!mount) return;
+        // Clear previous
+        mount.innerHTML = '';
+
+        const draw = () => {
+          try {
+            if (!window.QRCode) return;
+            const text = String(this.invoice_pos.zatca_qr || '');
+            // set title for container
+            try { mount.setAttribute('title', text); } catch(e) {}
+            // Try with options
+            try {
+              new window.QRCode(mount, {
+                text,
+                width: 180,
+                height: 180,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: window.QRCode.CorrectLevel ? window.QRCode.CorrectLevel.H : undefined
+              });
+            } catch (e1) {
+              // Fallback to simple constructor signature
+              new window.QRCode(mount, text);
+            }
+            this.zatcaRendered = true;
+            // Ensure something was drawn; retry once if empty
+            setTimeout(() => {
+              if (mount && !mount.childNodes.length && window.QRCode) {
+                try { new window.QRCode(mount, text); } catch(e2) {}
+              }
+              // Remove inline display:block from generated IMG for centering
+              try {
+                const img = mount.querySelector('img');
+                if (img) {
+                  img.style.display = '';
+                  img.style.marginLeft = 'auto';
+                  img.style.marginRight = 'auto';
+                }
+              } catch(e3) {}
+            }, 150);
+          } catch (e) {}
+        };
+
+        if (window.QRCode) {
+          draw();
+        } else {
+          // Try local vendor, then local assets_setup, then CDN.
+          const loadScript = (src, onload, onerror) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = onload;
+            s.onerror = onerror;
+            document.head.appendChild(s);
+          };
+
+          // Prefer CDN (most reliable), then vendor, then assets_setup.
+          loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', () => {
+            if (window.QRCode) return draw();
+            loadScript('/vendor/qrcode/qrcode.min.js', () => {
+              if (window.QRCode) return draw();
+              loadScript('/assets_setup/js/qrcode.js', draw, draw);
+            }, () => loadScript('/assets_setup/js/qrcode.js', draw, () => {}));
+          }, () => {
+            loadScript('/vendor/qrcode/qrcode.min.js', () => {
+              if (window.QRCode) return draw();
+              loadScript('/assets_setup/js/qrcode.js', draw, () => {});
+            }, () => loadScript('/assets_setup/js/qrcode.js', draw, () => {}));
+          });
+        }
+      } catch (e) {
+        // noop
+      }
     },
 
     //-----------------------------  Invoice PDF ------------------------------\\
@@ -1562,7 +2291,6 @@ export default {
           this.warehouses = response.data.warehouses;
           this.payment_methods = response.data.payment_methods;
           this.totalRows = response.data.totalRows;
-          this.stripe_key = response.data.stripe_key;
           // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
@@ -1616,7 +2344,7 @@ export default {
           setTimeout(() => NProgress.done(), 500);
           this.makeToast(
             "success",
-            this.$t("Send.TitleEmail"),
+            this.$t("SendEmail"),
             this.$t("Success")
           );
         })
@@ -1640,7 +2368,7 @@ export default {
           setTimeout(() => NProgress.done(), 500);
           this.makeToast(
             "success",
-            this.$t("Send.TitleEmail"),
+            this.$t("SendEmail"),
             this.$t("Success")
           );
         })
@@ -1752,47 +2480,8 @@ export default {
     },
     //----------------------------------Process Payment (Mode Create) ------------------------------\\
     async processPayment_Create() {
-      const { token, error } = await this.stripe.createToken(
-        this.cardElement
-      );
-      if (error) {
-        this.paymentProcessing = false;
-        NProgress.done();
-        this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-      } else {
-        axios
-          .post("payment_sale", {
-            sale_id: this.sale.id,
-            client_email: this.sale.client_email,
-            client_id: this.sale.client_id,
-            date: this.payment.date,
-            montant: parseFloat(this.payment.montant).toFixed(2),
-            received_amount: parseFloat(this.payment.received_amount).toFixed(2),
-            change: parseFloat(this.payment.received_amount - this.payment.montant).toFixed(2),
-            payment_method_id: this.payment.payment_method_id,
-            account_id: this.payment.account_id,
-            notes: this.payment.notes,
-            token: token.id,
-            is_new_credit_card: this.is_new_credit_card,
-            selectedCard: this.selectedCard,
-            card_id: this.card_id,
-          })
-          .then(response => {
-            this.paymentProcessing = false;
-            Fire.$emit("Create_Facture_sale");
-            this.makeToast(
-              "success",
-              this.$t("Successfully_Created"),
-              this.$t("Success")
-            );
-          })
-          .catch(error => {
-            this.paymentProcessing = false;
-            // Complete the animation of the  progress bar.
-            NProgress.done();
-            this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-          });
-      }
+      // Legacy helper retained; Stripe processing removed, use Create_Payment instead.
+      return this.Create_Payment();
     },
 
     //----------------------------------Create Payment sale ------------------------------\\
@@ -1800,15 +2489,6 @@ export default {
       this.paymentProcessing = true;
       NProgress.start();
       NProgress.set(0.1);
-      if ((this.payment.payment_method_id == "1" || this.payment.payment_method_id == 1) && this.is_new_credit_card) {
-          if(this.stripe_key != ''){
-            this.processPayment_Create();
-          }else{
-            this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
-            NProgress.done();
-            this.paymentProcessing = false;
-          }
-        }else{
         axios
           .post("payment_sale", {
             sale_id: this.sale.id,
@@ -1819,9 +2499,6 @@ export default {
             payment_method_id: this.payment.payment_method_id,
             account_id: this.payment.account_id,
             notes: this.payment.notes,
-            is_new_credit_card: this.is_new_credit_card,
-            selectedCard: this.selectedCard,
-            card_id: this.card_id,
           })
           .then(response => {
             this.paymentProcessing = false;
@@ -1836,7 +2513,6 @@ export default {
             this.paymentProcessing = false;
             NProgress.done();
           });
-      }
     },
     //---------------------------------------- Update Payment ------------------------------\\
     Update_Payment() {
@@ -1939,6 +2615,139 @@ export default {
         account_id: "",
         notes: ""
       };
+    },
+
+    //----------------------------------------- Manage Documents -------------------------------\\
+    Manage_Documents(saleId) {
+      this.currentSaleId = saleId;
+      this.selectedFiles = [];
+      NProgress.start();
+      NProgress.set(0.1);
+      this.Get_Documents(saleId);
+    },
+
+    //----------------------------------------- Get Documents -------------------------------\\
+    Get_Documents(saleId) {
+      axios
+        .get("sales/" + saleId + "/documents")
+        .then(response => {
+          this.documents = response.data.documents || [];
+          setTimeout(() => {
+            NProgress.done();
+            this.$bvModal.show("Manage_Documents");
+          }, 500);
+        })
+        .catch(error => {
+          setTimeout(() => NProgress.done(), 500);
+          this.makeToast("danger", this.$t("Failed_to_load_documents"), this.$t("Failed"));
+        });
+    },
+
+    //----------------------------------------- On File Change -------------------------------\\
+    onFileChange(event) {
+      this.selectedFiles = event.target.files || [];
+    },
+
+    //----------------------------------------- Upload Documents -------------------------------\\
+    Upload_Documents() {
+      if (!this.selectedFiles || this.selectedFiles.length === 0) {
+        this.makeToast("warning", this.$t("Please_select_files"), this.$t("Warning"));
+        return;
+      }
+
+      this.uploadProcessing = true;
+      NProgress.start();
+      NProgress.set(0.1);
+
+      const formData = new FormData();
+      for (let i = 0; i < this.selectedFiles.length; i++) {
+        formData.append('documents[]', this.selectedFiles[i]);
+      }
+      formData.append('sale_id', this.currentSaleId);
+
+      axios
+        .post("sales/" + this.currentSaleId + "/documents", formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        .then(response => {
+          this.uploadProcessing = false;
+          this.selectedFiles = [];
+          this.Get_Documents(this.currentSaleId);
+          this.Get_Sales(this.serverParams.page);
+          this.makeToast("success", this.$t("Documents_uploaded_successfully"), this.$t("Success"));
+          setTimeout(() => NProgress.done(), 500);
+        })
+        .catch(error => {
+          this.uploadProcessing = false;
+          setTimeout(() => NProgress.done(), 500);
+          this.makeToast("danger", this.$t("Failed_to_upload_documents"), this.$t("Failed"));
+        });
+    },
+
+    //----------------------------------------- Download Document -------------------------------\\
+    Download_Document(doc) {
+      NProgress.start();
+      NProgress.set(0.1);
+      
+      axios
+        .get("sales/documents/" + doc.id + "/download", {
+          responseType: "blob"
+        })
+        .then(response => {
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const link = window.document.createElement("a");
+          link.href = url;
+          link.setAttribute("download", doc.name);
+          window.document.body.appendChild(link);
+          link.click();
+          window.document.body.removeChild(link);
+          setTimeout(() => NProgress.done(), 500);
+        })
+        .catch(error => {
+          setTimeout(() => NProgress.done(), 500);
+          this.makeToast("danger", this.$t("Failed_to_download_document"), this.$t("Failed"));
+        });
+    },
+
+    //----------------------------------------- Remove Document -------------------------------\\
+    Remove_Document(documentId) {
+      this.$swal({
+        title: this.$t("Delete_Title"),
+        text: this.$t("Delete_Text"),
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        cancelButtonText: this.$t("Delete_cancelButtonText"),
+        confirmButtonText: this.$t("Delete_confirmButtonText")
+      }).then(result => {
+        if (result.value) {
+          NProgress.start();
+          NProgress.set(0.1);
+          axios
+            .delete("sales/documents/" + documentId)
+            .then(() => {
+              this.$swal(
+                this.$t("Delete_Deleted"),
+                this.$t("Deleted_in_successfully"),
+                "success"
+              );
+              this.Get_Documents(this.currentSaleId);
+              this.Get_Sales(this.serverParams.page);
+              setTimeout(() => NProgress.done(), 500);
+            })
+            .catch(() => {
+              setTimeout(() => NProgress.done(), 500);
+              this.$swal(
+                this.$t("Delete_Failed"),
+                this.$t("Delete_Therewassomethingwronge"),
+                "warning"
+              );
+            });
+        }
+      });
     },
 
      //---------------------- Get_Data_Create  ------------------------------\\
@@ -2113,6 +2922,7 @@ export default {
   //----------------------------- Created function-------------------\\
   created() {
     this.Get_Sales(1);
+    this.get_pos_Settings();
 
     Fire.$on("Create_Facture_sale", () => {
       setTimeout(() => {

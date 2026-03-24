@@ -12,14 +12,13 @@ class Designation extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'designation','department_id','company_id'
+        'designation', 'department_id', 'company_id',
     ];
 
     protected $casts = [
         'department_id' => 'integer',
-        'company_id'    => 'integer',
+        'company_id' => 'integer',
     ];
-
 
     public function company()
     {

@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class PaymentWithCreditCard extends Model
 {
-
     protected $table = 'payment_with_credit_card';
 
     protected $fillable = [
@@ -17,6 +16,4 @@ class PaymentWithCreditCard extends Model
         'payment_id' => 'integer',
         'customer_id' => 'integer',
     ];
-
-
 }

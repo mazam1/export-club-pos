@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            
+
             // Warranty
             $table->integer('warranty_period')->nullable()->after('type');
             $table->string('warranty_unit')->nullable()->after('warranty_period'); // days|months|years

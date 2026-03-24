@@ -29,7 +29,7 @@
       }"
         :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
       >
-        <div slot="selected-row-actions">
+        <div slot="selected-row-actions" v-if="currentUserPermissions.includes('Suppliers_delete')">
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
         </div>
         <div slot="table-actions" class="mt-2 mb-3">
@@ -50,15 +50,16 @@
               >
               <i class="i-File-Excel"></i> EXCEL
           </vue-excel-xlsx>
-          <b-button
-            @click="Show_import_providers()"
-            size="sm"
-            variant="info m-1"
+         
+          <router-link
             v-if="currentUserPermissions && currentUserPermissions.includes('Suppliers_import')"
+            :to="{ name: 'Import_Suppliers' }"
+            class="btn btn-info btn-sm m-1"
           >
             <i class="i-Download"></i>
             {{ $t("Import_Suppliers") }}
-          </b-button>
+          </router-link>
+
           <b-button
             @click="New_Provider()"
             size="sm"
@@ -188,110 +189,6 @@
       </div>
     </b-sidebar>
 
-    <!-- Add & Edit Provider -->
-    <validation-observer ref="Create_Provider">
-      <b-modal hide-footer size="lg" id="New_Provider" :title="editmode?$t('Edit'):$t('Add')">
-        <b-form @submit.prevent="Submit_Provider">
-          <b-row>
-            <!-- Provider Name -->
-            <b-col md="6" sm="12">
-              <validation-provider
-                name="Name Provider"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('SupplierName') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="name-feedback"
-                    label="name"
-                    v-model="provider.name"
-                    :placeholder="$t('SupplierName')"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-             <!-- Provider Email -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Email')">
-                  <b-form-input
-                    label="email"
-                    v-model="provider.email"
-                    :placeholder="$t('Email')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Provider Phone -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Phone')">
-                  <b-form-input
-                    label="Phone"
-                    v-model="provider.phone"
-                    :placeholder="$t('Phone')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Provider Country -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Country')">
-                  <b-form-input
-                    label="Country"
-                    v-model="provider.country"
-                    :placeholder="$t('Country')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Provider City -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('City')">
-                  <b-form-input
-                    label="City"
-                    v-model="provider.city"
-                    :placeholder="$t('City')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Provider Tax_Number -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Tax_Number')">
-                  <b-form-input
-                    label="Tax_Number"
-                    v-model="provider.tax_number"
-                    :placeholder="$t('Tax_Number')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Provider Adress -->
-            <b-col md="12" sm="12">
-                <b-form-group :label="$t('Adress')">
-                  <textarea
-                    label="Adress"
-                    class="form-control"
-                    rows="4"
-                    v-model="provider.adresse"
-                    :placeholder="$t('Adress')"
-                 ></textarea>
-                </b-form-group>
-            </b-col>
-
-            <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
-            </b-col>
-
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
 
     <!-- Modal Pay_due-->
     <validation-observer ref="ref_pay_due">
@@ -305,7 +202,7 @@
           <b-row>
           
             <!-- Paying Amount  -->
-            <b-col lg="6" md="12" sm="12">
+            <b-col lg="12" md="12" sm="12">
               <validation-provider
                 name="Amount"
                 :rules="{ required: true , regex: /^\d*\.?\d*$/}"
@@ -346,7 +243,7 @@
             </b-col>
 
                <!-- Account -->
-               <b-col lg="6" md="6" sm="12">
+               <b-col lg="12" md="6" sm="12">
               <validation-provider name="Account">
                 <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
                   <v-select
@@ -397,7 +294,7 @@
           <b-row>
           
             <!-- Paying Amount -->
-            <b-col lg="6" md="12" sm="12">
+            <b-col lg="12" md="12" sm="12">
               <validation-provider
                 name="Amount"
                 :rules="{ required: true , regex: /^\d*\.?\d*$/}"
@@ -438,7 +335,7 @@
             </b-col>
 
                <!-- Account -->
-               <b-col lg="6" md="6" sm="12">
+               <b-col lg="12" md="12" sm="12">
               <validation-provider name="Account">
                 <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
                   <v-select
@@ -636,6 +533,25 @@
               </tr>
             </tbody>
           </table>
+          
+          <!-- Custom Fields Section -->
+          <div v-if="providerCustomFields && providerCustomFields.length > 0" class="mt-4">
+            <h6 class="text-primary mb-3">
+              <i class="i-Data-Settings mr-2"></i>
+              {{ $t('CustomFields') }}
+            </h6>
+            <table class="table table-striped table-md">
+              <tbody>
+                <tr v-for="field in providerCustomFields" :key="field.id">
+                  <td>{{ field.name }}</td>
+                  <th>{{ getCustomFieldDisplayValue(field) }}</th>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else-if="providerCustomFields && providerCustomFields.length === 0" class="mt-4">
+            <p class="text-muted">{{ $t('NoCustomFields') || 'No custom fields defined for suppliers.' }}</p>
+          </div>
         </b-col>
       </b-row>
     </b-modal>
@@ -657,7 +573,7 @@
               <b-form-invalid-feedback
                 id="File-feedback"
                 class="d-block"
-              >{{$t('field_must_be_in_csv_format')}}</b-form-invalid-feedback>
+              >File must be in xlsx format</b-form-invalid-feedback>
             </b-form-group>
           </b-col>
 
@@ -670,7 +586,7 @@
 
           <b-col md="6" sm="12">
             <b-button
-              :href="'/import/exemples/import_providers.csv'"
+              :href="'/import/exemples/import_providers.xlsx'"
               variant="info"
               size="sm"
               block
@@ -727,7 +643,7 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 export default {
   metaInfo: {
@@ -796,6 +712,7 @@ export default {
         notes: "",
         payment_method_id: "",
       },
+      providerCustomFields: [],
     };
   },
 
@@ -869,7 +786,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false
@@ -879,24 +795,6 @@ export default {
   },
 
   methods: {
-    //------------- Submit Validation Create & Edit Provider
-    Submit_Provider() {
-      this.$refs.Create_Provider.validate().then(success => {
-        if (!success) {
-          this.makeToast(
-            "danger",
-            this.$t("Please_fill_the_form_correctly"),
-            this.$t("Failed")
-          );
-        } else {
-          if (!this.editmode) {
-            this.Create_Provider();
-          } else {
-            this.Update_provider();
-          }
-        }
-      });
-    },
 
     //----------------------------------- Show import providers -------------------------------\\
     Show_import_providers() {
@@ -925,7 +823,7 @@ export default {
       }
     },
 
-    //----------------------------------------Submit  import providers-----------------\\
+     //----------------------------------------Submit import providers-----------------\\
     Submit_import() {
       // Start the progress bar.
       NProgress.start();
@@ -933,38 +831,42 @@ export default {
       var self = this;
       self.ImportProcessing = true;
       self.data.append("providers", self.import_providers);
+
       axios
-        .post("providers/import/csv", self.data)
+        .post("providers/import/csv", this.data)
         .then(response => {
-          self.ImportProcessing = false;
-          if (response.data.status === true) {
-            this.makeToast(
-              "success",
-              this.$t("Successfully_Imported"),
-              this.$t("Success")
-            );
-            Fire.$emit("Event_import");
-          } else if (response.data.status === false) {
-            this.makeToast(
-              "danger",
-              this.$t("field_must_be_in_csv_format"),
-              this.$t("Failed")
-            );
-          }
-          // Complete the animation of theprogress bar.
+          this.ImportProcessing = false;
           NProgress.done();
+
+          if (response.data.status === true) {
+            this.makeToast("success", this.$t("Successfully_Imported"), this.$t("Success"));
+            Fire.$emit("Event_import");
+          } else {
+            // Show message returned from backend
+            this.makeToast("danger", response.data.message || this.$t("Import_failed"), this.$t("Failed"));
+          }
         })
         .catch(error => {
-           self.ImportProcessing = false;
-          // Complete the animation of theprogress bar.
+          this.ImportProcessing = false;
           NProgress.done();
-          this.makeToast(
-            "danger",
-            this.$t("Please_follow_the_import_instructions"),
-            this.$t("Failed")
-          );
+
+          if (error.response) {
+            // Show Laravel validation error
+            if (error.response.status === 422 && error.response.data.errors) {
+              const firstError = Object.values(error.response.data.errors)[0][0];
+              this.makeToast("danger", firstError, this.$t("Failed"));
+            } else {
+              // Other backend exceptions
+              const message = error.response.data.message || this.$t("Please_follow_the_import_instructions");
+              this.makeToast("danger", message, this.$t("Failed"));
+            }
+          } else {
+            // Network error or no response
+            this.makeToast("danger", this.$t("Network_or_server_error"), this.$t("Failed"));
+          }
         });
     },
+
 
     //------ update Params Table
     updateParams(newProps) {
@@ -1043,61 +945,84 @@ export default {
       let pdf = new jsPDF("p", "pt");
 
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold");
+      try {
+        pdf.addFont(fontPath, "Vazirmatn", "normal");
+        pdf.addFont(fontPath, "Vazirmatn", "bold");
+      } catch(e) {}
+      pdf.setFont("Vazirmatn", "normal");
 
-      let columns = [
-        { title: self.$t("Code"), dataKey: "code" },
-        { title: self.$t("Name"), dataKey: "name" },
-        { title: self.$t("Phone"), dataKey: "phone" },
-        { title: self.$t("Country"), dataKey: "country" },
-        { title: self.$t("City"), dataKey: "city" },
-        { title: self.$t("Total_Purchase_Due"), dataKey: "due" },
-        { title: self.$t("Total_Purchase_Return_Due"), dataKey: "return_Due" },
+      const headers = [
+        self.$t("Code"),
+        self.$t("Name"),
+        self.$t("Phone"),
+        self.$t("Country"),
+        self.$t("City"),
+        self.$t("Total_Purchase_Due"),
+        self.$t("Total_Purchase_Return_Due")
       ];
-      pdf.autoTable({
-        columns: columns,
-        body: self.providers,
-        startY: 70,
-        theme: "grid", 
-        didDrawPage: (data) => {
-          pdf.setFont("VazirmatnBold");
-          pdf.setFontSize(18);
-          pdf.text("Provider List", 40, 25);   
-        },
-        styles: {
-          font: "VazirmatnBold", 
-          halign: "center", // 
-        },
-        headStyles: {
-          fillColor: [200, 200, 200], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
-        footStyles: {
-          fillColor: [230, 230, 230], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
+
+      const body = (self.providers || []).map(provider => ([
+        provider.code,
+        provider.name,
+        provider.phone,
+        provider.country,
+        provider.city,
+        provider.due,
+        provider.return_Due
+      ]));
+
+      const marginX = 40;
+      const rtl =
+        (self.$i18n && ['ar','fa','ur','he'].includes(self.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+
+      autoTable(pdf, {
+        head: [headers],
+        body: body,
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+
+          // Header banner
+          pdf.setFillColor(63,81,181);
+          pdf.rect(0, 0, pageW, 60, 'F');
+
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = self.$t('ProvidersList') || 'Provider List';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
+
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
       });
 
       pdf.save("Provider_List.pdf");
     },
 
-    //------------------------------ Show Modal (create Provider) -------------------------------\\
+    //------------------------------ Navigate to Create Supplier Page -------------------------------\\
     New_Provider() {
-      this.reset_Form();
-      this.editmode = false;
-      this.$bvModal.show("New_Provider");
+      this.$router.push({ name: 'Create_Supplier' });
     },
 
-    //------------------------------ Show Modal (Edit Provider) -------------------------------\\
+    //------------------------------ Navigate to Edit Supplier Page -------------------------------\\
     Edit_Provider(provider) {
-      this.Get_Providers(this.serverParams.page);
-      this.reset_Form();
-      this.provider = provider;
-      this.editmode = true;
-      this.$bvModal.show("New_Provider");
+      this.$router.push({ name: 'Edit_Supplier', params: { id: provider.id } });
     },
 
     //----------------------------  Get all Providers  -----------------------\\
@@ -1146,34 +1071,6 @@ export default {
         });
     },
 
-    //---------------------------- Create Provider  -----------------------\\
-    Create_Provider() {
-      this.SubmitProcessing = true;
-      axios
-        .post("providers", {
-          name: this.provider.name,
-          email: this.provider.email,
-          phone: this.provider.phone,
-          tax_number: this.provider.tax_number,
-          country: this.provider.country,
-          city: this.provider.city,
-          adresse: this.provider.adresse
-        })
-        .then(response => {
-          Fire.$emit("Event_Provider");
-
-          this.makeToast(
-            "success",
-            this.$t("Successfully_Created"),
-            this.$t("Success")
-          );
-          this.SubmitProcessing = false;
-        })
-        .catch(error => {
-          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-          this.SubmitProcessing = false;
-        });
-    },
 
     //--------------------------- Update Provider -----------------------\\
     Update_provider() {
@@ -1210,7 +1107,61 @@ export default {
       NProgress.start();
       NProgress.set(0.1);
       this.provider = provider;
-      Fire.$emit("Get_Details_Provider");
+      
+      // Load custom fields and their values
+      Promise.all([
+        axios.get("custom-fields?entity_type=provider"),
+        axios.get("custom-field-values", {
+          params: {
+            entity_type: "App\\Models\\Provider",
+            entity_id: provider.id
+          }
+        })
+      ])
+        .then(([fieldsResponse, valuesResponse]) => {
+          const allFields = fieldsResponse.data.custom_fields || [];
+          const fieldValues = valuesResponse.data.success && valuesResponse.data.values 
+            ? valuesResponse.data.values 
+            : {};
+
+          // Filter to only show active custom fields (matching the form behavior)
+          const activeFields = allFields.filter(field => field.is_active !== false);
+
+          // Map active custom fields with their values (or empty if no value)
+          this.providerCustomFields = activeFields.map(field => {
+            const fieldValue = fieldValues[field.id];
+            return {
+              id: field.id,
+              name: field.name,
+              field_type: field.field_type,
+              value: fieldValue ? fieldValue.value : null
+            };
+          });
+
+          NProgress.done();
+          Fire.$emit("Get_Details_Provider");
+        })
+        .catch(error => {
+          console.error('Error loading custom fields:', error);
+          this.providerCustomFields = [];
+          NProgress.done();
+          Fire.$emit("Get_Details_Provider");
+        });
+    },
+
+    //----------------------------------- Get Custom Field Display Value -------------------------------\\
+    getCustomFieldDisplayValue(field) {
+      if (!field.value && field.value !== 0 && field.value !== false) {
+        return '-';
+      }
+      
+      if (field.field_type === 'checkbox') {
+        return field.value === '1' || field.value === 1 || field.value === true 
+          ? this.$t('Yes') 
+          : this.$t('No');
+      }
+      
+      return field.value;
     },
 
     //--------------------------------- Reset Form -----------------------\\
@@ -1584,7 +1535,6 @@ export default {
     Fire.$on("Event_Provider", () => {
       setTimeout(() => {
         this.Get_Providers(this.serverParams.page);
-        this.$bvModal.hide("New_Provider");
       }, 500);
     });
 

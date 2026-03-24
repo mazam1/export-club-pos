@@ -15642,9 +15642,9 @@ a.typo_link.text-gray-400:after {
         border-color: transparent transparent #663399 transparent; }
 
 .layout-sidebar-large .sidebar-left-secondary {
-  left: calc(-220px - 20px);
+  left: calc(-223px - 20px);
   z-index: 89;
-  width: 220px;
+  width: 223px;
   padding: .75rem 0;
   transition: all .24s ease-in-out;
   background: #26222a; }
@@ -15703,7 +15703,7 @@ a.typo_link.text-gray-400:after {
 .layout-sidebar-large .sidebar-overlay {
   display: none;
   position: fixed;
-  width: calc(100% - 120px - 220px);
+  width: calc(100% - 120px - 223px);
   height: calc(100vh - 80px);
   bottom: 0;
   right: 0;
@@ -15768,7 +15768,7 @@ a.typo_link.text-gray-400:after {
 
 [dir="rtl"] .layout-sidebar-large .sidebar-left-secondary {
   left: auto !important;
-  right: calc(-220px - 20px); }
+  right: calc(-223px - 20px); }
   [dir="rtl"] .layout-sidebar-large .sidebar-left-secondary.open {
     left: auto !important;
     right: 120px; }

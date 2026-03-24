@@ -30,7 +30,7 @@
       }"
         styleClass="tableOne table-hover vgt-table"
       >
-        <div slot="selected-row-actions">
+        <div slot="selected-row-actions" v-if="currentUserPermissions && currentUserPermissions.includes('deposit_delete')">
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
         </div>
         <div slot="table-actions" class="mt-2 mb-3">
@@ -119,7 +119,7 @@
 
           <!-- deposit_Category  -->
           <b-col md="12">
-            <b-form-group :label="$t('deposit_Category')">
+            <b-form-group :label="$t('Deposit_Category')">
               <v-select
                 :reduce="label => label.value"
                 :placeholder="$t('Choose_Category')"
@@ -156,7 +156,7 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 export default {
   metaInfo: {
@@ -240,7 +240,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false
@@ -266,57 +265,83 @@ export default {
       let pdf = new jsPDF("p", "pt");
 
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
+      try {
+        pdf.addFont(fontPath, "Vazirmatn", "normal");
+        pdf.addFont(fontPath, "Vazirmatn", "bold");
+      } catch(e) {}
+      pdf.setFont("Vazirmatn", "normal");
 
-      let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "deposit_ref" },
-        { title: self.$t("Categorie"), dataKey: "category_name" },
-        { title: self.$t("Account"), dataKey: "account_name" },
-        { title: self.$t("Amount"), dataKey: "amount" },
+      const headers = [
+        self.$t("date"),
+        self.$t("Reference"),
+        self.$t("Categorie"),
+        self.$t("Account"),
+        self.$t("Amount")
       ];
+
+      const body = (self.deposits || []).map(deposit => ([
+        deposit.date,
+        deposit.deposit_ref,
+        deposit.category_name,
+        deposit.account_name,
+        deposit.amount
+      ]));
 
       // Calculate totals
       let totalGrandTotal = self.deposits.reduce((sum, deposit) => sum + parseFloat(deposit.amount || 0), 0);
      
-     let footer = [{
-       date: self.$t("Total"),
-       Ref: '',
-       category_name: '',
-       account_name: '',
-       amount: `${totalGrandTotal.toFixed(2)}`,
-      
-     }];
+      const footer = [[
+        self.$t("Total"),
+        '',
+        '',
+        '',
+        totalGrandTotal.toFixed(2)
+      ]];
 
-    pdf.autoTable({
-      columns: columns,
-        body: self.deposits,
+      const marginX = 40;
+      const rtl =
+        (self.$i18n && ['ar','fa','ur','he'].includes(self.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+
+      autoTable(pdf, {
+        head: [headers],
+        body: body,
         foot: footer,
-        startY: 70,
-        theme: "grid", 
-        didDrawPage: (data) => {
-          pdf.setFont("VazirmatnBold");
-          pdf.setFontSize(18);
-          pdf.text("Deposit List", 40, 25);   
-        },
-        styles: {
-          font: "VazirmatnBold", 
-          halign: "center", // 
-        },
-        headStyles: {
-          fillColor: [200, 200, 200], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
-        footStyles: {
-          fillColor: [230, 230, 230], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
-    });
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        footStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
 
-    pdf.save("Deposit_List.pdf");
+          // Header banner
+          pdf.setFillColor(63,81,181);
+          pdf.rect(0, 0, pageW, 60, 'F');
+
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = self.$t('List_Deposit') || 'Deposit List';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
+
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
+      });
+
+      pdf.save("Deposit_List.pdf");
 
     },
 

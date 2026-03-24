@@ -1,18 +1,15 @@
 <?php
 
 namespace App\Http\Controllers\hrm;
-use App\Http\Controllers\Controller;
 
-use Illuminate\Http\Request;
-use App\Models\Department;
+use App\Http\Controllers\Controller;
 use App\Models\Company;
 use Carbon\Carbon;
-use DB;
+use Illuminate\Http\Request;
 
 class CompanyController extends Controller
 {
-
-    //----------- GET ALL  company --------------\\
+    // ----------- GET ALL  company --------------\\
 
     public function index(Request $request)
     {
@@ -38,7 +35,7 @@ class CompanyController extends Controller
                 });
             });
         $totalRows = $companies->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $companies = $companies->offset($offSet)
@@ -52,54 +49,55 @@ class CompanyController extends Controller
         ]);
     }
 
-    //----------- Store new Company --------------\\
+    // ----------- Store new Company --------------\\
 
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Company::class);
 
         request()->validate([
-            'name'      => 'required|string',
+            'name' => 'required|string',
         ]);
 
         Company::create([
-            'name'    => $request['name'],
-            'email'   => $request['email'],
-            'phone'   => $request['phone'],
+            'name' => $request['name'],
+            'email' => $request['email'],
+            'phone' => $request['phone'],
             'country' => $request['country'],
         ]);
 
         return response()->json(['success' => true]);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
-        }
 
-    //-----------Update Warehouse --------------\\
+    }
+
+    // -----------Update Warehouse --------------\\
 
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Company::class);
 
         request()->validate([
-            'name'      => 'required|string',
+            'name' => 'required|string',
         ]);
 
         Company::whereId($id)->update([
-            'name'    => $request['name'],
-            'email'   => $request['email'],
-            'phone'   => $request['phone'],
+            'name' => $request['name'],
+            'email' => $request['email'],
+            'phone' => $request['phone'],
             'country' => $request['country'],
         ]);
 
         return response()->json(['success' => true]);
     }
 
-    //----------- Delete  company --------------\\
+    // ----------- Delete  company --------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -109,11 +107,10 @@ class CompanyController extends Controller
             'deleted_at' => Carbon::now(),
         ]);
 
-
         return response()->json(['success' => true]);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -130,15 +127,14 @@ class CompanyController extends Controller
         return response()->json(['success' => true]);
     }
 
-    //----------- GET ALL  Company --------------\\
-    
+    // ----------- GET ALL  Company --------------\\
+
     public function Get_all_Company()
     {
         $companies = Company::where('deleted_at', '=', null)
-        ->orderBy('id', 'desc')
-        ->get(['id','name']);
+            ->orderBy('id', 'desc')
+            ->get(['id', 'name']);
 
         return response()->json($companies);
     }
-
 }

@@ -12,18 +12,17 @@ class Leave extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'company_id','department_id','employee_id','leave_type_id','start_date','end_date',
-        'reason','attachment','half_day','days','status'
+        'company_id', 'department_id', 'employee_id', 'leave_type_id', 'start_date', 'end_date',
+        'reason', 'attachment', 'half_day', 'days', 'status',
     ];
 
     protected $casts = [
-        'company_id'  => 'integer',
-        'department_id'  => 'integer',
-        'employee_id'  => 'integer',
-        'leave_type_id'=>'integer',
-        'half_day'     => 'integer',
+        'company_id' => 'integer',
+        'department_id' => 'integer',
+        'employee_id' => 'integer',
+        'leave_type_id' => 'integer',
+        'half_day' => 'integer',
     ];
-
 
     public function employee()
     {

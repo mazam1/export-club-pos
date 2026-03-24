@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Unit;
 use App\Models\Product;
+use App\Models\Unit;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class UnitsController extends BaseController
 {
-
-    //-------------- show All Units -----------\\
+    // -------------- show All Units -----------\\
 
     public function index(Request $request)
     {
@@ -22,7 +21,7 @@ class UnitsController extends BaseController
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        $data = array();
+        $data = [];
 
         $Units = Unit::where('deleted_at', '=', null)
 
@@ -34,7 +33,7 @@ class UnitsController extends BaseController
                 });
             });
         $totalRows = $Units->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $Units = $Units->offset($offSet)
@@ -74,7 +73,7 @@ class UnitsController extends BaseController
 
     }
 
-    //-------------- STORE NEW UNIT -----------\\
+    // -------------- STORE NEW UNIT -----------\\
 
     public function store(Request $request)
     {
@@ -105,7 +104,7 @@ class UnitsController extends BaseController
 
     }
 
-    //-------------- UPDATE UNIT -----------\\
+    // -------------- UPDATE UNIT -----------\\
 
     public function update(Request $request, $id)
     {
@@ -138,14 +137,14 @@ class UnitsController extends BaseController
 
     }
 
-    //-------------- REMOVE UNIT -----------\\
+    // -------------- REMOVE UNIT -----------\\
 
     public function destroy(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'delete', Unit::class);
 
         $Sub_Unit_exist = Unit::where('base_unit', $id)->where('deleted_at', null)->exists();
-        if (!$Sub_Unit_exist) {
+        if (! $Sub_Unit_exist) {
             Unit::whereId($id)->update([
                 'deleted_at' => Carbon::now(),
             ]);
@@ -157,23 +156,21 @@ class UnitsController extends BaseController
 
     }
 
-    //-------------- Get Units SubBase ------------------\\
+    // -------------- Get Units SubBase ------------------\\
 
     public function Get_Units_SubBase(request $request)
     {
         $units = Unit::where('deleted_at', null)->where(function ($query) use ($request) {
             return $query->when($request->filled('id'), function ($query) use ($request) {
                 return $query->where('id', $request->id)
-                              ->orWhere('base_unit', $request->id);
+                    ->orWhere('base_unit', $request->id);
             });
         })->get();
 
         return response()->json($units);
     }
 
-
-
-    //-------------- Get Sales Units ------------------\\
+    // -------------- Get Sales Units ------------------\\
 
     public function Get_sales_units(request $request)
     {
@@ -185,10 +182,9 @@ class UnitsController extends BaseController
         })->first();
 
         $units = Unit::where('base_unit', $product_unit_id->unit_id)
-                        ->orWhere('id', $product_unit_id->unit_id)
-                        ->get();
-        
+            ->orWhere('id', $product_unit_id->unit_id)
+            ->get();
+
         return response()->json($units);
     }
-
 }

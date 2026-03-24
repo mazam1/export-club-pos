@@ -1,5 +1,7 @@
 <?php
 
+namespace Database\Seeders;
+
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -12,9 +14,9 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
-       // Insert some stuff
+        // Insert some stuff
         DB::table('users')->insert(
-            array(
+            [
                 'id' => 1,
                 'firstname' => 'William',
                 'lastname' => 'Castillo',
@@ -26,7 +28,8 @@ class UserSeeder extends Seeder
                 'role_id' => 1,
                 'statut' => 1,
                 'is_all_warehouses' => 1,
-            )
+                'record_view' => 1,
+            ]
         );
     }
 }

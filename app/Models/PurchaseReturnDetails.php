@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class PurchaseReturnDetails extends Model
 {
-
     protected $fillable = [
-        'id', 'product_id', 'purchase_return_id','purchase_unit_id', 'total', 'quantity', 'product_variant_id',
+        'id', 'product_id', 'purchase_return_id', 'purchase_unit_id', 'total', 'quantity', 'product_variant_id',
         'cost', 'TaxNet', 'discount', 'discount_method', 'tax_method',
     ];
 
@@ -33,5 +32,4 @@ class PurchaseReturnDetails extends Model
     {
         return $this->belongsTo('App\Models\Product');
     }
-
 }

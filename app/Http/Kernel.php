@@ -3,7 +3,6 @@
 namespace App\Http;
 
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
-use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 class Kernel extends HttpKernel
 {
@@ -14,8 +13,6 @@ class Kernel extends HttpKernel
      *
      * @var array
      */
-
-
     protected $middlewarePriority = [
         \Illuminate\Session\Middleware\StartSession::class,
         \Illuminate\View\Middleware\ShareErrorsFromSession::class,
@@ -49,6 +46,9 @@ class Kernel extends HttpKernel
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+
+            \App\Http\Middleware\SetLocale::class,
+
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \Laravel\Passport\Http\Middleware\CreateFreshApiToken::class,
@@ -87,6 +87,12 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'Is_Active' => \App\Http\Middleware\Is_Active::class,
         'store.data' => \App\Http\Middleware\StoreDataMiddleware::class,
+        'setlocale' => \App\Http\Middleware\SetLocale::class,
+        'XSS' => \App\Http\Middleware\XSS::class,
+        'request.safety' => \App\Http\Middleware\RequestSafety::class,
+        'store.enabled' => \App\Http\Middleware\EnsureStoreEnabled::class,
+        // Security: inactivity auto-logout + token activity tracking (Passport)
+        'token.timeout' => \App\Http\Middleware\EnforceApiTokenTimeout::class,
 
     ];
 }

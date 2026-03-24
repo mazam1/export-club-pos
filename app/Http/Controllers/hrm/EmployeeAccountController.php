@@ -1,35 +1,30 @@
 <?php
 
 namespace App\Http\Controllers\hrm;
-use App\Http\Controllers\Controller;
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\EmployeeAccount;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-use DB;
+use Illuminate\Http\Request;
 
 class EmployeeAccountController extends Controller
 {
-
-
     public function index(Request $request)
     {
         //
     }
 
-    //----------- Store new EmployeeAccount --------------\\
+    // ----------- Store new EmployeeAccount --------------\\
 
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Employee::class);
 
         $this->validate($request, [
-            'bank_name'      => 'required|string|max:255',
-            'bank_branch'    => 'required|string|max:255',
-            'account_no'     => 'required|string|max:255',
+            'bank_name' => 'required|string|max:255',
+            'bank_branch' => 'required|string|max:255',
+            'account_no' => 'required|string|max:255',
         ]);
 
         EmployeeAccount::create($request->all());
@@ -37,23 +32,24 @@ class EmployeeAccountController extends Controller
         return response()->json(['success' => true]);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
-        }
 
-    //-----------Update EmployeeAccount --------------\\
+    }
+
+    // -----------Update EmployeeAccount --------------\\
 
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Employee::class);
 
         $this->validate($request, [
-            'bank_name'      => 'required|string|max:255',
-            'bank_branch'    => 'required|string|max:255',
-            'account_no'     => 'required|string|max:255',
+            'bank_name' => 'required|string|max:255',
+            'bank_branch' => 'required|string|max:255',
+            'account_no' => 'required|string|max:255',
         ]);
 
         EmployeeAccount::whereId($id)->update($request->all());
@@ -61,9 +57,7 @@ class EmployeeAccountController extends Controller
         return response()->json(['success' => true]);
     }
 
-
-
-    //----------- Delete  EmployeeAccount --------------\\
+    // ----------- Delete  EmployeeAccount --------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -75,7 +69,4 @@ class EmployeeAccountController extends Controller
 
         return response()->json(['success' => true]);
     }
-
-
-
 }

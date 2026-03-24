@@ -35,21 +35,33 @@ return [
     |
     */
 
+    // config/auth.php
+
     'guards' => [
-        'web' => [
-            'driver' => 'session',
-            'provider' => 'users',
-        ],
+        'web' => ['driver' => 'session', 'provider' => 'users'],
+        'api' => ['driver' => 'passport', 'provider' => 'users', 'hash' => false],
 
-        'api' => [
-            'driver' => 'passport',
-            'provider' => 'users',
-            'hash' => false,
-        ],
+        // storefront customers
+        'store' => ['driver' => 'session', 'provider' => 'ecommerce_clients'],
+    ],
 
-        'store' => [
-            'driver' => 'session',
+    'providers' => [
+        'users' => ['driver' => 'eloquent', 'model' => App\Models\User::class],
+
+        // add (or verify) this block
+        'ecommerce_clients' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\EcommerceClient::class,
+        ],
+    ],
+
+    // optional but recommended if you’ll use password resets for store users:
+    'passwords' => [
+        'ecommerce_clients' => [
             'provider' => 'ecommerce_clients',
+            'table' => 'password_reset_tokens', // 'password_resets' on older Laravel
+            'expire' => 60,
+            'throttle' => 60,
         ],
     ],
 

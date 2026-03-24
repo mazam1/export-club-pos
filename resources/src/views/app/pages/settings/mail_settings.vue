@@ -102,6 +102,29 @@
                     </validation-provider>
                   </b-col>
 
+                  <!-- Sender Email  -->
+                  <b-col lg="4" md="4" sm="12">
+                    <validation-provider
+                      name="sender_email"
+                      :rules="{ required: true, email: true}"
+                      v-slot="validationContext"
+                    >
+                      <b-form-group label="Sender Email *">
+                        <b-form-input
+                          type="email"
+                          :state="getValidationState(validationContext)"
+                          aria-describedby="sender_email-feedback"
+                          label="Sender Email"
+                          placeholder="Sender Email"
+                          v-model="server.sender_email"
+                        ></b-form-input>
+                        <b-form-invalid-feedback
+                          id="sender_email-feedback"
+                        >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                      </b-form-group>
+                    </validation-provider>
+                  </b-col>
+
                   <!-- Username  -->
                   <b-col lg="4" md="4" sm="12">
                     <validation-provider
@@ -169,8 +192,24 @@
                   </b-col>
 
                   <b-col md="12">
-                    <b-form-group>
-                      <b-button variant="primary" type="submit"><i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}</b-button>
+                    <b-form-group class="d-flex align-items-center">
+                      <b-button variant="primary" type="submit">
+                        <i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}
+                      </b-button>
+
+                      <b-button
+                        variant="outline-secondary"
+                        class="ml-2"
+                        :disabled="isTesting"
+                        @click.prevent="Test_config_mail"
+                      >
+                        <span v-if="!isTesting">
+                          Save & Test Mail
+                        </span>
+                        <span v-else>
+                          {{$t('Loading')}}...
+                        </span>
+                      </b-button>
                     </b-form-group>
                   </b-col>
                 </b-row>
@@ -196,6 +235,7 @@ export default {
     return {
       
       isLoading: true,
+      isTesting: false,
       server: {
         host: "",
         port: "",
@@ -203,6 +243,7 @@ export default {
         password: "",
         encryption: "",
         sender_name:"",
+        sender_email:"",
         mail_mailer:"",
       }
     };
@@ -240,31 +281,38 @@ export default {
     },
 
     //---------------------------------- Update SMTP ----------------\\
-    Update_config_mail() {
+    Update_config_mail(silent = false) {
       NProgress.start();
       NProgress.set(0.1);
-      axios
+      return axios
         .put("update_config_mail/" + this.server.id, {
           mail_mailer: this.server.mail_mailer,
           host: this.server.host,
           port: this.server.port,
           sender_name: this.server.sender_name,
+          sender_email: this.server.sender_email,
           username: this.server.username,
           password: this.server.password,
           encryption: this.server.encryption
         })
         .then(response => {
           Fire.$emit("Event_Smtp");
-          this.makeToast(
-            "success",
-            this.$t("Successfully_Updated"),
-            this.$t("Success")
-          );
+          if (!silent) {
+            this.makeToast(
+              "success",
+              this.$t("Successfully_Updated"),
+              this.$t("Success")
+            );
+          }
           NProgress.done();
+          return response;
         })
         .catch(error => {
           NProgress.done();
-          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+          if (!silent) {
+            this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+          }
+          throw error;
         });
     },
 
@@ -279,6 +327,52 @@ export default {
         .catch(error => {
           this.isLoading = false;
         });
+    },
+
+    //---------------------------------- TEST SMTP ----------------\\
+    Test_config_mail() {
+      if (this.isTesting) return;
+      
+      // First validate the form
+      this.$refs.form_config_mail.validate().then(success => {
+        if (!success) {
+          this.makeToast(
+            "danger",
+            this.$t("Please_fill_the_form_correctly"),
+            this.$t("Failed")
+          );
+          return;
+        }
+
+        // Save first, then test
+        this.isTesting = true;
+        NProgress.start();
+        NProgress.set(0.1);
+
+        // Save settings first (silently, without showing success toast)
+        this.Update_config_mail(true)
+          .then(() => {
+            // After saving, test the mail
+            return axios.post("test_config_mail");
+          })
+          .then(response => {
+            const msg =
+              (response.data && (response.data.message || response.data.msg)) ||
+              this.$t("Successfully_Updated");
+
+            this.makeToast("success", msg, this.$t("Success"));
+          })
+          .catch(error => {
+            const msg =
+              (error.response && error.response.data && (error.response.data.message || error.response.data.errors)) ||
+              this.$t("InvalidData");
+            this.makeToast("danger", msg, this.$t("Failed"));
+          })
+          .finally(() => {
+            this.isTesting = false;
+            NProgress.done();
+          });
+      });
     },
 
    

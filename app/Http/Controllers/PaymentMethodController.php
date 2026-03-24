@@ -9,8 +9,7 @@ use Illuminate\Http\Request;
 
 class PaymentMethodController extends BaseController
 {
-
-    //-------------- Get All methods ---------------\\
+    // -------------- Get All methods ---------------\\
 
     public function index(Request $request)
     {
@@ -22,7 +21,7 @@ class PaymentMethodController extends BaseController
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        $helpers = new helpers();
+        $helpers = new helpers;
 
         $methods = PaymentMethod::where('deleted_at', '=', null)
 
@@ -33,7 +32,7 @@ class PaymentMethodController extends BaseController
                 });
             });
         $totalRows = $methods->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $methods = $methods->offset($offSet)
@@ -47,7 +46,7 @@ class PaymentMethodController extends BaseController
         ]);
     }
 
-    //-------------- Store New PaymentMethod ---------------\\
+    // -------------- Store New PaymentMethod ---------------\\
 
     public function store(Request $request)
     {
@@ -60,17 +59,19 @@ class PaymentMethodController extends BaseController
         PaymentMethod::create([
             'name' => $request['name'],
         ]);
+
         return response()->json(['success' => true]);
     }
 
-     //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-    
+
     }
 
-    //-------------- Update PaymentMethod ---------------\\
+    // -------------- Update PaymentMethod ---------------\\
 
     public function update(Request $request, $id)
     {
@@ -88,7 +89,7 @@ class PaymentMethodController extends BaseController
 
     }
 
-    //-------------- Remove PaymentMethod ---------------\\
+    // -------------- Remove PaymentMethod ---------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -101,7 +102,7 @@ class PaymentMethodController extends BaseController
         return response()->json(['success' => true]);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -116,5 +117,4 @@ class PaymentMethodController extends BaseController
 
         return response()->json(['success' => true]);
     }
-
 }

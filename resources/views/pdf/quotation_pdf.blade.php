@@ -1,124 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
-   <head>
-      <meta charset="utf-8">
-      <title>Quotation _{{$quote['Ref']}}</title>
-      <link rel="stylesheet" href="{{asset('/css/pdf_style.css')}}" media="all" />
-   </head>
+<head>
+    <meta charset="utf-8">
+    <title>Quotation - {{$quote['Ref']}}</title>
+    @php
+        // Price formatting helper function
+        $priceFormat = $setting['price_format'] ?? null;
+        function formatPrice($number, $decimals = 2, $priceFormat = null) {
+            $number = (float) $number;
+            $decimals = (int) $decimals;
+            
+            if (empty($priceFormat)) {
+                return number_format($number, $decimals, '.', ',');
+            }
+            
+            switch ($priceFormat) {
+                case 'comma_dot':
+                    return number_format($number, $decimals, '.', ',');
+                case 'dot_comma':
+                    return number_format($number, $decimals, ',', '.');
+                case 'space_comma':
+                    return number_format($number, $decimals, ',', ' ');
+                default:
+                    return number_format($number, $decimals, '.', ',');
+            }
+        }
+    @endphp
+    <style>
+        @page { 
+            size: A4;
+            margin: 10mm 15mm; 
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'DejaVu Sans', 'Arial', sans-serif; 
+            font-size: 9pt; 
+            color: #1f2937; 
+            line-height: 1.4; 
+            padding: 15px 20px;
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <table style="width: 100%; margin-bottom: 12px;" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="width: 30%; vertical-align: top;">
+                @if(!empty($setting['logo']) && file_exists(public_path('images/'.$setting['logo'])))
+                    <img src="{{public_path('images/'.$setting['logo'])}}" alt="Logo" style="max-height: 60px; max-width: 180px;">
+                @endif
+            </td>
+            <td style="width: 70%; vertical-align: top; text-align: right;">
+                <div style="font-size: 18pt; font-weight: bold; color: #1a56db; margin-bottom: 6px; letter-spacing: 0.5px;">QUOTATION</div>
+                <div style="display: inline-block; background: #f3f4f6; padding: 5px 12px; border-radius: 4px; font-size: 10pt; font-weight: bold; color: #4b5563; margin-bottom: 8px;">{{$quote['Ref']}}</div>
+                <table style="width: 100%; font-size: 8pt; margin-top: 6px;" cellpadding="3" cellspacing="0">
+                    <tr>
+                        <td style="text-align: right; color: #6b7280; font-weight: 600;">Date:</td>
+                        <td style="text-align: right; color: #1f2937; font-weight: 500;">
+                            @php
+                                $dateFormat = $setting['date_format'] ?? 'YYYY-MM-DD';
+                                $dateTime = \Carbon\Carbon::parse($quote['date']);
+                                $phpDateFormat = str_replace(['YYYY', 'MM', 'DD'], ['Y', 'm', 'd'], $dateFormat);
+                                // Check if original date string contains time
+                                $hasTime = strpos($quote['date'], ' ') !== false && preg_match('/\d{1,2}:\d{2}/', $quote['date']);
+                                if ($hasTime) {
+                                    $formattedDate = $dateTime->format($phpDateFormat . ' H:i');
+                                    // Preserve seconds if they exist
+                                    if (preg_match('/:\d{2}:\d{2}/', $quote['date'])) {
+                                        $formattedDate = $dateTime->format($phpDateFormat . ' H:i:s');
+                                    }
+                                } else {
+                                    $formattedDate = $dateTime->format($phpDateFormat);
+                                }
+                            @endphp
+                            {{$formattedDate}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right; color: #6b7280; font-weight: 600;">Quote #:</td>
+                        <td style="text-align: right; color: #1f2937; font-weight: 500;">{{$quote['Ref']}}</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right; color: #6b7280; font-weight: 600;">Status:</td>
+                        <td style="text-align: right;">
+                            @php
+                                $statusColors = [
+                                    'sent' => ['bg' => '#d1fae5', 'color' => '#065f46'],
+                                    'pending' => ['bg' => '#fef3c7', 'color' => '#92400e'],
+                                    'draft' => ['bg' => '#e5e7eb', 'color' => '#374151'],
+                                ];
+                                $statusKey = strtolower($quote['statut']);
+                                $statusStyle = $statusColors[$statusKey] ?? ['bg' => '#dbeafe', 'color' => '#1e40af'];
+                            @endphp
+                            <span style="background: {{$statusStyle['bg']}}; color: {{$statusStyle['color']}}; padding: 3px 8px; border-radius: 3px; font-size: 7pt; font-weight: bold; text-transform: uppercase;">{{$quote['statut']}}</span>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 
-   <body>
-      <header class="clearfix">
-         <div id="logo">
-         <img src="{{asset('/images/'.$setting['logo'])}}">
-         </div>
-         <div id="company">
-            <div><strong> Date: </strong>{{$quote['date']}}</div>
-            <div><strong> Number: </strong> {{$quote['Ref']}}</div>
-            <div><strong> Status: </strong> {{$quote['statut']}}</div>
-         </div>
-         <div id="Title-heading">
-            Quotation  : {{$quote['Ref']}}
-         </div>
-         </div>
-      </header>
-      <main>
-         <div id="details" class="clearfix">
-            <div id="client">
-               <table class="table-sm">
-                  <thead>
-                     <tr>
-                        <th class="desc">Customer Info</th>
-                     </tr>
-                  </thead>
-                  <tbody>
-                     <tr>
-                        <td>
-                           <div><strong>Full Name :</strong> {{$quote['client_name']}}</div>
-                           <div><strong>Phone :</strong> {{$quote['client_phone']}}</div>
-                           <div><strong>Email :</strong>  {{$quote['client_email']}}</div>
-                           <div><strong>Address :</strong>   {{$quote['client_adr']}}</div>
-                           @if($quote['client_tax'])<div><strong>Tax Number :</strong>  {{$quote['client_tax']}}</div>@endif
-                        </td>
-                     </tr>
-                  </tbody>
-               </table>
+    <!-- Divider -->
+    <div style="height: 2px; background: #1a56db; margin: 8px 0 10px 0;"></div>
+
+    <!-- Customer & Company Info Section -->
+    <table style="width: 100%; margin-bottom: 12px;" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="width: 48%; vertical-align: top;">
+                <div style="border: 1px solid #e5e7eb; border-radius: 4px; overflow: hidden;">
+                    <div style="background: #1a56db; padding: 5px 10px; border-bottom: 1px solid #3b82f6;">
+                        <div style="color: #ffffff; font-size: 9pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px;">QUOTE FOR</div>
+                    </div>
+                    <div style="padding: 8px 10px; background: #f9fafb;">
+                        <div style="font-size: 10pt; font-weight: bold; color: #1f2937; margin-bottom: 4px;">{{$quote['client_name']}}</div>
+                        <div style="font-size: 7.5pt; color: #6b7280; line-height: 1.5;">
+                            <div><strong style="color: #1f2937;">Phone:</strong> {{$quote['client_phone']}}</div>
+                            <div><strong style="color: #1f2937;">Email:</strong> {{$quote['client_email']}}</div>
+                            <div><strong style="color: #1f2937;">Address:</strong> {{$quote['client_adr']}}</div>
+                            @if($quote['client_tax'])
+                                <div><strong style="color: #1f2937;">Tax #:</strong> {{$quote['client_tax']}}</div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </td>
+            <td style="width: 4%;"></td>
+            <td style="width: 48%; vertical-align: top;">
+                <div style="border: 1px solid #e5e7eb; border-radius: 4px; overflow: hidden;">
+                    <div style="background: #1a56db; padding: 5px 10px; border-bottom: 1px solid #3b82f6;">
+                        <div style="color: #ffffff; font-size: 9pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px;">FROM</div>
+                    </div>
+                    <div style="padding: 8px 10px; background: #f9fafb;">
+                        <div style="font-size: 10pt; font-weight: bold; color: #1f2937; margin-bottom: 4px;">{{$setting['CompanyName']}}</div>
+                        <div style="font-size: 7.5pt; color: #6b7280; line-height: 1.5;">
+                            <div><strong style="color: #1f2937;">Phone:</strong> {{$setting['CompanyPhone']}}</div>
+                            <div><strong style="color: #1f2937;">Email:</strong> {{$setting['email']}}</div>
+                            <div><strong style="color: #1f2937;">Address:</strong> {{$setting['CompanyAdress']}}</div>
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Products Table -->
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #e5e7eb;" cellpadding="0" cellspacing="0">
+        <thead>
+            <tr style="background: #1a56db;">
+                <th style="padding: 6px 5px; text-align: left; font-size: 8pt; font-weight: bold; color: #ffffff; text-transform: uppercase; border-right: 1px solid rgba(255,255,255,0.2);">PRODUCT</th>
+                <th style="padding: 6px 5px; text-align: right; font-size: 8pt; font-weight: bold; color: #ffffff; text-transform: uppercase; border-right: 1px solid rgba(255,255,255,0.2);">PRICE</th>
+                <th style="padding: 6px 5px; text-align: right; font-size: 8pt; font-weight: bold; color: #ffffff; text-transform: uppercase; border-right: 1px solid rgba(255,255,255,0.2);">QTY</th>
+                <th style="padding: 6px 5px; text-align: right; font-size: 8pt; font-weight: bold; color: #ffffff; text-transform: uppercase; border-right: 1px solid rgba(255,255,255,0.2);">DISC</th>
+                <th style="padding: 6px 5px; text-align: right; font-size: 8pt; font-weight: bold; color: #ffffff; text-transform: uppercase; border-right: 1px solid rgba(255,255,255,0.2);">TAX</th>
+                <th style="padding: 6px 5px; text-align: right; font-size: 8pt; font-weight: bold; color: #ffffff; text-transform: uppercase;">TOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php $rowIndex = 0; @endphp
+            @foreach ($details as $detail)
+            <tr style="border-bottom: 1px solid #e5e7eb; background: {{$rowIndex % 2 == 0 ? '#ffffff' : '#f9fafb'}};">
+                <td style="padding: 5px; vertical-align: top;">
+                    <div style="font-weight: 600; font-size: 8.5pt; color: #1f2937; margin-bottom: 1px;">{{$detail['name']}}</div>
+                    <div style="font-size: 7pt; color: #6b7280;">Code: {{$detail['code']}}</div>
+                    @if($detail['is_imei'] && $detail['imei_number'] !==null)
+                        <div style="font-size: 7pt; color: #3b82f6; margin-top: 1px;">SN: {{$detail['imei_number']}}</div>
+                    @endif
+                </td>
+                <td style="padding: 5px; text-align: right; font-size: 8.5pt; color: #1f2937;">{{formatPrice((float)$detail['price'], 2, $priceFormat)}}</td>
+                <td style="padding: 5px; text-align: right; font-size: 8.5pt; color: #1f2937;">{{$detail['quantity']}} {{$detail['unitSale']}}</td>
+                <td style="padding: 5px; text-align: right; font-size: 8.5pt; color: #ef4444;">{{formatPrice((float)$detail['DiscountNet'], 2, $priceFormat)}}</td>
+                <td style="padding: 5px; text-align: right; font-size: 8.5pt; color: #1f2937;">{{formatPrice((float)$detail['taxe'], 2, $priceFormat)}}</td>
+                <td style="padding: 5px; text-align: right; font-size: 9pt; font-weight: bold; color: #1a56db;">{{formatPrice((float)$detail['total'], 2, $priceFormat)}}</td>
+            </tr>
+            @php $rowIndex++; @endphp
+            @endforeach
+        </tbody>
+    </table>
+
+    <!-- Summary Section -->
+    <table style="width: 100%; margin-bottom: 10px;" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="width: 58%;"></td>
+            <td style="width: 42%; vertical-align: top;">
+                <table style="width: 100%; border: 1px solid #e5e7eb; border-radius: 4px; border-collapse: collapse;" cellpadding="0" cellspacing="0">
+                    <tr style="background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 5px 10px; font-size: 8pt; font-weight: 600; color: #6b7280;">Subtotal:</td>
+                        <td style="padding: 5px 10px; text-align: right; font-size: 8.5pt; font-weight: 600; color: #1f2937;">{{$symbol}} {{formatPrice((float)($quote['GrandTotal'] - $quote['TaxNet'] + $quote['discount'] - $quote['shipping']), 2, $priceFormat)}}</td>
+                    </tr>
+                    <tr style="background: #ffffff; border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 5px 10px; font-size: 8pt; font-weight: 600; color: #6b7280;">Order Tax:</td>
+                        <td style="padding: 5px 10px; text-align: right; font-size: 8.5pt; font-weight: 600; color: #1f2937;">{{$symbol}} {{formatPrice((float)$quote['TaxNet'], 2, $priceFormat)}}</td>
+                    </tr>
+                    <tr style="background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 5px 10px; font-size: 8pt; font-weight: 600; color: #6b7280;">Discount:</td>
+                        <td style="padding: 5px 10px; text-align: right; font-size: 8.5pt; font-weight: 600; color: #ef4444;">- {{$symbol}} {{formatPrice((float)$quote['discount'], 2, $priceFormat)}}</td>
+                    </tr>
+                    <tr style="background: #ffffff; border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 5px 10px; font-size: 8pt; font-weight: 600; color: #6b7280;">Shipping:</td>
+                        <td style="padding: 5px 10px; text-align: right; font-size: 8.5pt; font-weight: 600; color: #1f2937;">{{$symbol}} {{formatPrice((float)$quote['shipping'], 2, $priceFormat)}}</td>
+                    </tr>
+                    <tr style="background: #1a56db;">
+                        <td style="padding: 8px 10px; font-size: 10pt; font-weight: bold; color: #ffffff;">TOTAL:</td>
+                        <td style="padding: 8px 10px; text-align: right; font-size: 11pt; font-weight: bold; color: #ffffff;">{{$symbol}} {{formatPrice((float)$quote['GrandTotal'], 2, $priceFormat)}}</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Footer -->
+    <div style="margin-top: 15px; padding-top: 10px; border-top: 2px solid #e5e7eb;">
+        @if($setting['is_invoice_footer'] && $setting['invoice_footer'] !==null)
+            <div style="padding: 8px 10px; background: #f9fafb; border-left: 3px solid #1a56db; border-radius: 3px; margin-bottom: 10px;">
+                <p style="font-size: 7.5pt; color: #6b7280; line-height: 1.5; margin: 0;">{{$setting['invoice_footer']}}</p>
             </div>
-            <div id="invoice">
-               <table  class="table-sm">
-                  <thead>
-                     <tr>
-                        <th class="desc">Company Info</th>
-                     </tr>
-                  </thead>
-                  <tbody>
-                     <tr>
-                        <td>
-                           <div id="comp">{{$setting['CompanyName']}}</div>
-                           <div><strong>Phone :</strong>  {{$setting['CompanyPhone']}}</div>
-                           <div><strong>Email :</strong>  {{$setting['email']}}</div>
-                           <div><strong>Address :</strong>  {{$setting['CompanyAdress']}}</div>
-                        </td>
-                     </tr>
-                  </tbody>
-               </table>
-            </div>
-         </div>
-         <div id="details_inv">
-            <table class="table-sm">
-               <thead>
-                  <tr>
-                     <th>PRODUCT</th>
-                     <th>UNIT PRICE</th>
-                     <th>QUANTITY</th>
-                     <th>DISCOUNT</th>
-                     <th>TAX</th>
-                     <th>TOTAL</th>
-                  </tr>
-               </thead>
-               <tbody>
-                  @foreach ($details as $detail)
-                  <tr>
-                     <td>
-                        <span>{{$detail['code']}} ({{$detail['name']}})</span>
-                           @if($detail['is_imei'] && $detail['imei_number'] !==null)
-                              <p>IMEI/SN : {{$detail['imei_number']}}</p>
-                           @endif
-                     </td>
-                     <td>{{$detail['price']}} </td>
-                     <td>{{$detail['quantity']}}/{{$detail['unitSale']}}</td>
-                     <td>{{$detail['DiscountNet']}} </td>
-                     <td>{{$detail['taxe']}} </td>
-                     <td>{{$detail['total']}} </td>
-                  </tr>
-                  @endforeach
-               </tbody>
-            </table>
-         </div>
-         <div id="total">
-            <table>
-               <tr>
-                  <td>Order Tax</td>
-                  <td>{{$quote['TaxNet']}} </td>
-               </tr>
-               <tr>
-                  <td>Discount</td>
-                  <td>{{$quote['discount']}} </td>
-               </tr>
-               <tr>
-                  <td>Shipping</td>
-                  <td>{{$quote['shipping']}} </td>
-               </tr>
-               <tr>
-                  <td>Total</td>
-                  <td>{{$symbol}} {{$quote['GrandTotal']}} </td>
-               </tr>
-            </table>
-         </div>
-         <div id="signature">
-            @if($setting['is_invoice_footer'] && $setting['invoice_footer'] !==null)
-               <p>{{$setting['invoice_footer']}}</p>
-            @endif
-         </div>
-      </main>
-   </body>
+        @endif
+        <div style="text-align: center; padding: 8px 0;">
+            <p style="font-size: 10pt; font-weight: bold; color: #1a56db; margin: 0; letter-spacing: 0.3px;">Thank you for your business!</p>
+        </div>
+    </div>
+</body>
 </html>

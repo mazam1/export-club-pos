@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Mail\Password_Reset_Request;
@@ -24,12 +25,11 @@ class PasswordResetController extends BaseController
             'email' => 'required|string|email',
         ]);
         $user = User::where('email', $request->email)->first();
-        if (!$user || !$user->statut) {
+        if (! $user || ! $user->statut) {
             return response()->json(['status' => false,
                 'message' => 'We can\'t find a user with that e-mail address.',
             ]);
         }
-
 
         $passwordReset = PasswordReset::updateOrCreate(
             ['email' => $user->email],
@@ -42,13 +42,14 @@ class PasswordResetController extends BaseController
             $this->Set_config_mail();
         }
         // Set_config_mail => BaseController
-        $url = url('/password/find/' . $passwordReset->token);
+        $url = url('/password/find/'.$passwordReset->token);
         Mail::to($user->email)->send(new Password_Reset_Request($passwordReset->token, $url));
 
         return response()->json(['status' => true,
             'message' => 'We have e-mailed your password reset link!',
         ], 200);
     }
+
     /**
      * Find token password reset
      *
@@ -60,7 +61,7 @@ class PasswordResetController extends BaseController
     {
         $passwordReset = PasswordReset::where('token', $token)
             ->first();
-        if (!$passwordReset) {
+        if (! $passwordReset) {
             return response()->json([
                 'message' => 'This password reset token is invalid.',
                 'success' => false,
@@ -69,17 +70,18 @@ class PasswordResetController extends BaseController
 
         if (Carbon::parse($passwordReset->updated_at)->addMinutes(60)->isPast()) {
             $passwordReset->delete();
+
             return response()->json([
                 'message' => 'This password reset token is invalid.',
                 'success' => false,
             ]);
         }
 
-        return view('auth.passwords.reset', ["token" => $token]);
+        return view('auth.passwords.reset', ['token' => $token]);
     }
+
     /**
      * Reset password
-
      */
     public function reset(Request $request)
     {
@@ -89,7 +91,7 @@ class PasswordResetController extends BaseController
             'token' => 'required|string',
         ]);
         $user = User::where('email', $request->email)->first();
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'message' => 'We can\'t find a user with that e-mail address.',
                 'status' => false,
@@ -101,7 +103,7 @@ class PasswordResetController extends BaseController
             ['token', $request->token],
             ['email', $request->email],
         ])->first();
-        if (!$passwordReset) {
+        if (! $passwordReset) {
             return response()->json([
                 'message' => 'This password reset token is invalid.',
                 'status' => false,
@@ -113,7 +115,7 @@ class PasswordResetController extends BaseController
         $user->save();
         $passwordReset->delete();
         $this->Set_config_mail(); // Set_config_mail => BaseController
-        Mail::to($request->email)->send(new Password_Reset_Success());
+        Mail::to($request->email)->send(new Password_Reset_Success);
 
         return response()->json([
             'user' => $user,

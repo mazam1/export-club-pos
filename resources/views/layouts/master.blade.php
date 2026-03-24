@@ -33,14 +33,8 @@
 
     </div>
 
-    <script>
-      window.config = {
-        "ModulesEnabled" : @json($ModulesEnabled),
-        "ModulesInstalled" : @json($ModulesInstalled),
-      };
-    </script>
 
-    <script src="/js/main.min.js?v=5.0"></script>
+    <script src="/js/main.min.js?v=5.5&v={{ time() }}"></script>
 
   </body>
 </html>

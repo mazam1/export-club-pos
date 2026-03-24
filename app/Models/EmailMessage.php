@@ -9,7 +9,6 @@ class EmailMessage extends Model
     protected $table = 'email_messages';
 
     protected $fillable = [
-        'subject','body'
+        'subject', 'body',
     ];
-
 }

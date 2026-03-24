@@ -1,12 +1,15 @@
 <template>
   <div class="main-content">
-    <breadcumb page="Customers Unregistered in Online Store" :folder="$t('Customers')"/>
+    <breadcumb :page="$t('Customers_without_Login')" :folder="$t('Customers')"/>
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
     <div v-else>
       <div class="mb-5">
         <span class="alert alert-danger" v-show="clients_without_ecommerce > 0">
-          There are <strong>{{ clients_without_ecommerce}}</strong> 
-          customers not having an account in the online store.
+          {{$t('There_are')}} <strong>{{ clients_without_ecommerce}}</strong> 
+          {{$t('Customers_without_ecommerce_notice')}}
+          <router-link  to="/app/People/Customers_without_ecommerce">
+          {{$t('View_Details')}}
+          </router-link>
         </span>
       </div>
       <vue-good-table
@@ -88,11 +91,20 @@
                     :state="getValidationState(validationContext)"
                     aria-describedby="password-feedback"
                     label="password"
-                    type="password"
+                    :type="showPassword ? 'text' : 'password'"
                     v-model="client.password"
                     :placeholder="$t('password')"
                   ></b-form-input>
                   <b-form-invalid-feedback id="password-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                      <!-- Show/Hide Password Button -->
+                      <b-button 
+                        variant="link" 
+                        class="position-absolute"
+                        style="top: 56%; right: 0px; transform: translateY(-50%);"
+                        @click="showPassword = !showPassword"
+                      >
+                        {{ showPassword ? 'Hide' : 'Show' }}
+                    </b-button>
                 </b-form-group>
               </validation-provider>
             </b-col>
@@ -126,7 +138,7 @@ export default {
 
       clients_without_ecommerce:'',
       email_exist : "",
-      
+      showPassword: false,
       isLoading: true,
       SubmitProcessing:false,
       serverParams: {
@@ -195,7 +207,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false

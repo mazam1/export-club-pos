@@ -16,5 +16,4 @@ class Warehouse extends Model
     {
         return $this->belongsToMany('App\Models\User');
     }
-
 }

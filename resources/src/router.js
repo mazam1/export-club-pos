@@ -28,7 +28,7 @@ const baseRoutes = [
                     )
             
                 },
-               
+
             //Products
             {
                 path: "/app/products",
@@ -46,6 +46,18 @@ const baseRoutes = [
                                 /* webpackChunkName: "index_products" */ "./views/app/pages/products/index_products"
                             )
                     },
+                    {
+                    path: "import",
+                    name: "import_products",
+                    component: () =>
+                        import(/* webpackChunkName: "import_products" */ "./views/app/pages/products/Import_products.vue"),
+                    },
+                    {
+                        path: "import-update",
+                        name: "import_products_update",
+                        component: () =>
+                            import(/* webpackChunkName: "import_products_update" */ "./views/app/pages/products/Import_products_update.vue"),
+                        },
                     {
                         path: "store",
                         name: "store_product",
@@ -104,6 +116,16 @@ const baseRoutes = [
                         component: () =>
                             import(
                                 /* webpackChunkName: "Categories" */ "./views/app/pages/products/categorie"
+                            )
+                    },
+
+                    // subcategories
+                    {
+                        name: "subcategories",
+                        path: "SubCategories",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "SubCategories" */ "./views/app/pages/products/subcategories"
                             )
                     },
 
@@ -168,6 +190,45 @@ const baseRoutes = [
                 ]
             },
 
+            // Damages
+            {
+                path: "/app/damages",
+                component: () =>
+                    import(
+                        /* webpackChunkName: "damages" */ "./views/app/pages/damage"
+                    ),
+                redirect: "/app/damages/list",
+                children: [
+                    {
+                        name: "index_damage",
+                        path: "list",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "index_damage" */
+                                "./views/app/pages/damage/index_Damage"
+                            )
+                    },
+                    {
+                        name: "store_damage",
+                        path: "store",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "store_damage" */
+                                "./views/app/pages/damage/Create_Damage"
+                            )
+                    },
+                    {
+                        name: "edit_damage",
+                        path: "edit/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "edit_damage" */
+                                "./views/app/pages/damage/Edit_Damage"
+                            )
+                    }
+                ]
+            },
+
             //Transfer
             {
                 path: "/app/transfers",
@@ -201,6 +262,14 @@ const baseRoutes = [
                             import(
                                 /* webpackChunkName: "edit_transfer" */ "./views/app/pages/transfers/edit_transfer"
                             )
+                    },
+                    {
+                        name: "detail_transfer",
+                        path: "detail/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "detail_transfer" */ "./views/app/pages/transfers/detail_transfer"
+                            )
                     }
                 ]
             },
@@ -215,7 +284,7 @@ const baseRoutes = [
                     )
             },
 
-             //Projects
+            //Projects
              {
                 path: "/app/projects",
                 component: () =>
@@ -295,6 +364,174 @@ const baseRoutes = [
                 ]
             },
 
+            // Bookings (simple)
+            {
+                path: "/app/bookings",
+                component: () =>
+                    import(
+                        /* webpackChunkName: "bookings" */ "./views/app/pages/bookings"
+                    ),
+                redirect: "/app/bookings/list",
+                children: [
+                    {
+                        name: "index_booking",
+                        path: "list",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "index_booking" */
+                                "./views/app/pages/bookings/index_booking"
+                            )
+                    },
+                    {
+                        name: "store_booking",
+                        path: "store",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "store_booking" */
+                                "./views/app/pages/bookings/store_booking"
+                            )
+                    },
+                    {
+                        name: "edit_booking",
+                        path: "edit/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "edit_booking" */
+                                "./views/app/pages/bookings/Edit_booking"
+                            )
+                    },
+                    {
+                        name: "calendar_booking",
+                        path: "calendar",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "calendar_booking" */
+                                "./views/app/pages/bookings/BookingCalendar"
+                            )
+                    },
+                ]
+            },
+
+
+            // Assets
+            {
+                path: "/app/assets",
+                component: () =>
+                    import(
+                        /* webpackChunkName: "assets" */ "./views/app/pages/assets"
+                    ),
+                redirect: "/app/assets/list",
+                children: [
+                    {
+                        name: "index_asset",
+                        path: "list",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "index_asset" */ "./views/app/pages/assets/index_asset"
+                            )
+                    },
+                    {
+                        name: "store_asset",
+                        path: "store",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "store_asset" */ "./views/app/pages/assets/store_asset"
+                            )
+                    },
+                    {
+                        name: "edit_asset",
+                        path: "edit/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "edit_asset" */ "./views/app/pages/assets/edit_asset"
+                            )
+                    },
+                    {
+                        name: "asset_category",
+                        path: "category",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "asset_category" */ "./views/app/pages/assets/index_asset_category"
+                            )
+                    }
+                ]
+            },
+
+            // Service & Maintenance
+            {
+                path: "/app/service",
+                component: () =>
+                    import(
+                        /* webpackChunkName: "service" */ "./views/app/pages/service"
+                    ),
+                redirect: "/app/service/jobs",
+                children: [
+                    {
+                        name: "service_jobs_index",
+                        path: "jobs",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "service_jobs_index" */ "./views/app/pages/service/ServiceJobsList"
+                            )
+                    },
+                    {
+                        name: "service_job_create",
+                        path: "jobs/create",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "service_job_create" */ "./views/app/pages/service/ServiceJobForm"
+                            )
+                    },
+                    {
+                        name: "service_job_edit",
+                        path: "jobs/edit/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "service_job_edit" */ "./views/app/pages/service/ServiceJobForm"
+                            )
+                    },
+                    {
+                        name: "service_job_details",
+                        path: "jobs/details/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "service_job_details" */ "./views/app/pages/service/ServiceJobDetails"
+                            )
+                    },
+                    {
+                        name: "service_checklist_categories",
+                        path: "checklist-categories",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "service_checklist_categories" */ "./views/app/pages/service/ServiceChecklistCategories"
+                            )
+                    },
+                    {
+                        name: "service_checklists",
+                        path: "checklists",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "service_checklists" */ "./views/app/pages/service/ServiceChecklists"
+                            )
+                    },
+                    {
+                        name: "service_technicians",
+                        path: "technicians",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "service_technicians" */ "./views/app/pages/service/ServiceTechnicians"
+                            )
+                    },
+                    {
+                        name: "customer_maintenance_history",
+                        path: "history",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "customer_maintenance_history" */ "./views/app/pages/service/CustomerMaintenanceHistory"
+                            )
+                    }
+                ]
+            },
 
              // transfer_money
              {
@@ -449,9 +686,88 @@ const baseRoutes = [
                             import(
                                 /* webpackChunkName: "change_to_sale" */ "./views/app/pages/sales/change_to_sale.vue"
                             )
+                    },
+                    
+                ]
+            },
+
+            // Advanced Accounting (NEW FEATURE - SAFE ADDITION)
+            {
+                path: "/app/accounting-v2",
+                component: () =>
+                    import(
+                        /* webpackChunkName: "accounting_v2" */ "./views/app/pages/accounting_v2"
+                    ),
+                redirect: "/app/accounting-v2/dashboard",
+                children: [
+                    {
+                        name: "accounting_v2_dashboard",
+                        path: "dashboard",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "accounting_v2_dashboard" */ "./views/app/pages/accounting_v2/dashboard"
+                            )
+                    },
+                    {
+                        name: "accounting_v2_chart_of_accounts",
+                        path: "chart-of-accounts",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "accounting_v2_chart_of_accounts" */ "./views/app/pages/accounting_v2/chart_of_accounts"
+                            )
+                    },
+                    {
+                        name: "accounting_v2_journal_entries",
+                        path: "journal-entries",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "accounting_v2_journal_entries" */ "./views/app/pages/accounting_v2/journal_entries"
+                            )
+                    },
+                    {
+                        name: "accounting_v2_trial_balance",
+                        path: "reports/trial-balance",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "accounting_v2_trial_balance" */ "./views/app/pages/accounting_v2/reports/trial_balance"
+                            )
+                    },
+                    {
+                        name: "accounting_v2_profit_loss",
+                        path: "reports/profit-and-loss",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "accounting_v2_profit_loss" */ "./views/app/pages/accounting_v2/reports/profit_and_loss"
+                            )
+                    },
+                    {
+                        name: "accounting_v2_balance_sheet",
+                        path: "reports/balance-sheet",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "accounting_v2_balance_sheet" */ "./views/app/pages/accounting_v2/reports/balance_sheet"
+                            )
+                    },
+                    {
+                        name: "accounting_v2_tax_report",
+                        path: "reports/tax-report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "accounting_v2_tax_report" */ "./views/app/pages/accounting_v2/reports/tax_report"
+                            )
                     }
                 ]
             },
+
+             // Customer Display setup route (for cashiers to generate tokens)
+                {
+                    name: "customer_display_setup",
+                    path: "/app/customer-display/setup",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "customer_display_setup" */ "./views/app/pages/customer/CustomerDisplaySetup.vue"
+                        )
+                },
 
             //Purchase
             {
@@ -540,6 +856,14 @@ const baseRoutes = [
                         component: () =>
                             import(
                                 /* webpackChunkName: "store_sale" */ "./views/app/pages/sales/create_sale"
+                            )
+                    },
+                    {
+                        name: "import_sales",
+                        path: "import_sales",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "import_sales" */ "./views/app/pages/sales/import_sales"
                             )
                     },
                     {
@@ -820,6 +1144,105 @@ const baseRoutes = [
                 ]
             },
 
+            {
+                path: "/app/Store",
+                component: () =>
+                    import(
+                    /* webpackChunkName: "Store" */ "./views/app/pages/store"
+                    ),
+                redirect: "/app/Store/Settings",
+                children: [
+                    // Settings
+                    {
+                    name: "StoreSettings",
+                    path: "Settings",
+                    component: () =>
+                        import(
+                        /* webpackChunkName: "StoreSettings" */ "./views/app/pages/store/Settings.vue"
+                        )
+                    },
+
+                    // Orders
+                    {
+                    name: "StoreOrders",
+                    path: "Orders",
+                    component: () =>
+                        import(
+                        /* webpackChunkName: "StoreOrders" */ "./views/app/pages/store/Orders.vue"
+                        )
+                    },
+                    {
+                    name: "StoreOrderShow",
+                    path: "Orders/:id",
+                    component: () =>
+                        import(
+                        /* webpackChunkName: "StoreOrderShow" */ "./views/app/pages/store/OrderShow.vue"
+                        ),
+                    props: true
+                    },
+
+                    // Inside the children of your /app/Store route
+                    {
+                    name: "StoreCollections",
+                    path: "Collections",
+                    component: () =>
+                        import(
+                        /* webpackChunkName: "CollectionsIndex" */ "./views/app/pages/store/CollectionsIndex.vue"
+                        ),
+                    },
+                    {
+                    name: "StoreCollectionsCreate",
+                    path: "Collections/create",
+                    component: () =>
+                        import(
+                        /* webpackChunkName: "CollectionsCreate" */ "./views/app/pages/store/CollectionsCreate.vue"
+                        ),
+                    },
+                    {
+                    name: "StoreCollectionsEdit",
+                    path: "Collections/:id",
+                    component: () =>
+                        import(
+                        /* webpackChunkName: "CollectionsEdit" */ "./views/app/pages/store/CollectionsEdit.vue"
+                        ),
+                    },
+
+                    {
+                    name: "StoreSubscribers",
+                    path: "Subscribers",
+                    component: () =>
+                        import(/* webpackChunkName: "StoreSubscribers" */ "./views/app/pages/store/Subscribers.vue")
+                    },
+
+                    {
+                    name: "StoreMessages",
+                    path: "Messages",
+                    component: () =>
+                        import(/* webpackChunkName: "StoreMessages" */ "./views/app/pages/store/Messages.vue")
+                    },
+
+
+                    // Banners / Home sections
+                    {
+                    name: "StoreBanners",
+                    path: "Banners",
+                    component: () =>
+                        import(
+                        /* webpackChunkName: "StoreBanners" */ "./views/app/pages/store/Banners.vue"
+                        )
+                    },
+                    {
+                    name: "StoreBannerEdit",
+                    path: "Banners/Edit/:id?",
+                    component: () =>
+                        import(
+                        /* webpackChunkName: "StoreBannerEdit" */ "./views/app/pages/store/BannerForm.vue"
+                        ),
+                    props: true
+                    }
+                ]
+            },
+
             // People
             {
                 path: "/app/People",
@@ -839,13 +1262,71 @@ const baseRoutes = [
                             )
                     },
 
-                     // Customers
-                     {
+                    {
+                        name: "Create_Customer",
+                        path: "Customers/create",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Create_Customer" */ "./views/app/pages/people/CreateCustomer.vue"
+                            )
+                    },
+
+                    {
+                        name: "Edit_Customer",
+                        path: "Customers/edit/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Edit_Customer" */ "./views/app/pages/people/EditCustomer.vue"
+                            ),
+                        props: true
+                    },
+
+                    {
+                    name: "Import_Customers",
+                    path: "Customers_import",
+                    component: () => import(
+                        /* webpackChunkName: "Import_Customers" */ "./views/app/pages/people/ImportCustomers.vue"
+                    )
+                    },
+
+
+                    
+                    {
+                    name: "CustomerLedger",
+                    path: "customers/:id/ledger",
+                    component: () =>
+                        import(
+                        /* webpackChunkName: "CustomerLedger" */ "./views/app/pages/people/CustomerLedger.vue"
+                        ),
+                    props: true
+                    },
+
+                    {
+                    name: "CustomerDetails",
+                    path: "customers/:id/details",
+                    component: () =>
+                        import(
+                        /* webpackChunkName: "CustomerDetails" */ "./views/app/pages/people/CustomerDetails.vue"
+                        ),
+                    props: true
+                    },
+
+                    // Customers
+                    {
                         name: "Customers_without_ecommerce",
                         path: "Customers_without_ecommerce",
                         component: () =>
                             import(
                                 /* webpackChunkName: "Customers_without_ecommerce" */ "./views/app/pages/people/Customers_without_ecommerce"
+                            )
+                    },
+
+                    {
+                        name: "Customers_ecommerce",
+                        path: "Customers_ecommerce",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Customers_ecommerce" */ "./views/app/pages/people/Customers_ecommerce.vue"
                             )
                     },
 
@@ -859,14 +1340,110 @@ const baseRoutes = [
                             )
                     },
 
+                    {
+                        name: "Create_Supplier",
+                        path: "Suppliers/create",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Create_Supplier" */ "./views/app/pages/people/CreateSupplier.vue"
+                            )
+                    },
+
+                    {
+                        name: "Edit_Supplier",
+                        path: "Suppliers/edit/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Edit_Supplier" */ "./views/app/pages/people/EditSupplier.vue"
+                            ),
+                        props: true
+                    },
+
+                    {
+                    name: "Import_Suppliers",
+                    path: "Suppliers_import",
+                    component: () => import(
+                        /* webpackChunkName: "Import_Suppliers" */ "./views/app/pages/people/ImportSuppliers.vue"
+                    )
+                    },
+
+                ]
+            },
+
+            {
+                path: "/app/User_Management",
+                component: () =>
+                    import(
+                        /* webpackChunkName: "User_Management" */ "./views/app/pages/user_management"
+                    ),
+                redirect: "/app/User_Management/Users",
+                children: [
                     // Users
                     {
-                        name: "user",
+                        name: "Users",
                         path: "Users",
                         component: () =>
                             import(
                                 /* webpackChunkName: "Users" */ "./views/app/pages/people/users"
                             )
+                    },
+
+                    {
+                        name: "Create_User",
+                        path: "Users/create",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Create_User" */ "./views/app/pages/people/CreateUser.vue"
+                            )
+                    },
+
+                    {
+                        name: "Edit_User",
+                        path: "Users/edit/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Edit_User" */ "./views/app/pages/people/EditUser.vue"
+                            ),
+                        props: true
+                    },
+
+                    // Permissions
+                    {
+                        path: "permissions",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "permissions" */ "./views/app/pages/settings/permissions"
+                            ),
+                        redirect: "/app/User_Management/permissions/list",
+                        children: [
+                            {
+                                name: "groupPermission",
+                                path: "list",
+                                component: () =>
+                                    import(
+                                        /* webpackChunkName: "groupPermission" */
+                                        "./views/app/pages/settings/permissions/Permissions"
+                                    )
+                            },
+                            {
+                                name: "store_permission",
+                                path: "store",
+                                component: () =>
+                                    import(
+                                        /* webpackChunkName: "store_permission" */
+                                        "./views/app/pages/settings/permissions/Create_permission"
+                                    )
+                            },
+                            {
+                                name: "edit_permission",
+                                path: "edit/:id",
+                                component: () =>
+                                    import(
+                                        /* webpackChunkName: "edit_permission" */
+                                        "./views/app/pages/settings/permissions/Edit_permission"
+                                    )
+                            }
+                        ]
                     }
                 ]
             },
@@ -925,45 +1502,6 @@ const baseRoutes = [
                     ),
                 redirect: "/app/settings/System_settings",
                 children: [
-                    // Permissions
-                    {
-                        path: "permissions",
-                        component: () =>
-                            import(
-                                /* webpackChunkName: "permissions" */ "./views/app/pages/settings/permissions"
-                            ),
-                        redirect: "/app/settings/permissions/list",
-                        children: [
-                            {
-                                name: "groupPermission",
-                                path: "list",
-                                component: () =>
-                                    import(
-                                        /* webpackChunkName: "groupPermission" */
-                                        "./views/app/pages/settings/permissions/Permissions"
-                                    )
-                            },
-                            {
-                                name: "store_permission",
-                                path: "store",
-                                component: () =>
-                                    import(
-                                        /* webpackChunkName: "store_permission" */
-                                        "./views/app/pages/settings/permissions/Create_permission"
-                                    )
-                            },
-                            {
-                                name: "edit_permission",
-                                path: "edit/:id",
-                                component: () =>
-                                    import(
-                                        /* webpackChunkName: "edit_permission" */
-                                        "./views/app/pages/settings/permissions/Edit_permission"
-                                    )
-                            }
-                        ]
-                    },
-
                     // payment_methods
                     {
                         name: "payment_methods",
@@ -981,6 +1519,15 @@ const baseRoutes = [
                         component: () =>
                             import(
                                 /* webpackChunkName: "sms_settings" */ "./views/app/pages/settings/sms_settings"
+                            )
+                    },
+
+                    {
+                        name: "quickbooks_sync",
+                        path: "quickbooks_sync",
+                        component: () =>
+                            import(
+                            /* webpackChunkName: "quickbooks_sync" */ "./views/app/pages/settings/quickbooks_sync"
                             )
                     },
 
@@ -1033,13 +1580,23 @@ const baseRoutes = [
                         )
                     },
 
-                    // pos_settings
+                    // pos_settings (POS behaviour & display settings)
                     {
-                    name: "pos_settings",
-                    path: "pos_settings",
-                    component: () =>
+                      name: "pos_settings",
+                      path: "pos_settings",
+                      component: () =>
                         import(
-                            /* webpackChunkName: "pos_settings" */ "./views/app/pages/settings/pos_settings"
+                          /* webpackChunkName: "pos_settings" */ "./views/app/pages/settings/pos_settings"
+                        )
+                    },
+
+                    // pos_receipt (POS receipt layout & print configuration)
+                    {
+                      name: "pos_receipt",
+                      path: "pos_receipt",
+                      component: () =>
+                        import(
+                          /* webpackChunkName: "pos_receipt" */ "./views/app/pages/settings/pos_receipt"
                         )
                     },
 
@@ -1121,9 +1678,37 @@ const baseRoutes = [
                             import(
                                 /* webpackChunkName: "System_settings" */ "./views/app/pages/settings/system_settings"
                             )
+                    },
+
+                    // Login Device Management (Security Sessions)
+                    {
+                        name: "login_devices",
+                        path: "login_devices",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "login_devices" */ "./views/app/pages/settings/login_devices"
+                            )
+                    },
+
+                    // Custom Fields
+                    {
+                        name: "custom_fields",
+                        path: "custom_fields",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "custom_fields" */ "./views/app/pages/settings/custom_fields"
+                            )
                     }
                   
                 ]
+            },
+            // WooCommerce Settings (optional module)
+            {
+                path: "/app/woocommerce",
+                component: () => import(
+                    /* webpackChunkName: "woocommerce" */ "./views/app/pages/settings/WooCommerceSettings.vue"
+                ),
+                name: "woocommerce_settings"
             },
 
             // Reports
@@ -1169,6 +1754,118 @@ const baseRoutes = [
                             )
                     },
 
+                     {
+                        name: "inactive_customers",
+                        path: "inactive_customers",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Inactive_Customers_Report" */
+                                "./views/app/pages/reports/Inactive_Customers_Report"
+                            )
+                    },
+
+                     {
+                        name: "zero_sales_products_report",
+                        path: "zero_sales_products_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Zero_Sales_Products_Report" */
+                                "./views/app/pages/reports/Zero_Sales_Products_Report"
+                            )
+                    },
+
+                      {
+                        name: "dead_stock_report",
+                        path: "dead_stock_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Dead_Stock_Report" */
+                                "./views/app/pages/reports/Dead_Stock_Report"
+                            )
+                    },
+
+                    {
+                        name: "stock_aging_report",
+                        path: "stock_aging_report",
+                        component: () =>
+                            import(
+                            /* webpackChunkName: "Stock_Aging_Report" */
+                            "./views/app/pages/reports/Stock_Aging_Report"
+                            )
+                    },
+
+                    {
+                        name: "stock_transfer_report",
+                        path: "stock_transfer_report",
+                        component: () => import(/* webpackChunkName:"Stock_Transfer_Report" */ "./views/app/pages/reports/Stock_Transfer_Report")
+                    },
+
+                    {
+                        name: "stock_adjustment_report",
+                        path: "stock_adjustment_report",
+                        component: () => import("./views/app/pages/reports/Stock_Adjustment_Report")
+                    },
+
+                    {
+                    name: "top_suppliers_report",
+                    path: "top_suppliers_report",
+                    component: () => import(/* webpackChunkName:"Top_Suppliers_Report" */ "./views/app/pages/reports/Top_Suppliers_Report")
+                    },
+
+
+                    
+
+                      {
+                        name: "draft_invoices_report",
+                        path: "draft_invoices_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Draft_Invoices_Report" */
+                                "./views/app/pages/reports/Draft_Invoices_Report"
+                            )
+                    },
+
+
+                    {
+                        name: "discount_summary_report",
+                        path: "discount_summary_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Discount_Summary_Report" */
+                                "./views/app/pages/reports/Discount_Summary_Report"
+                            )
+                    },
+
+                    {
+                        name: "customer_loyalty_points_report",
+                        path: "customer_loyalty_points_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Customer_Loyalty_Points_Report" */
+                                "./views/app/pages/reports/Customer_Loyalty_Points_Report"
+                            )
+                    },
+
+                     {
+                        name: "tax_summary_report",
+                        path: "tax_summary_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Tax_Summary_Report" */
+                                "./views/app/pages/reports/Tax_Summary_Report"
+                            )
+                    },
+
+                    {
+                        name: "cash_flow_report",
+                        path: "cash_flow_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "cash_flow_report" */
+                                "./views/app/pages/reports/Cash_Flow_Report"
+                            )
+                    },
+
                     {
                         name: "report_transactions",
                         path: "report_transactions",
@@ -1176,6 +1873,16 @@ const baseRoutes = [
                             import(
                                 /* webpackChunkName: "report_transactions" */
                                 "./views/app/pages/reports/report_transactions"
+                            )
+                    },
+
+                     {
+                        name: "seller_report",
+                        path: "seller_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "seller_report" */
+                                "./views/app/pages/reports/seller_report"
                             )
                     },
 
@@ -1202,6 +1909,16 @@ const baseRoutes = [
                     
 
                     {
+                        name: "ai_reports",
+                        path: "ai_reports",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "ai_reports" */
+                                "./views/app/pages/reports/AI_Reports"
+                            )
+                    },
+
+                    {
                         name: "profit_and_loss",
                         path: "profit_and_loss",
                         component: () =>
@@ -1222,6 +1939,27 @@ const baseRoutes = [
                     },
 
                     {
+                        name: "stock_inventory_valuation",
+                        path: "stock_inventory_valuation",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "stock_inventory_valuation" */
+                                "./views/app/pages/reports/stock_inventory_valuation"
+                            )
+                    },
+
+                    {
+                        name: "analytics_report",
+                        path: "analytics_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "analytics_report" */
+                                "./views/app/pages/reports/Analytics_Report"
+                            )
+                    },
+
+
+                    {
                         name: "expenses_report",
                         path: "expenses_report",
                         component: () =>
@@ -1238,6 +1976,26 @@ const baseRoutes = [
                             import(
                                 /* webpackChunkName: "deposits_report" */
                                 "./views/app/pages/reports/deposits_report"
+                            )
+                    },
+
+                    {
+                        name: "return_ratio_report",
+                        path: "return_ratio_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "return_ratio_report" */
+                                "./views/app/pages/reports/Return_Ratio_Report"
+                            )
+                    },
+
+                    {
+                        name: "negative_stock_report",
+                        path: "negative_stock_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "negative_stock_report" */
+                                "./views/app/pages/reports/Negative_Stock_Report"
                             )
                     },
 
@@ -1414,14 +2172,72 @@ const baseRoutes = [
                                 "./views/app/pages/reports/detail_user_report"
                             )
                     },
+                    {
+                        name: "login_activity_report",
+                        path: "login_activity_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "login_activity_report" */
+                                "./views/app/pages/reports/login_activity_report"
+                            )
+                    },
 
-                      {
+                    {
                         name: "report_error_logs",
                         path: "report_error_logs",
                         component: () =>
                             import(
                                 /* webpackChunkName: "report_error_logs" */
                                 "./views/app/pages/reports/report_error_logs"
+                            )
+                    },
+                     // Cash Register Report
+                    {
+                        name: "cash_register_report",
+                        path: "cash-registers",
+                        component: () =>
+                            import(/* webpackChunkName: "cash_register_report" */ "./views/app/pages/reports/Cash_Register_Report")
+                    },
+                    {
+                        name: "warranty_guarantee_report",
+                        path: "warranty_guarantee_report",
+                        component: () =>
+                            import(/* webpackChunkName: "warranty_guarantee_report" */ "./views/app/pages/reports/Warranty_Guarantee_Report")
+                    },
+                    {
+                        name: "attendance_report",
+                        path: "attendance_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Attendance_Report" */
+                                "./views/app/pages/reports/Attendance_Report"
+                            )
+                    },
+                    {
+                        name: "service_jobs_report",
+                        path: "service_jobs_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Service_Jobs_Report" */
+                                "./views/app/pages/reports/Service_Jobs_Report"
+                            )
+                    },
+                    {
+                        name: "checklist_completion_report",
+                        path: "checklist_completion_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Checklist_Completion_Report" */
+                                "./views/app/pages/reports/Checklist_Completion_Report"
+                            )
+                    },
+                    {
+                        name: "customer_maintenance_history_report",
+                        path: "customer_maintenance_history_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Customer_Maintenance_History_Report" */
+                                "./views/app/pages/reports/Customer_Maintenance_History_Report"
                             )
                     },
                 ]
@@ -1446,14 +2262,8 @@ const baseRoutes = [
             import(/* webpackChunkName: "pos" */ "./views/app/pages/pos")
     },
 
-    {
-        name: "pos_draft",
-        path: "/app/pos/create/:id",
-        component: () =>
-            import(
-                /* webpackChunkName: "pos_draft" */ "./views/app/pages/pos_draft"
-            )
-    },
+   
+
 
     {
         path: "*",
@@ -1499,13 +2309,29 @@ export function setupRouterGuards(i18n) {
       NProgress.set(0.1);
     }
 
-    const savedLang = store.state.language.language;
+    // Ensure we read the actual language string from the language module
+    let savedLang = store.getters.getLanguage || (store.state.language && store.state.language.language);
 
+    if (!savedLang) {
+      await store.dispatch("setLanguage", navigator.languages);
+      savedLang = store.getters.getLanguage || (store.state.language && store.state.language.language);
+    }
+
+    // If locale differs, switch i18n locale and lazily load messages when needed
     if (savedLang && savedLang !== i18n.locale) {
+      try {
+        const existingMessages = i18n.getLocaleMessage ? i18n.getLocaleMessage(savedLang) : null;
+        if (!existingMessages || Object.keys(existingMessages || {}).length === 0) {
+          const response = await axios.get(`translations/${savedLang}`);
+          if (i18n.setLocaleMessage) {
+            i18n.setLocaleMessage(savedLang, response.data || {});
+          }
+        }
+      } catch (e) {
+        // Fallback silently if loading messages fails; keep navigation flowing
+      }
+
       i18n.locale = savedLang;
-    } else if (!savedLang) {
-      await store.dispatch("language/setLanguage", navigator.languages);
-      i18n.locale = store.state.language.language;
     }
 
     next();
@@ -1513,9 +2339,15 @@ export function setupRouterGuards(i18n) {
 
   router.afterEach(() => {
     const gullPreLoading = document.getElementById("loading_wrap");
-if (gullPreLoading) {
-    gullPreLoading.style.display = "none";
-}
+    // Defer hiding to global logic during initial boot; otherwise hide immediately
+    if (gullPreLoading) {
+      if (window.__initialLoaderActive) {
+        // App.vue will set __appReadyToHideLoader; axios interceptors will call __hideInitialLoaderIfDone
+        window.__hideInitialLoaderIfDone && window.__hideInitialLoaderIfDone();
+      } else {
+        gullPreLoading.style.display = "none";
+      }
+    }
 
     setTimeout(() => NProgress.done(), 500);
 

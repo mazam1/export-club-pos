@@ -128,7 +128,7 @@
                     <b-form-input
                       @keyup="Verified_paidAmount(facture.montant)"
                       label="Amount"
-                      type="number"
+                      type="text"
                       :placeholder="$t('Paying_Amount')"
                       v-model.number="payroll.amount"
                       :state="getValidationState(validationContext)"
@@ -262,7 +262,6 @@ export default {
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
@@ -270,7 +269,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false

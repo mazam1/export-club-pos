@@ -12,14 +12,14 @@ class Project extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'title','client_id','company_id','summary','start_date','end_date','status',
-        'description'
+        'title', 'client_id', 'company_id', 'summary', 'start_date', 'end_date', 'status',
+        'description',
 
     ];
 
     protected $casts = [
-        'client_id'  => 'integer',
-        'company_id'  => 'integer',
+        'client_id' => 'integer',
+        'company_id' => 'integer',
     ];
 
     public function client()

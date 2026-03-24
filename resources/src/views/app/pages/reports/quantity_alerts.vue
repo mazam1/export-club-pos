@@ -3,37 +3,39 @@
     <breadcumb :page="$t('ProductQuantityAlerts')" :folder="$t('Reports')"/>
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
 
-    <vue-good-table
-      v-if="!isLoading"
-      mode="remote"
-      :columns="columns"
-      :totalRows="totalRows"
-      :rows="products"
-      @on-page-change="onPageChange"
-      @on-per-page-change="onPerPageChange"
-      :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-      styleClass="table-hover tableOne vgt-table"
-    >
-      <div slot="table-actions" class="mt-2 mb-3 quantity_alert_warehouse">
-        <!-- warehouse -->
-        <b-form-group :label="$t('warehouse')">
-          <v-select
-            @input="Selected_Warehouse"
-            v-model="warehouse_id"
-            :reduce="label => label.value"
-            :placeholder="$t('Choose_Warehouse')"
-            :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-          />
-        </b-form-group>
-      </div>
+    <b-card class="print-table-only" v-if="!isLoading">
+      <vue-good-table
+        mode="remote"
+        :columns="columns"
+        :totalRows="totalRows"
+        :rows="products"
+        @on-page-change="onPageChange"
+        @on-per-page-change="onPerPageChange"
+        :pagination-options="{
+          enabled: true,
+          mode: 'records',
+          nextLabel: 'next',
+          prevLabel: 'prev',
+        }"
+        styleClass="table-hover tableOne vgt-table"
+      >
+        <div slot="table-actions" class="mt-2 mb-3 quantity_alert_warehouse">
+          <!-- warehouse -->
+          <b-form-group :label="$t('warehouse')">
+            <v-select
+              @input="Selected_Warehouse"
+              v-model="warehouse_id"
+              :reduce="label => label.value"
+              :placeholder="$t('Choose_Warehouse')"
+              :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
+            />
+          </b-form-group>
+        </div>
 
-      <div slot="table-actions" class="mt-2 mb-3">
-        
+        <div slot="table-actions" class="mt-2 mb-3">
+          <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
+            <i class="i-Printer"></i> {{ $t("print") }}
+          </b-button>
           <b-button @click="stock_alert_PDF()" size="sm" variant="outline-success ripple m-1">
             <i class="i-File-Copy"></i> PDF
           </b-button>
@@ -55,14 +57,14 @@
         </div>
       </template>
     </vue-good-table>
-    <!-- </b-card> -->
+    </b-card>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 export default {
   metaInfo: {
@@ -131,61 +133,200 @@ export default {
 
   methods: {
 
+    //------ Print Table Only
+    printTableOnly() {
+      const root = this.$el;
+      if (!root) {
+        window.print();
+        return;
+      }
+
+      const tableCard = root.querySelector(".print-table-only");
+      if (!tableCard) {
+        window.print();
+        return;
+      }
+
+      // Get products data
+      const productsData = this.products || [];
+
+      // Manually construct the table HTML from products data
+      let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
+
+      // Table Header
+      tableHtml += `<thead><tr>`;
+      this.columns.forEach(col => {
+        tableHtml += `<th class="text-left">${col.label}</th>`;
+      });
+      tableHtml += `</tr></thead>`;
+
+      // Table Body
+      tableHtml += `<tbody>`;
+      productsData.forEach(row => {
+        tableHtml += `<tr>`;
+        this.columns.forEach(col => {
+          let cellContent = row[col.field] || '';
+          tableHtml += `<td class="text-left">${cellContent}</td>`;
+        });
+        tableHtml += `</tr>`;
+      });
+      tableHtml += `</tbody>`;
+
+      // Table Footer (Totals)
+      const totalQuantity = productsData.reduce((sum, product) => sum + parseFloat(product.quantity || 0), 0);
+      const totalStockAlert = productsData.reduce((sum, product) => sum + parseFloat(product.stock_alert || 0), 0);
+      tableHtml += `<tfoot><tr>`;
+      tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
+      tableHtml += `<td colspan="2"></td>`; // Span for ProductCode, ProductName, warehouse
+      tableHtml += `<td class="text-left font-weight-bold">${totalQuantity.toFixed(2)}</td>`;
+      tableHtml += `<td class="text-left font-weight-bold">${totalStockAlert.toFixed(2)}</td>`;
+      tableHtml += `</tr></tfoot>`;
+
+      tableHtml += `</table>`;
+
+      const w = window.open("", "_blank");
+      if (!w) {
+        window.print();
+        return;
+      }
+
+      const title = `${this.$t("Reports")} / ${this.$t("ProductQuantityAlerts")}`;
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML)
+        .join("\n");
+
+      const inlineStyles = Array.from(document.querySelectorAll("style"))
+        .filter(s => !((s.textContent || "").includes("@media print")))
+        .map(s => s.outerHTML)
+        .join("\n");
+
+      const doc = w.document;
+      doc.open();
+      doc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="${window.location.origin}/" />
+    <title>${title}</title>
+    ${links}
+    ${inlineStyles}
+    <style>
+      @media print { body, body * { visibility: visible !important; } }
+      body { margin: 0.3cm; }
+      .print-header { font-weight: 600; margin-bottom: 8px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      th { background-color: #f2f2f2; }
+    </style>
+  </head>
+  <body>
+    <div class="print-header">${title}</div>
+    ${tableHtml}
+  </body>
+</html>`);
+      doc.close();
+
+      w.focus();
+      setTimeout(() => {
+        w.print();
+        w.close();
+      }, 400);
+    },
+
       //----------------------------------- Sales PDF ------------------------------\\
     stock_alert_PDF() {
       var self = this;
       let pdf = new jsPDF("p", "pt");
 
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
+      try {
+        pdf.addFont(fontPath, "Vazirmatn", "normal");
+        pdf.addFont(fontPath, "Vazirmatn", "bold");
+      } catch(e) {}
+      pdf.setFont("Vazirmatn", "normal");
 
-      let columns = [
-        { title: self.$t("ProductCode"), dataKey: "code" },
-        { title: self.$t("ProductName"), dataKey: "name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse" },
-        { title: self.$t("Quantity"), dataKey: "quantity" },
-        { title: self.$t("AlertQuantity"), dataKey: "stock_alert" },
+      const headers = [
+        self.$t("ProductCode"),
+        self.$t("ProductName"),
+        self.$t("warehouse"),
+        self.$t("Quantity"),
+        self.$t("AlertQuantity")
       ];
 
-      
-        // Calculate totals
-        let totalquantity = self.products.reduce((sum, product) => sum + parseFloat(product.quantity || 0), 0);
-        let totalstock_alert = self.products.reduce((sum, product) => sum + parseFloat(product.stock_alert || 0), 0);
+      const body = (self.products || []).map(product => ([
+        product.code,
+        product.name,
+        product.warehouse,
+        product.quantity,
+        product.stock_alert
+      ]));
 
-        let footer = [{
-          code: self.$t("Total"),
-          name: '',
-          warehouse: '',
-          quantity: `${totalquantity.toFixed(2)}`,
-          stock_alert: `${totalstock_alert.toFixed(2)}`,
-          
-        }];
+      // Calculate totals
+      let totalquantity = self.products.reduce((sum, product) => sum + parseFloat(product.quantity || 0), 0);
+      let totalstock_alert = self.products.reduce((sum, product) => sum + parseFloat(product.stock_alert || 0), 0);
 
+      const footer = [[
+        self.$t("Total"),
+        '',
+        '',
+        totalquantity.toFixed(2),
+        totalstock_alert.toFixed(2)
+      ]];
 
-      pdf.autoTable({
-             columns: columns,
-             body: self.products,
-             foot: footer,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Stock Alert report", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
+      const marginX = 40;
+      const rtl =
+        (self.$i18n && ['ar','fa','ur','he'].includes(self.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+
+      autoTable(pdf, {
+        head: [headers],
+        body: body,
+        foot: footer,
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [26,86,219], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        footStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [26,86,219], textColor: 255 },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+
+          // Header banner
+          pdf.setFillColor(26,86,219);
+          pdf.rect(0, 0, pageW, 60, 'F');
+
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = 'Stock Alert report';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
+
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        },
+        styles: {
+          font: "Vazirmatn", 
+          halign: rtl ? 'right' : 'left', 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
              footStyles: {
-               fillColor: [230, 230, 230], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
       });

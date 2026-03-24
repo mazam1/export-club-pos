@@ -5,7 +5,6 @@ import { ValidationObserver, ValidationProvider, extend, localize } from 'vee-va
 import * as rules from "vee-validate/dist/rules";
 import BootstrapVue from 'bootstrap-vue/dist/bootstrap-vue.esm';
 Vue.use(BootstrapVue);
-import "./assets/styles/sass/themes/lite-purple.scss";
 
 Vue.component(
   "large-sidebar",
@@ -63,9 +62,10 @@ axios.interceptors.response.use((response) => {
 
   return response;
 }, (error) => {
-  if (error.response && error.response.data) {
+    if (error.response && error.response.data) {
     if (error.response.status === 401) {
-      window.location.href='/login';
+      // Full page navigation (non-SPA) back to login
+      window.location.replace('/login');
     }
 
     if (error.response.status === 404) {

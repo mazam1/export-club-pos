@@ -90,35 +90,155 @@ Vue.use(VueCookies);
 var VueCookie = require('vue-cookie');
 Vue.use(VueCookie);
 
-import VueExcelXlsx from "vue-excel-xlsx";
-Vue.use(VueExcelXlsx);
+// Register Excel Export Component globally
+import ExcelExport from "./components/ExcelExport.vue";
+Vue.component('vue-excel-xlsx', ExcelExport);
 
 window.axios = require('axios');
-window.axios.defaults.baseURL = '/api/';
 
+window.axios.defaults.baseURL = '/api/';
 window.axios.defaults.withCredentials = true;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
-axios.interceptors.response.use((response) => {
+// ==============================
+// Initial load loader control
+// ==============================
+window.__axiosPendingCount = 0;
+window.__initialLoaderActive = true;     // Only during first SPA boot
+window.__appReadyToHideLoader = false;   // Set true by App.vue
 
-  return response;
-}, (error) => {
-  if (error.response && error.response.data) {
-    if (error.response.status === 401) {
-      window.location.href='/login';
+window.__hideInitialLoaderIfDone = function () {
+  if (!window.__initialLoaderActive) return;
+  if (!window.__appReadyToHideLoader) return;
+  if (window.__axiosPendingCount === 0) {
+    const el = document.getElementById('loading_wrap');
+    if (el) el.style.display = 'none';
+    window.__initialLoaderActive = false;
+  }
+};
+
+function incrementPending(config) {
+  if (
+    window.__initialLoaderActive &&
+    !(config && config.meta && config.meta.skipInitialLoader)
+  ) {
+    window.__axiosPendingCount++;
+  }
+}
+
+function decrementPending(config) {
+  if (
+    window.__initialLoaderActive &&
+    !(config && config.meta && config.meta.skipInitialLoader)
+  ) {
+    window.__axiosPendingCount = Math.max(0, window.__axiosPendingCount - 1);
+    window.__hideInitialLoaderIfDone();
+  }
+}
+
+// ==============================
+// Redirect guards (IMPORTANT)
+// ==============================
+let isRedirectingToLogin = false;
+
+// Hard logout (web session) then go to /login.
+// This prevents the classic infinite loop where:
+// - API auth is gone (401) => we navigate to /login
+// - but the web session is still alive => /login redirects back to /
+async function hardLogoutToLogin() {
+  if (isRedirectingToLogin) return;
+  isRedirectingToLogin = true;
+
+  try {
+    // Use a non-API baseURL, and bypass the auth-redirect logic for this call.
+    await axios.post(
+      "/logout",
+      {},
+      {
+        baseURL: "",
+        meta: { skipAuthRedirect: true, skipInitialLoader: true },
+      }
+    );
+  } catch (e) {
+    // ignore: we still want to navigate to /login
+  }
+
+  window.location.replace("/login");
+}
+
+// ==============================
+// Request interceptor
+// ==============================
+axios.interceptors.request.use(
+  (config) => {
+    incrementPending(config);
+    return config;
+  },
+  (error) => {
+    decrementPending(error && error.config);
+    return Promise.reject(error);
+  }
+);
+
+// ==============================
+// Response interceptor
+// ==============================
+axios.interceptors.response.use(
+  (response) => {
+    decrementPending(response && response.config);
+    return response;
+  },
+  (error) => {
+    decrementPending(error && error.config);
+
+    if (!error.response) {
+      return Promise.reject(error.message);
     }
 
-    if (error.response.status === 404) {
+    // Allow specific requests to opt out of the global auth redirect logic
+    if (error.config && error.config.meta && error.config.meta.skipAuthRedirect) {
+      return Promise.reject(error.response.data || error.message);
+    }
+
+    // 🔥 SESSION REVOKED (Security tab logout)
+    if (
+      error.response &&
+      error.response.status === 409 &&
+      error.response.headers["x-session-revoked"] === "1"
+    ) {
+      // Ensure the web session is also cleared to avoid /login <-> / loops
+      hardLogoutToLogin();
+      return Promise.reject(error);
+    }
+
+    const { status, data } = error.response;
+    const currentPath = window.location.pathname;
+
+    // ==========================
+    // 401 – Unauthenticated
+    // ==========================
+    if (status === 401) {
+      // Ensure the web session is also cleared to avoid /login <-> / loops
+      hardLogoutToLogin();
+      return Promise.reject(data || error.message);
+    }
+
+
+    // ==========================
+    // 404 / 403
+    // ==========================
+    if (status === 404) {
       router.push({ name: 'NotFound' });
     }
-    if (error.response.status === 403) {
+
+    if (status === 403) {
       router.push({ name: 'not_authorize' });
     }
 
-    return Promise.reject(error.response.data);
+    return Promise.reject(data || error.message);
   }
-  return Promise.reject(error.message);
-});
+);
+
 
 import vSelect from 'vue-select'
 Vue.component('v-select', vSelect)
@@ -140,10 +260,16 @@ Vue.config.silent = true;
 Vue.config.devtools = false;
 
 import { loadI18n } from './plugins/i18n.loader';
+import { setupGlobalOfflineSync } from './utils/globalOfflineSync';
 
 loadI18n().then(i18n => {
  store.commit('SetDefaultLanguage', { i18n, Language: i18n.locale });
   setupRouterGuards(i18n); // ✅ inject into router
+
+  // Initialize global offline sales sync (works from any page)
+  try {
+    setupGlobalOfflineSync();
+  } catch (e) {}
 
   new Vue({
     store,

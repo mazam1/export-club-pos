@@ -12,14 +12,13 @@ class Department extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        "department","department_head",'company_id'
+        'department', 'department_head', 'company_id',
     ];
 
     protected $casts = [
         'department_head' => 'integer',
         'company_id' => 'integer',
     ];
-
 
     public function employee()
     {
@@ -30,5 +29,4 @@ class Department extends Model
     {
         return $this->hasOne('App\Models\Company', 'id', 'company_id');
     }
-
 }

@@ -2,26 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
+use App\Models\PaymentMethod;
+use App\Models\PaymentPurchase;
+use App\Models\PaymentPurchaseReturns;
 use App\Models\Provider;
+use App\Models\Purchase;
+use App\Models\PurchaseReturn;
 use App\Models\Setting;
 use App\utils\helpers;
 use Carbon\Carbon;
-use App\Models\Account;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-use App\Models\Purchase;
-use App\Models\PaymentMethod;
-use App\Models\PaymentPurchase;
-use App\Models\PurchaseReturn;
-use App\Models\PaymentPurchaseReturns;
-use Illuminate\Support\Facades\Auth;
 use DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProvidersController extends BaseController
 {
-
-    //----------- Get ALL Suppliers-------\\
+    // ----------- Get ALL Suppliers-------\\
 
     public function index(request $request)
     {
@@ -34,15 +33,15 @@ class ProvidersController extends BaseController
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        $helpers = new helpers();
+        $helpers = new helpers;
         // Filter fields With Params to retrieve
-        $columns = array(0 => 'name', 1 => 'code', 2 => 'phone', 3 => 'email');
-        $param = array(0 => 'like', 1 => 'like', 2 => 'like', 3 => 'like');
-        $data = array();
+        $columns = [0 => 'name', 1 => 'code', 2 => 'phone', 3 => 'email'];
+        $param = [0 => 'like', 1 => 'like', 2 => 'like', 3 => 'like'];
+        $data = [];
 
         $providers = Provider::where('deleted_at', '=', null);
 
-        //Multiple Filter
+        // Multiple Filter
         $Filtred = $helpers->filter($providers, $columns, $param, $request)
         // Search With Multiple Param
             ->where(function ($query) use ($request) {
@@ -54,7 +53,7 @@ class ProvidersController extends BaseController
                 });
             });
         $totalRows = $Filtred->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $providers = $Filtred->offset($offSet)
@@ -103,17 +102,19 @@ class ProvidersController extends BaseController
         }
 
         $company_info = Setting::where('deleted_at', '=', null)->first();
-        $accounts = Account::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','account_name']);
+        $accounts = Account::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'account_name']);
+        $payment_methods = PaymentMethod::whereNull('deleted_at')->get(['id', 'name']);
 
         return response()->json([
             'providers' => $data,
             'company_info' => $company_info,
             'totalRows' => $totalRows,
             'accounts' => $accounts,
+            'payment_methods' => $payment_methods,
         ]);
     }
 
-    //----------- Store new Supplier -------\\
+    // ----------- Store new Supplier -------\\
 
     public function store(Request $request)
     {
@@ -122,7 +123,7 @@ class ProvidersController extends BaseController
         request()->validate([
             'name' => 'required',
         ]);
-        Provider::create([
+        $provider = Provider::create([
             'name' => $request['name'],
             'code' => $this->getNumberOrder(),
             'adresse' => $request['adresse'],
@@ -132,18 +133,30 @@ class ProvidersController extends BaseController
             'city' => $request['city'],
             'tax_number' => $request['tax_number'],
         ]);
-        return response()->json(['success' => true]);
+
+        return response()->json([
+            'success' => true,
+            'id' => $provider->id,
+            'provider' => $provider
+        ]);
 
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
-        //
-        
-        }
+    public function show($id)
+    {
+        $this->authorizeForUser(request()->user('api'), 'view', Provider::class);
 
-    //----------- Update Supplier-------\\
+        $provider = Provider::where('deleted_at', '=', null)->findOrFail($id);
+
+        return response()->json([
+            'provider' => $provider,
+        ]);
+
+    }
+
+    // ----------- Update Supplier-------\\
 
     public function update(Request $request, $id)
     {
@@ -162,11 +175,12 @@ class ProvidersController extends BaseController
             'city' => $request['city'],
             'tax_number' => $request['tax_number'],
         ]);
+
         return response()->json(['success' => true]);
 
     }
 
-    //----------- Remdeleteove Provider-------\\
+    // ----------- Remdeleteove Provider-------\\
 
     public function destroy(Request $request, $id)
     {
@@ -175,11 +189,12 @@ class ProvidersController extends BaseController
         Provider::whereId($id)->update([
             'deleted_at' => Carbon::now(),
         ]);
+
         return response()->json(['success' => true]);
 
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -192,11 +207,11 @@ class ProvidersController extends BaseController
                 'deleted_at' => Carbon::now(),
             ]);
         }
+
         return response()->json(['success' => true]);
     }
 
-
-    //----------- get Number Order Of Suppliers-------\\
+    // ----------- get Number Order Of Suppliers-------\\
 
     public function getNumberOrder()
     {
@@ -208,167 +223,304 @@ class ProvidersController extends BaseController
         } else {
             $code = 1;
         }
+
         return $code;
     }
 
-    // import providers
-    public function import_providers(Request $request)
+    public function import(Request $request)
     {
-        $file_upload = $request->file('providers');
-        $ext = pathinfo($file_upload->getClientOriginalName(), PATHINFO_EXTENSION);
-        if ($ext != 'csv') {
+        $this->authorizeForUser($request->user('api'), 'Suppliers_import', Provider::class);
+
+        // 1) File-level validation
+        $v = Validator::make($request->all(), [
+            'suppliers' => 'required|file|mimes:xls,xlsx|max:20480', // 20MB
+        ]);
+        if ($v->fails()) {
             return response()->json([
-                'msg' => 'must be in csv format',
                 'status' => false,
-            ]);
-        } else {
-            $data = array();
-            $rowcount = 0;
-            if (($handle = fopen($file_upload, "r")) !== false) {
-                $max_line_length = defined('MAX_LINE_LENGTH') ? MAX_LINE_LENGTH : 10000;
-                $header = fgetcsv($handle, $max_line_length);
-                $header_colcount = count($header);
-                while (($row = fgetcsv($handle, $max_line_length)) !== false) {
-                    $row_colcount = count($row);
-                    if ($row_colcount == $header_colcount) {
-                        $entry = array_combine($header, $row);
-                        $data[] = $entry;
-                    } else {
-                        return null;
-                    }
-                    $rowcount++;
-                }
-                fclose($handle);
-            } else {
-                return null;
-            }
-
-            $rules = array('name' => 'required');
-
-            //-- Create New Provider
-            foreach ($data as $key => $value) {
-
-                $input['name'] = $value['name'];
-
-                $validator = Validator::make($input, $rules);
-                if (!$validator->fails()) {
-
-                    Provider::create([
-                        'name' => $value['name'],
-                        'code' => $this->getNumberOrder(),
-                        'adresse' => $value['adresse'] == '' ? null : $value['adresse'],
-                        'phone' => $value['phone'] == '' ? null : $value['phone'],
-                        'email' => $value['email'] == '' ? null : $value['email'],
-                        'country' => $value['country'] == '' ? null : $value['country'],
-                        'city' => $value['city'] == '' ? null : $value['city'],
-                        'tax_number' => $value['tax_number'] == '' ? null : $value['tax_number'],
-                    ]);
-                }
-                
-            }
-
-            return response()->json([
-                'status' => true,
-            ], 200);
+                // intentionally omit "message" to avoid leaking "Validation failed"
+                'errors' => $v->errors()->all(),
+            ], 422);
         }
 
+        $rows = Excel::toArray([], $request->file('suppliers'));
+        $sheet = $rows[0] ?? [];
+        if (empty($sheet)) {
+            return response()->json([
+                'status' => false,
+                'errors' => ['No data found in the uploaded file.'],
+            ], 422);
+        }
+
+        // Header detection
+        $first = $sheet[0] ?? [];
+        $assocInput = is_array($first) && count(array_filter(array_keys($first), 'is_string')) > 0;
+
+        $normalized = [];
+        if ($assocInput) {
+            foreach ($sheet as $r) {
+                $normalized[] = $this->normalizeAssocRowSupplier($r);
+            }
+            $lineBase = 1; // header already applied in source
+        } else {
+            $header = array_map(function ($h) {
+                return $this->normalizeKeySupplier((string) $h);
+            }, $first);
+            for ($i = 1; $i < count($sheet); $i++) {
+                $row = $sheet[$i];
+                $assoc = [];
+                foreach ($header as $idx => $key) {
+                    $assoc[$key] = $row[$idx] ?? null;
+                }
+                $normalized[] = $this->normalizeAssocRowSupplier($assoc);
+            }
+            $lineBase = 2; // data start line if first row was header labels
+        }
+
+        $errors = [];
+        $prepared = [];
+        $codesInFile = [];
+
+        foreach ($normalized as $i => $row) {
+            $line = $i + $lineBase;
+
+            $name = isset($row['name']) ? trim((string) $row['name']) : '';
+            $codeRaw = array_key_exists('code', $row) ? $row['code'] : null;
+            $email = isset($row['email']) ? trim((string) $row['email']) : '';
+            $phone = isset($row['phone']) ? trim((string) $row['phone']) : '';
+            $country = isset($row['country']) ? trim((string) $row['country']) : '';
+            $city = isset($row['city']) ? trim((string) $row['city']) : '';
+            $adresse = isset($row['adresse']) ? trim((string) $row['adresse']) : '';
+            $tax_number = isset($row['tax_number']) ? trim((string) $row['tax_number']) : '';
+
+            if ($name === '') {
+                $errors[] = "Row {$line}: name is required.";
+            }
+
+            // code must be integer
+            $code = null;
+            if ($codeRaw === null || $codeRaw === '') {
+                $errors[] = "Row {$line}: code is required and must be an integer.";
+            } elseif (is_numeric($codeRaw) && intval($codeRaw) == $codeRaw) {
+                $code = intval($codeRaw);
+            } else {
+                $errors[] = "Row {$line}: code '{$codeRaw}' is not a valid integer.";
+            }
+
+            if ($email !== '' && ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = "Row {$line}: email '{$email}' is not valid.";
+            }
+
+            // in-file duplicate codes
+            if ($code !== null) {
+                if (isset($codesInFile[$code])) {
+                    $errors[] = "Row {$line}: duplicate code '{$code}' found in the file (also on row {$codesInFile[$code]}).";
+                } else {
+                    $codesInFile[$code] = $line;
+                }
+            }
+
+            $prepared[] = [
+                'name' => $name,
+                'code' => $code,
+                'email' => $email ?: null,
+                'phone' => $phone ?: null,
+                'country' => $country ?: null,
+                'city' => $city ?: null,
+                'adresse' => $adresse ?: null,
+                'tax_number' => $tax_number ?: null,
+            ];
+        }
+
+        // DB duplicate codes
+        $codes = array_values(array_filter(array_map(function ($r) {
+            return $r['code'];
+        }, $prepared), function ($v) {
+            return $v !== null;
+        }));
+        if (! empty($codes)) {
+            $dupes = Provider::whereNull('deleted_at')->whereIn('code', $codes)->pluck('code')->all();
+            foreach ($dupes as $dup) {
+                $errors[] = "code '{$dup}' already exists in the system.";
+            }
+        }
+
+        if (! empty($errors)) {
+            return response()->json([
+                'status' => false,
+                'errors' => $errors, // ONLY errors[]
+            ], 422);
+        }
+
+        // Insert suppliers
+        $now = now();
+        $insertRows = [];
+        foreach ($prepared as $r) {
+            $insertRows[] = [
+                'name' => $r['name'],
+                'code' => $r['code'],
+                'email' => $r['email'],
+                'phone' => $r['phone'],
+                'country' => $r['country'],
+                'city' => $r['city'],
+                'adresse' => $r['adresse'],
+                'tax_number' => $r['tax_number'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        DB::transaction(function () use ($insertRows) {
+            foreach (array_chunk($insertRows, 1000) as $chunk) {
+                Provider::insert($chunk);
+            }
+        });
+
+        return response()->json([
+            'status' => true,
+            'imported' => count($insertRows),
+            // optionally: 'warnings' => [...]
+        ]);
     }
 
+    // --- helpers (private methods in the same controller) ---
+    private function normalizeAssocRowSupplier(array $row): array
+    {
+        $out = [];
+        foreach ($row as $k => $v) {
+            $key = $this->normalizeKeySupplier((string) $k);
+            $out[$this->resolveSupplierSynonym($key)] = $v;
+        }
 
-    //------------- pay_supplier_due -------------\\
+        return $out;
+    }
+
+    private function normalizeKeySupplier(string $key): string
+    {
+        $key = trim(mb_strtolower($key));
+
+        return preg_replace('/[.\s\-]+/u', '_', $key);
+    }
+
+    private function resolveSupplierSynonym(string $key): string
+    {
+        $map = [
+            'supplier' => 'name',
+            'vendor' => 'name',
+            'supplier_name' => 'name',
+            'vendor_name' => 'name',
+
+            'supplier_code' => 'code',
+            'vendor_code' => 'code',
+
+            'address' => 'adresse',
+            'addr' => 'adresse',
+
+            'tax' => 'tax_number',
+            'taxno' => 'tax_number',
+            'tax_no' => 'tax_number',
+            'vat' => 'tax_number',
+        ];
+
+        return isset($map[$key]) ? $map[$key] : $key;
+    }
+
+    // ------------- pay_supplier_due -------------\\
 
     public function pay_supplier_due(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'pay_supplier_due', Provider::class);
-       
-        if($request['amount'] > 0){
-           $provider_purchases_due = Purchase::where('deleted_at', '=', null)
-           ->where('statut', 'received')
-           ->where([
-               ['payment_statut', '!=', 'paid'],
-               ['provider_id', $request->provider_id]
-           ])->get();
 
-           $paid_amount_total = $request->amount;
-
-           foreach($provider_purchases_due as $key => $provider_purchase){
-               if($paid_amount_total == 0)
-               break;
-               $due = $provider_purchase->GrandTotal  - $provider_purchase->paid_amount;
-
-               if($paid_amount_total >= $due){
-                   $amount = $due;
-                   $payment_status = 'paid';
-               }else{
-                   $amount = $paid_amount_total;
-                   $payment_status = 'partial';
-               }
-
-               $payment_purchase = new PaymentPurchase();
-               $payment_purchase->purchase_id = $provider_purchase->id;
-               $payment_purchase->account_id =  $request['account_id']?$request['account_id']:NULL;
-               $payment_purchase->Ref = app('App\Http\Controllers\PaymentPurchasesController')->getNumberOrder();
-               $payment_purchase->date = Carbon::now();
-               $payment_purchase->payment_method_id = $request['payment_method_id'];
-               $payment_purchase->montant = $amount;
-               $payment_purchase->change = 0;
-               $payment_purchase->notes = $request['notes'];
-               $payment_purchase->user_id = Auth::user()->id;
-               $payment_purchase->save();
-
-               $account = Account::where('id', $request['account_id'])->exists();
-
-               if ($account) {
-                   // Account exists, perform the update
-                   $account = Account::find($request['account_id']);
-                   $account->update([
-                       'balance' => $account->balance - $amount,
-                   ]);
-               }
-
-               $provider_purchase->paid_amount += $amount;
-               $provider_purchase->payment_statut = $payment_status;
-               $provider_purchase->save();
-
-               $paid_amount_total -= $amount;
-           }
-       }
-       
-        return response()->json(['success' => true]);
-
-    }
-
-     //------------- pay_purchase_return_due -------------\\
-
-    public function pay_purchase_return_due(Request $request)
-    {
-        $this->authorizeForUser($request->user('api'), 'pay_purchase_return_due', Provider::class);
-        
-        if($request['amount'] > 0){
-            $supplier_purchase_return_due = PurchaseReturn::where('deleted_at', '=', null)
-            ->where([
-                ['payment_statut', '!=', 'paid'],
-                ['provider_id', $request->provider_id]
-            ])->get();
+        if ($request['amount'] > 0) {
+            $provider_purchases_due = Purchase::where('deleted_at', '=', null)
+                ->where('statut', 'received')
+                ->where([
+                    ['payment_statut', '!=', 'paid'],
+                    ['provider_id', $request->provider_id],
+                ])->get();
 
             $paid_amount_total = $request->amount;
 
-            foreach($supplier_purchase_return_due as $key => $supplier_purchase_return){
-                if($paid_amount_total == 0)
-                break;
-                $due = $supplier_purchase_return->GrandTotal  - $supplier_purchase_return->paid_amount;
+            foreach ($provider_purchases_due as $key => $provider_purchase) {
+                if ($paid_amount_total == 0) {
+                    break;
+                }
+                $due = $provider_purchase->GrandTotal - $provider_purchase->paid_amount;
 
-                if($paid_amount_total >= $due){
+                if ($paid_amount_total >= $due) {
                     $amount = $due;
                     $payment_status = 'paid';
-                }else{
+                } else {
                     $amount = $paid_amount_total;
                     $payment_status = 'partial';
                 }
 
-                $payment_purchase_return = new PaymentPurchaseReturns();
+                $payment_purchase = new PaymentPurchase;
+                $payment_purchase->purchase_id = $provider_purchase->id;
+                $payment_purchase->account_id = $request['account_id'] ? $request['account_id'] : null;
+                $payment_purchase->Ref = app('App\Http\Controllers\PaymentPurchasesController')->getNumberOrder();
+                $payment_purchase->date = Carbon::now();
+                $payment_purchase->payment_method_id = $request['payment_method_id'];
+                $payment_purchase->montant = $amount;
+                $payment_purchase->change = 0;
+                $payment_purchase->notes = $request['notes'];
+                $payment_purchase->user_id = Auth::user()->id;
+                $payment_purchase->save();
+
+                $account = Account::where('id', $request['account_id'])->exists();
+
+                if ($account) {
+                    // Account exists, perform the update
+                    $account = Account::find($request['account_id']);
+                    $account->update([
+                        'balance' => $account->balance - $amount,
+                    ]);
+                }
+
+                $provider_purchase->paid_amount += $amount;
+                $provider_purchase->payment_statut = $payment_status;
+                $provider_purchase->save();
+
+                $paid_amount_total -= $amount;
+            }
+        }
+
+        return response()->json(['success' => true]);
+
+    }
+
+    // ------------- pay_purchase_return_due -------------\\
+
+    public function pay_purchase_return_due(Request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'pay_purchase_return_due', Provider::class);
+
+        if ($request['amount'] > 0) {
+            $supplier_purchase_return_due = PurchaseReturn::where('deleted_at', '=', null)
+                ->where([
+                    ['payment_statut', '!=', 'paid'],
+                    ['provider_id', $request->provider_id],
+                ])->get();
+
+            $paid_amount_total = $request->amount;
+
+            foreach ($supplier_purchase_return_due as $key => $supplier_purchase_return) {
+                if ($paid_amount_total == 0) {
+                    break;
+                }
+                $due = $supplier_purchase_return->GrandTotal - $supplier_purchase_return->paid_amount;
+
+                if ($paid_amount_total >= $due) {
+                    $amount = $due;
+                    $payment_status = 'paid';
+                } else {
+                    $amount = $paid_amount_total;
+                    $payment_status = 'partial';
+                }
+
+                $payment_purchase_return = new PaymentPurchaseReturns;
                 $payment_purchase_return->purchase_return_id = $supplier_purchase_return->id;
-                $payment_purchase_return->account_id =  $request['account_id']?$request['account_id']:NULL;
+                $payment_purchase_return->account_id = $request['account_id'] ? $request['account_id'] : null;
                 $payment_purchase_return->Ref = app('App\Http\Controllers\PaymentPurchaseReturnsController')->getNumberOrder();
                 $payment_purchase_return->date = Carbon::now();
                 $payment_purchase_return->payment_method_id = $request['payment_method_id'];
@@ -395,9 +547,8 @@ class ProvidersController extends BaseController
                 $paid_amount_total -= $amount;
             }
         }
-        
+
         return response()->json(['success' => true]);
 
     }
-
 }

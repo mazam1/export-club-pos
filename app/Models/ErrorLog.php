@@ -10,6 +10,6 @@ class ErrorLog extends Model
     use HasFactory;
 
     protected $fillable = [
-        'context','message','details'
+        'context', 'message', 'details',
     ];
 }

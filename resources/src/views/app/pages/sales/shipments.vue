@@ -177,7 +177,7 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 export default {
   metaInfo: {
@@ -250,7 +250,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false
@@ -339,18 +338,74 @@ export default {
     //--------------------------------- Shipments PDF -------------------------------\\
     Shipments_pdf() {
       var self = this;
-
       let pdf = new jsPDF("p", "pt");
-      let columns = [
-        { title: "Date", dataKey: "date" },
-        { title: "Shipment Ref", dataKey: "shipment_ref" },
-        { title: "Sale Ref", dataKey: "sale_ref" },
-        { title: "Customer", dataKey: "customer_name" },
-        { title: "Warehouse", dataKey: "warehouse_name" },
-        { title: "Status", dataKey: "status" }
+
+      const fontPath = "/fonts/Vazirmatn-Bold.ttf";
+      try {
+        pdf.addFont(fontPath, "Vazirmatn", "normal");
+        pdf.addFont(fontPath, "Vazirmatn", "bold");
+      } catch(e) {}
+      pdf.setFont("Vazirmatn", "normal");
+
+      const headers = [
+        self.$t("date"),
+        self.$t("ShipmentRef") || "Shipment Ref",
+        self.$t("Reference") || "Sale Ref",
+        self.$t("Customer"),
+        self.$t("warehouse"),
+        self.$t("Status")
       ];
-      pdf.autoTable(columns, self.shipments);
-      pdf.text("Shipments", 40, 25);
+
+      const body = (self.shipments || []).map(shipment => ([
+        shipment.date,
+        shipment.shipment_ref,
+        shipment.sale_ref,
+        shipment.customer_name,
+        shipment.warehouse_name,
+        shipment.status
+      ]));
+
+      const marginX = 40;
+      const rtl =
+        (self.$i18n && ['ar','fa','ur','he'].includes(self.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+
+      autoTable(pdf, {
+        head: [headers],
+        body: body,
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+
+          // Header banner
+          pdf.setFillColor(63,81,181);
+          pdf.rect(0, 0, pageW, 60, 'F');
+
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = self.$t('Shipments') || 'Shipments';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
+
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
+      });
+
       pdf.save("Shipments.pdf");
     },
 

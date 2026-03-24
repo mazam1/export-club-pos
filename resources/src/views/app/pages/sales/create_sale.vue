@@ -45,15 +45,29 @@
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Customer" :rules="{ required: true}">
                     <b-form-group slot-scope="{ valid, errors }" :label="$t('Customer') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="sale.client_id"
-                        @input="Selected_customer"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Customer')"
-                        :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
-                      />
+                      <b-input-group class="category-input-group">
+                        <v-select
+                          :class="{'is-invalid': !!errors.length}"
+                          :state="errors[0] ? false : (valid ? true : null)"
+                          v-model="selectedClientId"
+                          @input="Selected_customer"
+                          :reduce="label => label.value"
+                          :placeholder="$t('Choose_Customer')"
+                          :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
+                        />
+                        <b-input-group-append
+                          v-if="currentUserPermissions && currentUserPermissions.includes('Customers_add')"
+                        >
+                          <b-button
+                            variant="primary"
+                            @click="Quick_Add_Client"
+                            :title="$t('Quick_Add_Customer')"
+                            class="category-add-btn"
+                          >
+                            <i class="i-Add"></i>
+                          </b-button>
+                        </b-input-group-append>
+                      </b-input-group>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
@@ -132,7 +146,28 @@
                             <span class="badge badge-success">{{detail.name}}</span>
                            
                           </td>
-                          <td>{{currentUser.currency}} {{formatNumber(detail.Net_price, 3)}}</td>
+                          <td>
+                            <div class="d-flex align-items-center">
+                              <div class="mr-2">
+                                <span>{{currentUser.currency}} {{formatNumber(detail.Net_price, 3)}}</span>
+                                <small
+                                  v-if="detail.min_price && detail.Net_price < detail.min_price"
+                                  class="text-danger d-block"
+                                >{{ $t('Price_below_min_not_allowed') }}</small>
+                              </div>
+                              <v-select
+                                class="ml-2"
+                                :options="[
+                                  {label: $t('Retail Price'), value: 'retail'},
+                                  {label: $t('Wholesale Price'), value: 'wholesale'}
+                                ]"
+                                :reduce="opt => opt.value"
+                                v-model="detail.price_type"
+                                style="min-width: 160px"
+                                @input="val => onChangePriceType(detail, val)"
+                              />
+                            </div>
+                          </td>
                           <td>
                             <span class="badge badge-warning" v-if="detail.product_type == 'is_service'">----</span>
                             <span class="badge badge-warning" v-else>{{detail.stock}} {{detail.unitSale}}</span>
@@ -176,7 +211,7 @@
                   </div>
                 </b-col>
 
-                <div class="offset-md-9 col-md-3 mt-4">
+                <div class="offset-md-8 col-md-4 mt-4">
                   <table class="table table-striped table-sm">
                     <tbody>
                       <tr>
@@ -187,7 +222,19 @@
                       </tr>
                       <tr>
                         <td class="bold">{{$t('Discount')}}</td>
-                        <td>{{currentUser.currency}} {{sale.discount.toFixed(2)}}</td>
+                        <td>
+                          <!-- If percentage: show percent value AND discount amount; else amount only -->
+                          <template v-if="String(sale.discount_Method || '2') === '1'">
+                            {{ formatNumber(sale.discount, 2) }}% ({{ currentUser.currency }} {{ getManualDiscountAmount().toFixed(2) }})
+                          </template>
+                          <template v-else>
+                            {{currentUser.currency}} {{getManualDiscountAmount().toFixed(2)}}
+                          </template>
+                        </td>
+                      </tr>
+                      <tr v-if="discount_from_points && discount_from_points > 0">
+                        <td class="bold">{{$t('Discount_from_Points')}}</td>
+                        <td>{{currentUser.currency}} {{discount_from_points.toFixed(2)}}</td>
                       </tr>
                       <tr>
                         <td class="bold">{{$t('Shipping')}}</td>
@@ -239,20 +286,67 @@
                     v-slot="validationContext"
                   >
                     <b-form-group :label="$t('Discount')">
-                      <b-input-group :append="currentUser.currency">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="Discount-feedback"
-                          label="Discount"
-                          v-model.number="sale.discount"
-                          @keyup="keyup_Discount()"
-                        ></b-form-input>
-                      </b-input-group>
+                      <div class="d-flex" style="gap:8px; align-items:center;">
+                        <b-input-group :append="sale.discount_Method === '1' ? '%' : currentUser.currency" class="flex-grow-1">
+                          <b-form-input
+                            :state="getValidationState(validationContext)"
+                            aria-describedby="Discount-feedback"
+                            label="Discount"
+                            v-model.number="sale.discount"
+                            @keyup="keyup_Discount()"
+                          ></b-form-input>
+                        </b-input-group>
+                        <b-form-select
+                          v-model="sale.discount_Method"
+                          :options="[
+                            { text: 'Fixed', value: '2' },
+                            { text: 'Percent %', value: '1' }
+                          ]"
+                          style="max-width: 110px;"
+                        ></b-form-select>
+                      </div>
                       <b-form-invalid-feedback
                         id="Discount-feedback"
                       >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3" v-if="clientIsEligible && currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_sale')">
+                  <label>Points to convert</label>
+                  <div class="field mb-2">
+                    <b-form-input
+                      ref="pointsInput"
+                      v-model.number="points_to_convert"
+                      @input="onPointsToConvertInput"
+                      type="text"
+                      min="1"
+                      :max="selectedClientPoints"
+                      step="1"
+                      :disabled="selectedClientPoints === 0 || pointsConverted"
+                      placeholder="e.g., 200"
+                    ></b-form-input>
+                    <div class="hint mt-1">Total available: <strong>{{ selectedClientPoints }}</strong> pts</div>
+                  </div>
+
+                  <div class="actions d-flex align-items-center" style="gap:10px;">
+                    <b-button
+                      :variant="pointsConverted ? 'secondary' : 'dark'"
+                      @click="convertPointsToDiscount"
+                      :disabled="(!pointsConverted && (selectedClientPoints === 0 || !pointsInputValid))"
+                    >
+                      <template v-if="!pointsConverted">Convert</template>
+                      <template v-else>Unconverted</template>
+                    </b-button>
+                    <small v-if="!pointsConverted && points_to_convert && !pointsInputValid" class="warn">Enter a value from 1 to your available points.</small>
+                    <small v-if="!pointsConverted && pointsInputValid" class="ok">Looks good.</small>
+                  </div>
+
+                  <div class="result mt-2" v-if="discount_from_points > 0">
+                    ✅ Discount of <strong>{{ discount_from_points }}</strong> {{ currentUser.currency }} will be applied
+                  </div>
+
+                  <input type="hidden" name="discount_from_points" :value="discount_from_points">
                 </b-col>
 
                 <!-- Shipping  -->
@@ -309,6 +403,7 @@
                     <b-form-group :label="$t('PaymentStatus')">
                       <v-select
                         @input="Selected_PaymentStatus"
+                        :disabled="Number(GrandTotal) < 0"
                         :reduce="label => label.value"
                         v-model="payment.status"
                         :placeholder="$t('Choose_Status')"
@@ -331,7 +426,6 @@
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
                         :reduce="label => label.value"
-                        @input="Selected_PaymentMethod"
                         v-model="payment.payment_method_id"
                         :placeholder="$t('PleaseSelect')"
                         :options="payment_methods.map(payment_methods => ({label: payment_methods.name, value: payment_methods.id}))"
@@ -399,71 +493,7 @@
                   >{{parseFloat(payment.received_amount - payment.amount).toFixed(2)}}</p>
                 </b-col>
 
-                <b-col md="12" class="mt-3"
-                    v-if="payment.status != 'pending' && (payment.payment_method_id == '1' || payment.payment_method_id == 1) && sale.statut == 'completed'">
-                    <b-card v-show="payment.payment_method_id == '1' || payment.payment_method_id == 1">
-                        <div v-once class="typo__p" v-if="submit_showing_credit_card">
-                          <div class="spinner sm spinner-primary mt-3"></div>
-                        </div>
-                        <div v-if="displaySavedPaymentMethods && !submit_showing_credit_card">
-                          <div class="mt-3"><span class="mr-3">Saved Credit Card Info For This Client </span>
-                          <b-button variant="outline-info" @click="show_new_credit_card()">
-                              <span>
-                                <i class="i-Two-Windows"></i>
-                                New Credit Card
-                              </span>
-                          </b-button>
-
-                          </div>
-                          <table class="table table-hover mt-3">
-                            <thead>
-                              <tr>
-                                <th>Last 4 digits</th>
-                                <th>Type</th>
-                                <th>Exp</th>
-                                <th>Action</th>
-
-                              </tr>
-                            </thead>
-
-                            <tbody>
-                              <tr v-for="card in savedPaymentMethods" :class="{ 'bg-selected-card': isSelectedCard(card) }">
-                                <td>**** {{card.last4}}</td>
-                                <td>{{card.type}}</td>
-                                <td>{{card.exp}}</td>
-                                <td>
-                                   <b-button variant="outline-primary" @click="selectCard(card)" v-if="!isSelectedCard(card) && card_id != card.card_id">
-                                      <span>
-                                        <i class="i-Drag-Up"></i> 
-                                        Use This
-                                      </span>
-                                    </b-button>
-                                     <i v-if="isSelectedCard(card) || card_id == card.card_id" class="i-Yes" style=" font-size: 20px; "></i> 
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-
-                        <div v-if="displayFormNewCard && !submit_showing_credit_card">
-                          <form id="payment-form">
-                            <label for="card-element" class="leading-7 text-sm text-gray-600">
-                              {{$t('Credit_Card_Info')}}
-                              <b-button variant="outline-info" @click="show_saved_credit_card()" v-if="savedPaymentMethods && savedPaymentMethods.length > 0">
-                                <span>
-                                      <i class="i-Two-Windows"></i>
-                                      Use Saved Credit Card
-                                    </span>
-                                </b-button>
-                              </label>
-                            <div id="card-element">
-                            </div>
-                            <div id="card-errors" class="is-invalid" role="alert"></div>
-                          </form>
-                        </div>
-                     </b-card>
-                  </b-col>
-
+               
                    <!-- Account -->
                   <b-col lg="4" md="4" sm="12" v-if="payment.status != 'pending' && sale.statut == 'completed'">
                     <validation-provider name="Account">
@@ -494,7 +524,7 @@
 
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" :disabled="paymentProcessing" @click="Submit_Sale"><i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" :disabled="paymentProcessing || hasMinPriceViolation" @click="Submit_Sale"><i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}</b-button>
                     <div v-once class="typo__p" v-if="paymentProcessing">
                     <div class="spinner sm spinner-primary mt-3"></div>
                   </div>
@@ -505,6 +535,126 @@
           </b-col>
         </b-row>
       </b-form>
+    </validation-observer>
+
+    <!-- Quick Add Customer Modal -->
+    <validation-observer ref="Quick_Add_Customer_Form">
+      <b-modal hide-footer size="lg" id="Quick_Add_Customer" :title="$t('Quick_Add_Customer')">
+        <b-form @submit.prevent="Submit_Quick_Add_Customer" class="quick-add-customer-form">
+          <b-row>
+            <!-- Customer Name -->
+            <b-col md="6" sm="12">
+              <validation-provider
+                name="Name Customer"
+                :rules="{ required: true}"
+                v-slot="validationContext"
+              >
+                <b-form-group :label="$t('CustomerName') + ' ' + '*'">
+                  <b-form-input
+                    :state="getValidationState(validationContext)"
+                    aria-describedby="name-feedback"
+                    label="name"
+                    :placeholder="$t('CustomerName')"
+                    v-model="client.name"
+                  ></b-form-input>
+                  <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                </b-form-group>
+              </validation-provider>
+            </b-col>
+
+            <!-- Customer Email -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('Email')">
+                <b-form-input
+                  label="email"
+                  v-model="client.email"
+                  :placeholder="$t('Email')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Customer Phone -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('Phone')">
+                <b-form-input
+                  label="Phone"
+                  v-model="client.phone"
+                  :placeholder="$t('Phone')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Customer Country -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('Country')">
+                <b-form-input
+                  label="Country"
+                  v-model="client.country"
+                  :placeholder="$t('Country')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Customer City -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('City')">
+                <b-form-input
+                  label="City"
+                  v-model="client.city"
+                  :placeholder="$t('City')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Customer Tax Number -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('Tax_Number')">
+                <b-form-input
+                  label="Tax Number"
+                  v-model="client.tax_number"
+                  :placeholder="$t('Tax_Number')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Customer Address -->
+            <b-col md="12" sm="12">
+              <b-form-group :label="$t('Adress')">
+                <textarea
+                  label="Adress"
+                  class="form-control"
+                  rows="4"
+                  v-model="client.adresse"
+                  :placeholder="$t('Adress')"
+                ></textarea>
+              </b-form-group>
+            </b-col>
+
+            <!-- Loyalty eligibility -->
+            <b-col md="6" sm="12" class="mt-4 mb-4">
+              <div class="psx-form-check">
+                <input
+                  type="checkbox"
+                  v-model="client.is_royalty_eligible"
+                  class="psx-checkbox psx-form-check-input"
+                  id="is_royalty_eligible_quick"
+                >
+                <label class="psx-form-check-label" for="is_royalty_eligible_quick">
+                  <h5>{{ $t('Is_Royalty_Eligible') }}</h5>
+                </label>
+              </div>
+            </b-col>
+
+            <b-col md="12" class="mt-3">
+              <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
+              <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{$t('submit')}}</b-button>
+              <div v-once class="typo__p" v-if="SubmitProcessing">
+                <div class="spinner sm spinner-primary mt-3"></div>
+              </div>
+            </b-col>
+          </b-row>
+        </b-form>
+      </b-modal>
     </validation-observer>
 
     <!-- Modal Update detail Product -->
@@ -527,6 +677,24 @@
                     aria-describedby="Price-feedback"
                   ></b-form-input>
                   <b-form-invalid-feedback id="Price-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                  <small v-if="detailHasMinPriceViolation" class="text-danger">{{ $t('Price_below_min_not_allowed') }}</small>
+                </b-form-group>
+              </validation-provider>
+            </b-col>
+
+            <!-- Price Type -->
+            <b-col lg="6" md="6" sm="12">
+              <validation-provider name="Price Type">
+                <b-form-group :label="$t('Price Type')">
+                  <v-select
+                    :reduce="opt => opt.value"
+                    v-model="detail.price_type"
+                    @input="val => onChangeDetailPriceType(val)"
+                    :options="[
+                      {label: $t('Retail Price'), value: 'retail'},
+                      {label: $t('Wholesale Price'), value: 'wholesale'}
+                    ]"
+                  />
                 </b-form-group>
               </validation-provider>
             </b-col>
@@ -646,7 +814,7 @@
                 <b-button
                   variant="primary"
                   type="submit"
-                  :disabled="Submit_Processing_detail"
+                  :disabled="Submit_Processing_detail || detailHasMinPriceViolation"
                 ><i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}</b-button>
                 <div v-once class="typo__p" v-if="Submit_Processing_detail">
                   <div class="spinner sm spinner-primary mt-3"></div>
@@ -664,7 +832,6 @@
 <script>
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
-import { loadStripe } from "@stripe/stripe-js";
 
 export default {
   metaInfo: {
@@ -676,20 +843,10 @@ export default {
       timer:null,
       search_input:'',
       product_filter:[],
-      stripe_key:'',
-      stripe: {},
-      cardElement: {},
-
-      savedPaymentMethods: [],
-      hasSavedPaymentMethod: false,
-      useSavedPaymentMethod: false,
-      selectedCard:null,
-      card_id:'',
-      is_new_credit_card: false,
-      submit_showing_credit_card: false,
 
       paymentProcessing: false,
       Submit_Processing_detail:false,
+      SubmitProcessing: false,
       isLoading: true,
       warehouses: [],
       clients: [],
@@ -697,7 +854,28 @@ export default {
       client: {},
       products: [],
       details: [],
-      detail: {},
+      detail: {
+        detail_id: "",
+        sale_unit_id: "",
+        product_type: "",
+        name: "",
+        Unit_price: "",
+        fix_price: "",
+        fix_stock: "",
+        stock: "",
+        tax_method: "",
+        discount_Method: "",
+        discount: "",
+        quantity: "",
+        tax_percent: "",
+        is_imei: "",
+        imei_number: "",
+        // modal price type and baselines for correct toggling
+        price_type: 'retail',
+        retail_unit_price: "",
+        wholesale_unit_price: "",
+        min_price: 0
+      },
       sales: [],
       payment_methods:[],
       payment: {
@@ -707,6 +885,15 @@ export default {
         received_amount: "",
         account_id: "",
       },
+      selectedClientPoints: 0,
+      initialClientPoints: 0,
+      showPointsSection: false,
+      points_to_convert: 0,
+      discount_from_points: 0,
+      used_points: 0,
+      clientIsEligible: false,
+      pointsConverted: false,
+      point_to_amount_rate: 0,
       sale: {
         id: "",
         date: new Date().toISOString().slice(0, 10),
@@ -717,8 +904,12 @@ export default {
         tax_rate: 0,
         TaxNet: 0,
         shipping: 0,
-        discount: 0
+        discount: 0,
+        discount_Method: "2", // "1" for percentage, "2" for fixed (default)
       },
+      // Credit control
+      selectedClientCreditLimit: 0,
+      selectedClientNetBalance: 0,
       timer:null,
       total: 0,
       GrandTotal: 0,
@@ -739,6 +930,13 @@ export default {
         unitSale: "",
         Net_price: "",
         Unit_price: "",
+        Unit_price_wholesale: "",
+        // immutable baselines used when toggling price types
+        retail_unit_price: "",
+        wholesale_unit_price: "",
+        wholesale_Net_price: "",
+        min_price: 0,
+        price_type: 'retail',
         Total_price: "",
         subtotal: "",
         product_id: "",
@@ -755,29 +953,55 @@ export default {
 
   computed: {
     ...mapGetters(["currentUserPermissions","currentUser"]),
-
-     displaySavedPaymentMethods() {
-      if(this.hasSavedPaymentMethod){
-        return true;
-      }else{
-        return false;
-      }
+    pointsInputValid() {
+      const max = Number(this.selectedClientPoints) || 0;
+      const val = Number(this.points_to_convert);
+      return Number.isInteger(val) && val >= 1 && val <= max;
     },
 
-    displayFormNewCard() {
-      if(this.useSavedPaymentMethod){
-        return false;
-      }else{
-        return true;
-      }
+    
+
+    hasMinPriceViolation() {
+      return this.details.some(d => (d.min_price || 0) > 0 && d.Net_price < d.min_price);
     },
 
-    isSelectedCard() {
-      return card => this.selectedCard === card;
+    // Disable modal submit if the edited detail would violate min price
+    detailHasMinPriceViolation() {
+      const unit = parseFloat(this.detail.Unit_price) || 0;
+      const discount = parseFloat(this.detail.discount) || 0;
+      const taxPercent = parseFloat(this.detail.tax_percent) || 0;
+
+      const discountNet = this.detail.discount_Method == "2"
+        ? discount
+        : parseFloat((unit * discount) / 100);
+
+      let netPrice = 0;
+      if (this.detail.tax_method == "1") {
+        // Exclusive
+        netPrice = parseFloat(unit - discountNet);
+      } else {
+        // Inclusive
+        const taxe = parseFloat((unit - discountNet) * (taxPercent / 100));
+        netPrice = parseFloat(unit - taxe - discountNet);
+      }
+
+      return (this.detail.min_price || 0) > 0 && netPrice < this.detail.min_price;
     },
 
   },
 
+  watch: {
+    GrandTotal(val) {
+      if (Number(val) < 0) {
+        this.payment.status = 'pending';
+      }
+    },
+    // Recalculate totals whenever discount type changes (fixed / percentage)
+    'sale.discount_Method'(newVal, oldVal) {
+      // Ensure totals reflect the new interpretation of sale.discount and discount_from_points
+      this.CalculTotal();
+    }
+  },
  
 
   methods: {
@@ -796,20 +1020,6 @@ export default {
     
 
 
-    async loadStripe_payment() {
-      this.stripe = await loadStripe(`${this.stripe_key}`);
-      const elements = this.stripe.elements();
-
-      this.cardElement = elements.create("card", {
-        classes: {
-          base:
-            "bg-gray-100 rounded border border-gray-300 focus:border-indigo-500 text-base outline-none text-gray-700 p-3 leading-8 transition-colors duration-200 ease-in-out"
-        }
-      });
-
-      this.cardElement.mount("#card-element");
-    },
-
      handleFocus() {
       this.focused = true
     },
@@ -818,84 +1028,126 @@ export default {
       this.focused = false
     },
 
-     //---------------------- Event Select customer ------------------------------\\
-    Selected_customer(value) {
+    async Selected_customer(selectedClientId) {
       this.payment.payment_method_id = 2;
       this.savedPaymentMethods= [];
-      this.hasSavedPaymentMethod= false;
-      this.useSavedPaymentMethod= false;
-      this.selectedCard=null;
-      this.card_id='';
-      this.is_new_credit_card= false;
-      this.submit_showing_credit_card= false;
-      
-    },
-    
+      this.selectedClientPoints = 0;
+      this.initialClientPoints = 0;
+      this.points_to_convert = 0;
+      this.discount_from_points = 0;
+      this.used_points = 0;
+      this.clientIsEligible = false;
+      this.pointsConverted = false; // 👈 Reset conversion state
+      this.sale.discount = 0;       // 👈 Reset applied discount
+      this.sale.discount_Method = '2'; // Reset to fixed (default)
 
-     //---------------------- Event Select Payment Method ------------------------------\\
+      const client = this.clients.find(c => c.id === selectedClientId);
+      if (client) {
+        this.client_name = client.name;
+        this.selectedClientId = selectedClientId;
 
-    async Selected_PaymentMethod(value) {
-      if (value == '1' || value == 1) {
-        this.savedPaymentMethods = [];
-        this.submit_showing_credit_card = true;
-        this.selectedCard = null
-        this.card_id = '';
-        // Check if the customer has saved payment methods
-        await axios.get(`/retrieve-customer?customerId=${this.sale.client_id}`)
-            .then(response => {
-                // If the customer has saved payment methods, display them
-                this.savedPaymentMethods = response.data.data;
-                this.card_id = response.data.customer_default_source;
-                this.hasSavedPaymentMethod = true;
-                this.useSavedPaymentMethod = true;
-                this.is_new_credit_card = false;
-                this.submit_showing_credit_card = false;
-            })
-            .catch(error => {
-                // If the customer does not have saved payment methods, show the card element for them to enter their payment information
-                this.hasSavedPaymentMethod = false;
-                this.useSavedPaymentMethod = false;
-                this.is_new_credit_card = true;
-                this.card_id = '';
+        // Fetch customer points
+        try {
+          const response = await axios.get(`/get_points_client/${selectedClientId}`);
+          const data = response.data;
 
-                setTimeout(() => {
-                    this.loadStripe_payment();
-                }, 1000);
-                this.submit_showing_credit_card = false;
-            });
-
-         
-        }else{
-          this.hasSavedPaymentMethod = false;
-          this.useSavedPaymentMethod = false;
-          this.is_new_credit_card = false;
+          if (data.is_royalty_eligible) {
+            this.selectedClientPoints = data.points;
+            this.initialClientPoints = data.points;
+            this.clientIsEligible = true;
+          } else {
+            this.selectedClientPoints = 0;
+            this.initialClientPoints = 0;
+            this.clientIsEligible = false;
+          }
+        } catch (error) {
+          console.error('Error fetching client points:', error);
         }
 
+        // Fetch client credit limit and current balance
+        try {
+          const briefResponse = await axios.get(`/clients/${selectedClientId}/brief`);
+          const briefData = briefResponse.data;
+          this.selectedClientCreditLimit = parseFloat(briefData.credit_limit || 0);
+          this.selectedClientNetBalance = parseFloat(briefData.netBalance || 0);
+        } catch (error) {
+          console.error('Error fetching client credit limit:', error);
+          this.selectedClientCreditLimit = 0;
+          this.selectedClientNetBalance = 0;
+        }
+
+      } else {
+        this.selectedClientId = "";
+        this.selectedClientCreditLimit = 0;
+        this.selectedClientNetBalance = 0;
+      }
+
+      // ✅ Recalculate totals after client change
+      this.CalculTotal();
     },
 
-    show_saved_credit_card() {
-      this.hasSavedPaymentMethod = true;
-      this.useSavedPaymentMethod = true;
-      this.is_new_credit_card = false;
-       this.Selected_PaymentMethod(1);
+
+    convertPointsToDiscount() {
+      if (this.pointsConverted) {
+        // Reset conversion - sale.discount remains unchanged (it only contains manual discount)
+        this.discount_from_points = 0;
+        this.used_points = 0;
+        this.points_to_convert = 0;
+        this.pointsConverted = false;
+        // restore available points display
+        if (Number.isFinite(this.initialClientPoints)) {
+          this.selectedClientPoints = Number(this.initialClientPoints) || 0;
+        }
+      } else {
+        const maxPoints = Number(this.selectedClientPoints) || 0;
+        let pts = Number(this.points_to_convert);
+        if (!Number.isFinite(pts) || pts <= 0) {
+          this.makeToast && this.makeToast('warning', this.$t ? this.$t('Please_enter_points_to_convert') : 'Please enter points to convert', this.$t ? this.$t('Warning') : 'Warning');
+          return;
+        }
+        if (pts > maxPoints) {
+          this.makeToast && this.makeToast('warning', this.$t ? this.$t('Entered_points_exceed_available') : 'Entered points exceed available', this.$t ? this.$t('Warning') : 'Warning');
+          this.points_to_convert = maxPoints;
+          pts = maxPoints;
+          this.$nextTick && this.$nextTick(() => {
+            const r = this.$refs && this.$refs.pointsInput;
+            if (r && r.$el) { try { r.$el.value = String(this.points_to_convert); } catch(e) {} }
+          });
+        }
+        const discount = parseFloat((pts * this.point_to_amount_rate).toFixed(2));
+        this.discount_from_points = discount;
+        // Don't merge points into sale.discount - keep them separate so input shows only manual discount
+        // Points discount is stored in discount_from_points and applied separately in calculations
+        this.used_points = pts;
+        // ensure input reflects final used points
+        this.points_to_convert = pts;
+        this.$nextTick && this.$nextTick(() => {
+          const r = this.$refs && this.$refs.pointsInput;
+          if (r && r.$el) { try { r.$el.value = String(this.points_to_convert); } catch(e) {} }
+        });
+        this.pointsConverted = true;
+        // reduce available points display until saved
+        const baseAvail = Number(this.initialClientPoints || this.selectedClientPoints) || 0;
+        this.selectedClientPoints = Math.max(0, baseAvail - pts);
+      }
+
+      this.CalculTotal(); // Recalculate grand total
     },
 
-    show_new_credit_card() {
-      this.selectedCard = null;
-      this.card_id = '';
-      this.useSavedPaymentMethod = false;
-      this.hasSavedPaymentMethod = false;
-      this.is_new_credit_card = true;
-
-      setTimeout(() => {
-        this.loadStripe_payment();
-      }, 500);
+    onPointsToConvertInput() {
+      let max = Number(this.selectedClientPoints) || 0;
+      let val = Number(this.points_to_convert);
+      if (!Number.isFinite(val)) val = 0;
+      if (val < 0) val = 0;
+      val = Math.floor(val);
+      if (val > max) {
+        // warn and clamp
+        this.makeToast && this.makeToast('warning', this.$t ? this.$t('Entered_points_exceed_available') : 'Entered points exceed available', this.$t ? this.$t('Warning') : 'Warning');
+        val = max;
+      }
+      this.points_to_convert = val;
     },
-
-    selectCard(card) {
-      this.selectedCard = card;
-      this.card_id = card.card_id;
-    },
+    
 
 
      //---------------------- Event Select Status ------------------------------\\
@@ -955,6 +1207,11 @@ export default {
   
     //--- Submit Validate Create Sale
     Submit_Sale() {
+      // hard block if any line violates min price
+      if (this.hasMinPriceViolation) {
+        this.makeToast('warning', this.$t('Price_below_min_not_allowed'), this.$t('Warning'));
+        return;
+      }
       this.$refs.create_sale.validate().then(success => {
         if (!success) {
           this.makeToast(
@@ -962,6 +1219,10 @@ export default {
             this.$t("Please_fill_the_form_correctly"),
             this.$t("Failed")
           );
+        } else if (Number(this.GrandTotal) < 0) {
+          const msg = this.$t ? `${this.$t('pos.Total_Payable')} ${this.$t('cannot_be_negative') || 'cannot be negative'}` : 'Total Payable cannot be negative';
+          this.makeToast('warning', msg, this.$t ? this.$t('Warning') : 'Warning');
+          return;
         } else if (this.payment.amount > this.payment.received_amount) {
           this.makeToast(
             "warning",
@@ -977,7 +1238,33 @@ export default {
               this.$t("Warning")
             );
             this.payment.amount = 0;
-          }else{
+          } else {
+            // Credit Limit Validation (0 means no limit)
+            // Only applies when this sale is adding new credit (paid amount < sale total)
+            if (this.selectedClientId && this.selectedClientCreditLimit > 0) {
+              const totalPaid = parseFloat(this.payment.amount || 0);
+              const saleTotal = parseFloat(this.GrandTotal || 0);
+
+              if (totalPaid < saleTotal) {
+                const currentDue = parseFloat(this.selectedClientNetBalance || 0);
+                const newSaleDue = saleTotal - totalPaid; // Remaining due from this sale
+                const newTotalDue = currentDue + newSaleDue;
+
+                if (newTotalDue > this.selectedClientCreditLimit) {
+                  const exceededAmount = newTotalDue - this.selectedClientCreditLimit;
+                  this.makeToast(
+                    "danger",
+                    this.$t("Credit_Limit_Exceeded") + ": " +
+                      this.formatNumber(exceededAmount, 2) + " " +
+                      this.$t("exceeds_credit_limit_of") + " " +
+                      this.formatNumber(this.selectedClientCreditLimit, 2),
+                    this.$t("Warning")
+                  );
+                  return;
+                }
+              }
+            }
+
             this.Create_Sale();
           }
       });
@@ -988,6 +1275,11 @@ export default {
         if (!success) {
           return;
         } else {
+          // block if current edited detail violates min price
+          if (this.detailHasMinPriceViolation) {
+            this.makeToast('warning', this.$t('Price_below_min_not_allowed'), this.$t('Warning'));
+            return;
+          }
           this.Update_Detail();
         }
       });
@@ -1017,7 +1309,6 @@ export default {
     Modal_Updat_Detail(detail) {
       NProgress.start();
       NProgress.set(0.1);
-      this.detail = {};
       this.get_units(detail.product_id);
       this.detail.detail_id = detail.detail_id;
       this.detail.sale_unit_id = detail.sale_unit_id;
@@ -1034,6 +1325,11 @@ export default {
       this.detail.tax_percent = detail.tax_percent;
       this.detail.is_imei = detail.is_imei;
       this.detail.imei_number = detail.imei_number;
+      this.detail.min_price = detail.min_price || 0;
+      // sync price type and baselines into modal detail
+      this.detail.price_type = detail.price_type || 'retail';
+      this.detail.retail_unit_price = detail.retail_unit_price !== undefined ? detail.retail_unit_price : detail.Unit_price;
+      this.detail.wholesale_unit_price = detail.wholesale_unit_price !== undefined ? detail.wholesale_unit_price : detail.Unit_price_wholesale;
 
        setTimeout(() => {
         NProgress.done();
@@ -1071,7 +1367,15 @@ export default {
               this.details[i].quantity =1;
             }
                       
+          // persist selected price type from modal BEFORE adjusting baselines
+          this.details[i].price_type = this.detail.price_type || this.details[i].price_type;
           this.details[i].Unit_price = this.detail.Unit_price;
+          // update baseline for the selected price type
+          if (this.details[i].price_type === 'wholesale') {
+            this.details[i].wholesale_unit_price = this.detail.Unit_price;
+          } else {
+            this.details[i].retail_unit_price = this.detail.Unit_price;
+          }
           this.details[i].tax_percent = this.detail.tax_percent;
           this.details[i].tax_method = this.detail.tax_method;
           this.details[i].discount_Method = this.detail.discount_Method;
@@ -1115,10 +1419,18 @@ export default {
             );
           }
 
+          // Validate against min price after any manual edit
+          if (this.details[i].Net_price < (this.details[i].min_price || 0)) {
+            this.makeToast('warning', this.$t('Price_below_min_not_allowed'), this.$t('Warning'));
+            // revert to retail baseline
+            this.details[i].price_type = 'retail';
+            this.applyPriceType(this.details[i]);
+          }
+
           this.$forceUpdate();
         }
       }
-      this.Calcul_Total();
+      this.CalculTotal();
 
       setTimeout(() => {
         NProgress.done();
@@ -1126,6 +1438,13 @@ export default {
         this.$bvModal.hide("form_Update_Detail");
       }, 1000);
 
+    },
+
+    onChangeDetailPriceType(newType){
+      if (newType) {
+        this.detail.price_type = newType;
+      }
+      this.applyPriceType(this.detail);
     },
 
 
@@ -1253,6 +1572,90 @@ export default {
       this.Get_Products_By_Warehouse(value);
     },
 
+    // ---------------- Quick Add Customer (like POS) ---------------- \\
+    Quick_Add_Client() {
+      this.reset_Form_client();
+      this.$bvModal.show("Quick_Add_Customer");
+    },
+
+    reset_Form_client() {
+      this.client = {
+        id: "",
+        name: "",
+        email: "",
+        phone: "",
+        tax_number: "",
+        country: "",
+        city: "",
+        adresse: "",
+        is_royalty_eligible: false
+      };
+    },
+
+    Submit_Quick_Add_Customer() {
+      NProgress.start();
+      NProgress.set(0.1);
+      this.SubmitProcessing = true;
+      this.$refs.Quick_Add_Customer_Form &&
+        this.$refs.Quick_Add_Customer_Form.validate().then(success => {
+          if (!success) {
+            NProgress.done();
+            this.SubmitProcessing = false;
+            this.makeToast(
+              "danger",
+              this.$t("Please_fill_the_form_correctly"),
+              this.$t("Failed")
+            );
+            return;
+          }
+
+          axios
+            .post("clients", {
+              name: this.client.name,
+              email: this.client.email || "",
+              phone: this.client.phone || "",
+              tax_number: this.client.tax_number || "",
+              country: this.client.country || "",
+              city: this.client.city || "",
+              adresse: this.client.adresse || "",
+              is_royalty_eligible: this.client.is_royalty_eligible || false
+            })
+            .then(({ data }) => {
+              NProgress.done();
+              this.SubmitProcessing = false;
+
+              const newClient = data;
+              if (newClient && newClient.id) {
+                this.clients.push({
+                  id: newClient.id,
+                  name: newClient.name,
+                  phone: newClient.phone || ""
+                });
+                this.selectedClientId = newClient.id;
+                // Reuse existing selection logic (points, credit, etc.)
+                this.Selected_customer(newClient.id);
+              }
+
+              this.makeToast(
+                "success",
+                this.$t("Successfully_Created"),
+                this.$t("Success")
+              );
+              this.$bvModal.hide("Quick_Add_Customer");
+              this.reset_Form_client();
+            })
+            .catch(() => {
+              NProgress.done();
+              this.SubmitProcessing = false;
+              this.makeToast(
+                "danger",
+                this.$t("InvalidData"),
+                this.$t("Failed")
+              );
+            });
+        });
+    },
+
      //------------------------------------ Get Products By Warehouse -------------------------\\
 
     Get_Products_By_Warehouse(id) {
@@ -1301,7 +1704,7 @@ export default {
         }
       }
       this.$forceUpdate();
-      this.Calcul_Total();
+      this.CalculTotal();
     },
 
     //-----------------------------------increment QTY ------------------------------\\
@@ -1317,7 +1720,7 @@ export default {
         }
       }
       this.$forceUpdate();
-      this.Calcul_Total();
+      this.CalculTotal();
     },
 
     //-----------------------------------decrement QTY ------------------------------\\
@@ -1339,7 +1742,7 @@ export default {
         }
       }
       this.$forceUpdate();
-      this.Calcul_Total();
+      this.CalculTotal();
     },
 
     //------------------------------Formetted Numbers -------------------------\\
@@ -1357,7 +1760,7 @@ export default {
     },
 
     //-----------------------------------------Calcul Total ------------------------------\\
-    Calcul_Total() {
+    CalculTotal() {
       this.total = 0;
       for (var i = 0; i < this.details.length; i++) {
         var tax = this.details[i].taxe * this.details[i].quantity;
@@ -1367,8 +1770,32 @@ export default {
         this.total = parseFloat(this.total + this.details[i].subtotal);
       }
 
+      // Calculate discount based on type (backward compatible: default to fixed if not set)
+      const discountMethod = String(this.sale.discount_Method || '2');
+      const discountValue = Number(this.sale.discount || 0);
+      let discountAmount = 0;
+
+      if (discountMethod === '1') {
+        // Percentage discount on subtotal
+        const percentAmount = parseFloat((this.total * (discountValue / 100)).toFixed(2));
+        // Points-based discount is always a fixed amount; apply it in addition, but never exceed remaining subtotal
+        const remainingAfterPercent = Math.max(this.total - percentAmount, 0);
+        const pointsAmount = parseFloat(
+          Math.min(Number(this.discount_from_points || 0), remainingAfterPercent).toFixed(2)
+        );
+        discountAmount = percentAmount + pointsAmount;
+      } else {
+        // Fixed discount: apply both manual discount and points discount separately
+        const manualDiscount = parseFloat(Math.min(discountValue, this.total).toFixed(2));
+        const remainingAfterManual = Math.max(this.total - manualDiscount, 0);
+        const pointsDiscount = parseFloat(
+          Math.min(Number(this.discount_from_points || 0), remainingAfterManual).toFixed(2)
+        );
+        discountAmount = manualDiscount + pointsDiscount;
+      }
+
       const total_without_discount = parseFloat(
-        this.total - this.sale.discount
+        (this.total - discountAmount).toFixed(2)
       );
       this.sale.TaxNet = parseFloat(
         (total_without_discount * this.sale.tax_rate) / 100
@@ -1391,7 +1818,7 @@ export default {
       for (var i = 0; i < this.details.length; i++) {
         if (id === this.details[i].detail_id) {
           this.details.splice(i, 1);
-          this.Calcul_Total();
+          this.CalculTotal();
         }
       }
     },
@@ -1420,6 +1847,11 @@ export default {
               return false;
             }
           }
+          // enforce min price per line
+          if ((this.details[i].min_price || 0) > 0 && this.details[i].Net_price < this.details[i].min_price) {
+            this.makeToast('warning', this.$t('Price_below_min_not_allowed'), this.$t('Warning'));
+            return false;
+          }
         }
 
         if (count > 0) {
@@ -1438,9 +1870,9 @@ export default {
         this.sale.tax_rate = 0;
       } else if(this.sale.tax_rate == ''){
          this.sale.tax_rate = 0;
-        this.Calcul_Total();
+        this.CalculTotal();
       }else {
-        this.Calcul_Total();
+        this.CalculTotal();
       }
     },
 
@@ -1451,9 +1883,59 @@ export default {
         this.sale.discount = 0;
       } else if(this.sale.discount == ''){
          this.sale.discount = 0;
-        this.Calcul_Total();
+        this.CalculTotal();
       }else {
-        this.Calcul_Total();
+        this.CalculTotal();
+      }
+    },
+
+    // Calculate discount amount for current sale (for display in summary card)
+    // Calculate manual discount amount only (excluding points) for display
+    getManualDiscountAmount() {
+      try {
+        const discountMethod = String(this.sale.discount_Method || '2'); // Default to fixed for backward compatibility
+        const discountValue = Number(this.sale.discount || 0);
+        const subtotal = this.total || 0;
+
+        if (discountMethod === '1') {
+          // Percentage discount on subtotal (manual discount only, no points)
+          return parseFloat((subtotal * (discountValue / 100)).toFixed(2));
+        } else {
+          // Fixed discount (manual discount only, no points)
+          return parseFloat(Math.min(discountValue, subtotal).toFixed(2));
+        }
+      } catch (e) {
+        return Number(this.sale.discount || 0);
+      }
+    },
+    
+    // Calculate total discount amount (includes both manual and points) for display
+    getCurrentSaleDiscountAmount() {
+      try {
+        const discountMethod = String(this.sale.discount_Method || '2'); // Default to fixed for backward compatibility
+        const discountValue = Number(this.sale.discount || 0);
+        const subtotal = this.total || 0;
+
+        if (discountMethod === '1') {
+          // Percentage discount on subtotal
+          const percentAmount = parseFloat((subtotal * (discountValue / 100)).toFixed(2));
+          // Points-based discount is always a fixed amount; add it for display
+          const remainingAfterPercent = Math.max(subtotal - percentAmount, 0);
+          const pointsAmount = parseFloat(
+            Math.min(Number(this.discount_from_points || 0), remainingAfterPercent).toFixed(2)
+          );
+          return percentAmount + pointsAmount;
+        } else {
+          // Fixed discount: apply both manual discount and points discount separately
+          const manualDiscount = parseFloat(Math.min(discountValue, subtotal).toFixed(2));
+          const remainingAfterManual = Math.max(subtotal - manualDiscount, 0);
+          const pointsDiscount = parseFloat(
+            Math.min(Number(this.discount_from_points || 0), remainingAfterManual).toFixed(2)
+          );
+          return manualDiscount + pointsDiscount;
+        }
+      } catch (e) {
+        return Number(this.sale.discount || 0);
       }
     },
 
@@ -1464,86 +1946,41 @@ export default {
         this.sale.shipping = 0;
       } else if(this.sale.shipping == ''){
          this.sale.shipping = 0;
-        this.Calcul_Total();
+        this.CalculTotal();
       }else {
-        this.Calcul_Total();
+        this.CalculTotal();
       }
     },
 
     async processPayment() {
-      this.paymentProcessing = true;
-      const { token, error } = await this.stripe.createToken(
-        this.cardElement
-      );
-      if (error) {
-        this.paymentProcessing = false;
-        NProgress.done();
-        this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-      } else {
-        axios
-          .post("sales", {
-            date: this.sale.date,
-            client_id: this.sale.client_id,
-            warehouse_id: this.sale.warehouse_id,
-            statut: this.sale.statut,
-            notes: this.sale.notes,
-            tax_rate: this.sale.tax_rate?this.sale.tax_rate:0,
-            TaxNet: this.sale.TaxNet?this.sale.TaxNet:0,
-            discount: this.sale.discount?this.sale.discount:0,
-            shipping: this.sale.shipping?this.sale.shipping:0,
-            GrandTotal: this.GrandTotal,
-            details: this.details,
-            payment: this.payment,
-            amount: parseFloat(this.payment.amount).toFixed(2),
-            received_amount: parseFloat(this.payment.received_amount).toFixed(2),
-            change: parseFloat(this.payment.received_amount - this.payment.amount).toFixed(2),
-            token: token.id,
-            is_new_credit_card: this.is_new_credit_card,
-            selectedCard: this.selectedCard,
-            card_id: this.card_id,
-          })
-          .then(response => {
-            this.paymentProcessing = false;
-            this.makeToast(
-              "success",
-              this.$t("Successfully_Created"),
-              this.$t("Success")
-            );
-            NProgress.done();
-            this.$router.push({ name: "index_sales" });
-          })
-          .catch(error => {
-            this.paymentProcessing = false;
-            NProgress.done();
-            this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-          });
-      }
+      // Legacy helper kept for backward compatibility; Stripe processing removed.
+      return this.Create_Sale();
     },
     //--------------------------------- Create Sale -------------------------\\
     Create_Sale() {
       if (this.verifiedForm()) {
+        if (Number(this.GrandTotal) < 0) {
+          const msg = this.$t ? `${this.$t('pos.Total_Payable')} ${this.$t('cannot_be_negative') || 'cannot be negative'}` : 'Total Payable cannot be negative';
+          this.makeToast('warning', msg, this.$t ? this.$t('Warning') : 'Warning');
+          return;
+        }
         // Start the progress bar.
         NProgress.start();
         NProgress.set(0.1);
-        if ((this.payment.payment_method_id == "1" || this.payment.payment_method_id == 1) && this.is_new_credit_card) {
-          if(this.stripe_key != ''){
-            this.processPayment();
-          }else{
-            this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
-            NProgress.done();
-          }
-        }else{
+       
+        {
           this.paymentProcessing = true;
           axios
             .post("sales", {
               date: this.sale.date,
-              client_id: this.sale.client_id,
+              client_id: this.selectedClientId,
               warehouse_id: this.sale.warehouse_id,
               statut: this.sale.statut,
               notes: this.sale.notes,
               tax_rate: this.sale.tax_rate?this.sale.tax_rate:0,
               TaxNet: this.sale.TaxNet?this.sale.TaxNet:0,
               discount: this.sale.discount?this.sale.discount:0,
+              discount_Method: String(this.sale.discount_Method || '2'), // '1' = percent, '2' = fixed
               shipping: this.sale.shipping?this.sale.shipping:0,
               GrandTotal: this.GrandTotal,
               details: this.details,
@@ -1551,9 +1988,8 @@ export default {
               amount: parseFloat(this.payment.amount).toFixed(2),
               received_amount: parseFloat(this.payment.received_amount).toFixed(2),
               change: parseFloat(this.payment.received_amount - this.payment.amount).toFixed(2),
-              is_new_credit_card: this.is_new_credit_card,
-              selectedCard: this.selectedCard,
-              card_id: this.card_id,
+              discount_from_points: this.discount_from_points,
+              used_points: this.used_points,
             })
             .then(response => {
               this.makeToast(
@@ -1589,14 +2025,20 @@ export default {
 
     Get_Product_Details(product_id, variant_id) {
       axios.get("/show_product_data/" + product_id +"/"+ variant_id).then(response => {
-        this.product.discount = 0;
-        this.product.DiscountNet = 0;
-        this.product.discount_Method = "2";
+        this.product.discount           = response.data.discount;
+        this.product.DiscountNet        = response.data.DiscountNet;
+        this.product.discount_Method    = response.data.discount_method;
         this.product.product_id = response.data.id;
         this.product.product_type = response.data.product_type;
         this.product.name = response.data.name;
         this.product.Net_price = response.data.Net_price;
         this.product.Unit_price = response.data.Unit_price;
+        this.product.Unit_price_wholesale = response.data.Unit_price_wholesale;
+        // store immutable baselines to allow correct toggling between price types
+        this.product.retail_unit_price = response.data.Unit_price;
+        this.product.wholesale_unit_price = response.data.Unit_price_wholesale;
+        this.product.wholesale_Net_price = response.data.wholesale_Net_price;
+        this.product.min_price = response.data.min_price;
         this.product.taxe = response.data.tax_price;
         this.product.tax_method = response.data.tax_method;
         this.product.tax_percent = response.data.tax_percent;
@@ -1605,9 +2047,67 @@ export default {
         this.product.sale_unit_id = response.data.sale_unit_id;
         this.product.is_imei = response.data.is_imei;
         this.product.imei_number = '';
+        this.product.price_type = 'retail';
+        this.applyPriceType(this.product);
+        
+        // ensure min price respected
+        if (this.product.Net_price < (this.product.min_price || 0)) {
+          this.product.price_type = 'retail';
+          this.applyPriceType(this.product);
+        }
+
         this.add_product();
-        this.Calcul_Total();
+        this.CalculTotal();
       });
+    },
+
+    applyPriceType(prod){
+      // choose immutable baseline based on selected price type
+      const selectedIsWholesale = prod.price_type === 'wholesale';
+      const hasWholesaleBaseline = prod.wholesale_unit_price !== undefined && prod.wholesale_unit_price !== null && prod.wholesale_unit_price !== '';
+      const hasRetailBaseline = prod.retail_unit_price !== undefined && prod.retail_unit_price !== null && prod.retail_unit_price !== '';
+
+      if (selectedIsWholesale && hasWholesaleBaseline) {
+        prod.Unit_price = parseFloat(prod.wholesale_unit_price);
+      } else if (hasRetailBaseline) {
+        prod.Unit_price = parseFloat(prod.retail_unit_price);
+      }
+
+      // Recompute discount/tax derived values based on Unit_price and method
+      if (prod.discount_Method == "2") {
+        prod.DiscountNet = parseFloat(prod.discount || 0);
+      } else {
+        prod.DiscountNet = parseFloat(((parseFloat(prod.Unit_price) || 0) * (parseFloat(prod.discount) || 0)) / 100);
+      }
+
+      const unitAfterDiscount = (parseFloat(prod.Unit_price) || 0) - (parseFloat(prod.DiscountNet) || 0);
+      const taxPercent = parseFloat(prod.tax_percent) || 0;
+
+      if (prod.tax_method == "1") {
+        // Exclusive
+        prod.Net_price = parseFloat(unitAfterDiscount);
+        prod.taxe = parseFloat((taxPercent * unitAfterDiscount) / 100);
+      } else {
+        // Inclusive
+        prod.taxe = parseFloat(unitAfterDiscount * (taxPercent / 100));
+        prod.Net_price = parseFloat((parseFloat(prod.Unit_price) || 0) - (parseFloat(prod.taxe) || 0) - (parseFloat(prod.DiscountNet) || 0));
+      }
+    },
+
+    onChangePriceType(detail, newType){
+      if (newType) {
+        detail.price_type = newType;
+      }
+      this.applyPriceType(detail);
+      // enforce min price rule on change
+      if(detail.Net_price < detail.min_price){
+        this.makeToast('warning', this.$t('Price_below_min_not_allowed'), this.$t('Warning'));
+        // revert to retail if wholesale violates minimum
+        detail.price_type = 'retail';
+        this.applyPriceType(detail);
+      }
+      this.$forceUpdate();
+      this.CalculTotal();
     },
 
     //---------------------------------------Get Elements ------------------------------\\
@@ -1619,7 +2119,7 @@ export default {
           this.warehouses = response.data.warehouses;
           this.accounts = response.data.accounts;
           this.payment_methods = response.data.payment_methods;
-          this.stripe_key = response.data.stripe_key;
+          this.point_to_amount_rate = response.data.point_to_amount_rate;
           this.isLoading = false;
         })
         .catch(response => {
@@ -1649,5 +2149,46 @@ export default {
     height: 50px;
     margin-right: 8px; /* Adjust spacing as needed */
     cursor: pointer;
+  }
+
+  /* Points section helpers (lightweight, scoped to this page) */
+  .hint { font-size: 13px; color: #6b7280; }
+  .hint strong { color: #111827; }
+  .warn { color: #b45309; font-size: 12px; }
+  .ok { color: #065f46; font-size: 12px; }
+  .result { font-size: 13px; color: #1e3a8a; background: #eef2ff; border: 1px dashed #c7d2fe; border-radius: 10px; padding: 8px 10px; }
+
+  .table-responsive::after {
+    content: '';
+    display: block;
+    height: 150px; /* gives breathing space for last dropdown */
+  }
+
+  /* ===== v-select in input-group ===== */
+  .category-input-group {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .category-input-group .v-select {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .category-input-group .v-select .vs__dropdown-toggle {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    height: 100%;
+  }
+
+  .category-input-group .v-select .vs__dropdown-toggle,
+  .category-input-group .v-select .vs__dropdown-toggle .vs__selected-options {
+    height: 100%;
+  }
+
+  .category-add-btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    white-space: nowrap;
   }
 </style>

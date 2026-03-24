@@ -1,11 +1,11 @@
 <?php
 
-$laravelVersion = '8.1.0';
+$laravelVersion = '8.2';
 
 $reqList = array(
    
-    '8.1.0' => array(
-        'php' => '8.1.0',
+    '8.2' => array(
+        'php' => '8.2',
         'openssl' => true,
         'fileinfo' => true,
         'pdo' => true,

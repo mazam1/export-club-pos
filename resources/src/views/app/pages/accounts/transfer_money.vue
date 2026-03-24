@@ -89,7 +89,7 @@
                         :state="getValidationState(validationContext)"
                         aria-describedby="Amount-feedback"
                         label="Amount"
-                        type="number"
+                        type="text"
                         :placeholder="$t('Amount')"
                         v-model.number="transfer.amount"
                       ></b-form-input>
@@ -220,7 +220,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false

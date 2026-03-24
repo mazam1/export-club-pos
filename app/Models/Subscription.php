@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 
 class Subscription extends Model
 {
@@ -16,15 +15,15 @@ class Subscription extends Model
         'client_id',
         'product_id',
         'warehouse_id', // Warehouse selection added
-        'total_cycles', 
-        'cycle_type',// e.g., 12 for monthly (1 year), 52 for weekly
+        'total_cycles',
+        'cycle_type', // e.g., 12 for monthly (1 year), 52 for weekly
         'billing_cycle', // monthly, weekly, yearly
         'remaining_cycles', // Decreases with each payment
         'price_per_cycle',
         'price_per_unit',
         'quantity',
         'next_billing_date',
-        'status', // active, canceled, 
+        'status', // active, canceled,
     ];
 
     protected $casts = [
@@ -38,7 +37,6 @@ class Subscription extends Model
         'price_per_unit' => 'double',
         'quantity' => 'double',
     ];
-
 
     public function client()
     {
@@ -65,7 +63,7 @@ class Subscription extends Model
         if ($this->remaining_cycles > 0) {
             $sale = Sale::create([
                 'date' => now(),
-                'Ref' => 'SUB-' . strtoupper(uniqid()), // Unique reference
+                'Ref' => 'SUB-'.strtoupper(uniqid()), // Unique reference
                 'is_pos' => false,
                 'subscription_id' => $this->id,
                 'client_id' => $this->client_id,
@@ -80,7 +78,7 @@ class Subscription extends Model
                 'shipping_status' => 'pending',
             ]);
 
-             // Fetch product unit for sale
+            // Fetch product unit for sale
             $product = Product::with('unitSale')->where('id', $this->product_id)->first();
             $unit = $product?->unitSale?->id ?? null;
 
@@ -99,5 +97,4 @@ class Subscription extends Model
 
         }
     }
-
 }

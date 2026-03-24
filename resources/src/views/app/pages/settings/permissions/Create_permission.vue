@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <breadcumb :page="$t('Create_Permission')" :folder="$t('Settings')"/>
+    <breadcumb :page="$t('Create_Permission')" :folder="$t('Users')"/>
 
     <validation-observer ref="Create_Permission">
       <b-form @submit.prevent="Submit_Permission">
@@ -151,19 +151,6 @@
                                   value="users_delete"
                                 >
                                 <span>{{$t('Del')}}</span>
-                                <span class="checkmark"></span>
-                              </label>
-                            </b-col>
-                            <!--Users record view -->
-                            <b-col md="12">
-                              <label class="checkbox checkbox-outline-primary">
-                                <input
-                                  type="checkbox"
-                                  checked
-                                  v-model="permissions"
-                                  value="record_view"
-                                >
-                                <span>{{$t('ShowAll')}}</span>
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
@@ -367,6 +354,20 @@
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
+
+                            <!--SubCategory -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="subcategory"
+                                >
+                                <span>{{$t('SubCategory')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
                             <!--Brand  -->
                             <b-col md="6">
                               <label class="checkbox checkbox-outline-primary">
@@ -503,6 +504,46 @@
                   </b-card>
                 </b-col>
 
+            <!--  Damage -->
+            <b-col md="4">
+              <b-card no-body class="ul-card__border-radius">
+                <b-card-header header-tag="header" class="p-1" role="tab">
+                  <b-button
+                    class="card-title mb-0"
+                    block
+                    href="#"
+                    v-b-toggle.panel-Damage
+                    variant="transparent"
+                  >Damages</b-button>
+                </b-card-header>
+                <b-collapse
+                  id="panel-Damage"
+                  :visible="true"
+                  accordion="my-accordion-damage"
+                  role="tabpanel"
+                >
+                  <b-card-body>
+                    <b-card-text>
+                      <b-row>
+                        <b-col md="6">
+                          <label class="checkbox checkbox-outline-primary">
+                            <input
+                              type="checkbox"
+                              checked
+                              v-model="permissions"
+                              value="damage_view"
+                            >
+                            <span>Damages</span>
+                            <span class="checkmark"></span>
+                          </label>
+                        </b-col>
+                      </b-row>
+                    </b-card-text>
+                  </b-card-body>
+                </b-collapse>
+              </b-card>
+            </b-col>
+
                 <!--  Transfer -->
                 <b-col md="4">
                   <b-card no-body class="ul-card__border-radius">
@@ -604,6 +645,105 @@
                       <b-card-body>
                         <b-card-text>
                           <b-row>
+
+                            <!--accounting_dashboard -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="accounting_dashboard"
+                                >
+                                <span>Accounting dashboard</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                             <!--chart_of_accounts -->
+                             <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="chart_of_accounts"
+                                >
+                                <span>Chart of accounts</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                             <!--journal_entries -->
+                             <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="journal_entries"
+                                >
+                                <span>journal entries</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!--trial_balance -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="trial_balance"
+                                >
+                                <span>Trial balance</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!--accounting_profit_loss -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="accounting_profit_loss"
+                                >
+                                <span>Accounting profit & loss</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                             <!--balance_sheet -->
+                             <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="balance_sheet"
+                                >
+                                <span>Balance sheet</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                             <!--accounting_tax_report -->
+                             <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="accounting_tax_report"
+                                >
+                                <span>Accounting tax report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
                             <!--Accounts -->
                             <b-col md="6">
                               <label class="checkbox checkbox-outline-primary">
@@ -751,6 +891,86 @@
                   </b-card>
                 </b-col>
 
+                <!-- Assets -->
+                <b-col md="4">
+                  <b-card no-body class="ul-card__border-radius">
+                    <b-card-header header-tag="header" class="p-1" role="tab">
+                      <b-button
+                        class="card-title mb-0"
+                        block
+                        href="#"
+                        v-b-toggle.panel-Assets
+                        variant="transparent"
+                      >{{$t('Assets')}}</b-button>
+                    </b-card-header>
+                    <b-collapse
+                      id="panel-Assets"
+                      :visible="true"
+                      accordion="my-accordion-assets"
+                      role="tabpanel"
+                    >
+                      <b-card-body>
+                        <b-card-text>
+                          <b-row>
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="assets"
+                                >
+                                <span>{{$t('Assets')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                          </b-row>
+                        </b-card-text>
+                      </b-card-body>
+                    </b-collapse>
+                  </b-card>
+                </b-col>
+
+                <!-- Service & Maintenance -->
+                <b-col md="4">
+                  <b-card no-body class="ul-card__border-radius">
+                    <b-card-header header-tag="header" class="p-1" role="tab">
+                      <b-button
+                        class="card-title mb-0"
+                        block
+                        href="#"
+                        v-b-toggle.panel-Service
+                        variant="transparent"
+                      >{{$t('Service_Maintenance')}}</b-button>
+                    </b-card-header>
+                    <b-collapse
+                      id="panel-Service"
+                      :visible="true"
+                      accordion="my-accordion-service"
+                      role="tabpanel"
+                    >
+                      <b-card-body>
+                        <b-card-text>
+                          <b-row>
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="service_jobs"
+                                >
+                                <span>{{$t('Service_Maintenance')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                          </b-row>
+                        </b-card-text>
+                      </b-card-body>
+                    </b-collapse>
+                  </b-card>
+                </b-col>
+
                 <!-- Sales -->
                 <b-col md="4">
                   <b-card no-body class="ul-card__border-radius">
@@ -834,6 +1054,20 @@
                                   value="Pos_view"
                                 >
                                 <span>{{$t('pointofsales')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!--customer_display_screen_setup -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="customer_display_screen_setup"
+                                >
+                                <span>customer display screen setup</span>
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
@@ -1854,6 +2088,48 @@
                               </label>
                             </b-col>
 
+                             <!--cash_flow_report-->
+                             <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="cash_flow_report"
+                                >
+                                <span>Cash flow report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!--report_attendance_summary-->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="report_attendance_summary"
+                                >
+                                <span>Report attendance summary</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                              <!--seller_report-->
+                               <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="seller_report"
+                                >
+                                <span>Seller Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
                               <!--report_sales_by_category-->
                              <b-col md="12">
                               <label class="checkbox checkbox-outline-primary">
@@ -1864,6 +2140,34 @@
                                   value="report_sales_by_category"
                                 >
                                 <span>Sales by Category</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                               <!--report_sales_by_brand-->
+                             <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="report_sales_by_brand"
+                                >
+                                <span>Sales by Brand</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                             <!--AI_Reports-->
+                             <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="AI_Reports"
+                                >
+                                <span>AI Reports</span>
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
@@ -1935,6 +2239,63 @@
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
+
+                             <!-- inactive_customers_report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="inactive_customers_report"
+                                >
+                                <span>Inactive customers report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!-- service_jobs_report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="service_jobs_report"
+                                >
+                                <span>{{$t('Service_Jobs_Report')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!-- checklist_completion_report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="checklist_completion_report"
+                                >
+                                <span>{{$t('Checklist_Completion_Report')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!-- customer_maintenance_history_report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="customer_maintenance_history_report"
+                                >
+                                <span>{{$t('Customer_Maintenance_History_Report')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
                             <!--Suppliers Reports -->
                             <b-col md="12">
                               <label class="checkbox checkbox-outline-primary">
@@ -2059,6 +2420,203 @@
                               </label>
                             </b-col>
 
+                              <!-- cash_register_report -->
+                              <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="cash_register_report"
+                                >
+                                <span>Cash Register Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                              <!-- report_warranty -->
+                              <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="report_warranty"
+                                >
+                                <span>Warranty / Guarantee Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                              <!-- zeroSalesProducts -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="zeroSalesProducts"
+                                >
+                                <span>zero Sales Products Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            
+                              <!-- Dead_Stock_Report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="Dead_Stock_Report"
+                                >
+                                <span>Dead Stock Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                              <!-- Stock_Aging_Report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="Stock_Aging_Report"
+                                >
+                                <span>Stock Aging Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                              <!-- Stock_Transfer_Report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="Stock_Transfer_Report"
+                                >
+                                <span>Stock Transfer Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                              <!-- Stock_Adjustment_Report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="Stock_Adjustment_Report"
+                                >
+                                <span>Stock Adjustment Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                              <!-- Top_Suppliers_Report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="Top_Suppliers_Report"
+                                >
+                                <span>Top Suppliers Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                               <!-- draft_invoices_report --> 
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="draft_invoices_report"
+                                >
+                                <span>Draft Invoices Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!-- discount_summary_report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="discount_summary_report"
+                                >
+                                <span>Discount Summary Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                             <!-- tax_summary_report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="tax_summary_report"
+                                >
+                                <span>Tax Summary Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!-- return_ratio_report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="return_ratio_report"
+                                >
+                                <span>Return Ratio Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!-- negative_stock_report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="negative_stock_report"
+                                >
+                                <span>Negative Stock Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                             <!-- customer_loyalty_points_report -->
+                             <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="customer_loyalty_points_report"
+                                >
+                                <span>{{$t('Customer_Loyalty_Points_Report')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
                              <!--product_sales_report-->
                             <b-col md="12">
                               <label class="checkbox checkbox-outline-primary">
@@ -2097,6 +2655,48 @@
                                   value="report_error_logs"
                                 >
                                 <span>Report error logs</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                             <!-- Login Device Management -->
+                             <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="report_device_management"
+                                >
+                                <span>{{$t('Login_Activity_Report')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!-- analytics_report -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="analytics_report"
+                                >
+                                <span>Analytics Report</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!-- Stock_Inventory_Valuation -->
+                            <b-col md="12">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="Stock_Inventory_Valuation"
+                                >
+                                <span>Stock Inventory Valuation</span>
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
@@ -2323,6 +2923,20 @@
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
+
+                             <!--bookings -->
+                             <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="bookings"
+                                >
+                                <span>Bookings</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
                           
                           </b-row>
                         </b-card-text>
@@ -2361,7 +2975,49 @@
                                   v-model="permissions"
                                   value="setting_system"
                                 >
-                                <span>{{$t('SystemSettings')}} + {{$t('update_settings')}}</span>
+                                <span>{{$t('SystemSettings')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!--update_settings -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="update_settings"
+                                >
+                                <span>{{$t('update_settings')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                            <!-- Login Device Management -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="login_device_management"
+                                >
+                                <span>Login Device Management</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                             <!--woocommerce_settings  -->
+                             <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="woocommerce_settings"
+                                >
+                                <span>Woocommerce settings</span>
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
@@ -2376,6 +3032,20 @@
                                   value="payment_methods"
                                 >
                                 <span>Payment methods</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                              <!--quickbooks_settings  -->
+                              <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="quickbooks_settings"
+                                >
+                                <span>Quickbooks settings</span>
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
@@ -2534,46 +3204,82 @@
                   </b-card>
                 </b-col>
 
-                 <!-- Add-on -->
-                 <!-- <b-col md="4">
+                  <!-- Store -->
+                <b-col md="4">
                   <b-card no-body class="ul-card__border-radius">
                     <b-card-header header-tag="header" class="p-1" role="tab">
                       <b-button
                         class="card-title mb-0"
                         block
                         href="#"
-                        v-b-toggle.panel-addon
+                        v-b-toggle.panel-store
                         variant="transparent"
-                      >add-on</b-button>
+                      >Online Store</b-button>
                     </b-card-header>
+
                     <b-collapse
-                      id="panel-addon"
+                      id="panel-store"
                       :visible="true"
-                      accordion="my-accordion19"
+                      accordion="my-accordion194"
                       role="tabpanel"
                     >
                       <b-card-body>
-                        <b-card-text>
-                          <b-row>
-                            <b-col md="6">
-                              <label class="checkbox checkbox-outline-primary">
-                                <input
-                                  type="checkbox"
-                                  checked
-                                  v-model="permissions"
-                                  value="online_store"
-                                >
-                                <span>Online Store</span>
-                                <span class="checkmark"></span>
-                              </label>
-                            </b-col>
-                             
-                          </b-row>
-                        </b-card-text>
+                      
+                        <b-row>
+                          <b-col md="6" class="mb-2">
+                            <label class="checkbox checkbox-outline-primary d-block">
+                              <input type="checkbox" v-model="permissions" value="Store_settings_view">
+                              <span>Store Settings</span>
+                              <span class="checkmark"></span>
+                            </label>
+                          </b-col>
+
+                          <b-col md="6" class="mb-2">
+                            <label class="checkbox checkbox-outline-primary d-block">
+                              <input type="checkbox" v-model="permissions" value="Orders_view">
+                              <span>Orders</span>
+                              <span class="checkmark"></span>
+                            </label>
+                          </b-col>
+
+                          <b-col md="6" class="mb-2">
+                            <label class="checkbox checkbox-outline-primary d-block">
+                              <input type="checkbox" v-model="permissions" value="Collections_view">
+                              <span>Collections</span>
+                              <span class="checkmark"></span>
+                            </label>
+                          </b-col>
+
+                          <b-col md="6" class="mb-2">
+                            <label class="checkbox checkbox-outline-primary d-block">
+                              <input type="checkbox" v-model="permissions" value="Banners_view">
+                              <span>Banners</span>
+                              <span class="checkmark"></span>
+                            </label>
+                          </b-col>
+
+                           <b-col md="6" class="mb-2">
+                            <label class="checkbox checkbox-outline-primary d-block">
+                              <input type="checkbox" v-model="permissions" value="Subscribers_view">
+                              <span>Subscribers</span>
+                              <span class="checkmark"></span>
+                            </label>
+                          </b-col>
+
+                           <b-col md="6" class="mb-2">
+                            <label class="checkbox checkbox-outline-primary d-block">
+                              <input type="checkbox" v-model="permissions" value="Messages_view">
+                              <span>Messages</span>
+                              <span class="checkmark"></span>
+                            </label>
+                          </b-col>
+
+                        </b-row>
                       </b-card-body>
                     </b-collapse>
                   </b-card>
-                </b-col> -->
+                </b-col>
+
 
               </b-row>
               <!-- End row -->

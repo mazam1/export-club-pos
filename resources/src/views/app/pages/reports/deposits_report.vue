@@ -4,7 +4,8 @@
   
       <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
 
-      <b-col md="12" class="text-center" v-if="!isLoading">
+      <b-row v-if="!isLoading">
+        <b-col md="12" class="text-center">
         <date-range-picker 
           v-model="dateRange" 
           :startDate="startDate" 
@@ -13,10 +14,77 @@
           :locale-data="locale" > 
 
           <template v-slot:input="picker" style="min-width: 350px;">
-              {{ picker.startDate.toJSON().slice(0, 10)}} - {{ picker.endDate.toJSON().slice(0, 10)}}
+              {{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}
           </template>        
         </date-range-picker>
       </b-col>
+      </b-row>
+
+      <!-- Summary cards -->
+      <b-row v-if="!isLoading" class="mb-4">
+        <b-col md="4" class="mb-3">
+          <b-card class="shadow-sm border-0 h-100 deposit-summary-card deposit-card-total">
+            <div class="d-flex align-items-center">
+              <div class="summary-icon rounded-circle mr-3">
+                <i class="i-Dollar"></i>
+              </div>
+              <div>
+                <div class="text-muted small text-uppercase">{{ $t('Total_Deposits') }}</div>
+                <h4 class="mb-0 font-weight-bold">{{ formatPriceWithSymbol(currentUser && currentUser.currency, totalDeposits, 2) }}</h4>
+              </div>
+            </div>
+          </b-card>
+        </b-col>
+        <b-col md="4" class="mb-3">
+          <b-card class="shadow-sm border-0 h-100 deposit-summary-card deposit-card-categories">
+            <div class="d-flex align-items-center">
+              <div class="summary-icon rounded-circle mr-3">
+                <i class="i-Bar-Chart"></i>
+              </div>
+              <div>
+                <div class="text-muted small text-uppercase">{{ $t('Deposit_Category') }}</div>
+                <h4 class="mb-0 font-weight-bold">{{ categoryCount }}</h4>
+              </div>
+            </div>
+          </b-card>
+        </b-col>
+        <b-col md="4" class="mb-3">
+          <b-card class="shadow-sm border-0 h-100 deposit-summary-card deposit-card-top">
+            <div class="d-flex align-items-center">
+              <div class="summary-icon rounded-circle mr-3">
+                <i class="i-Money-2"></i>
+              </div>
+              <div>
+                <div class="text-muted small text-uppercase">{{ $t('Top_Category') || 'Top Category' }}</div>
+                <h4 class="mb-0 font-weight-bold text-truncate" :title="topCategoryName">{{ topCategoryName || '—' }}</h4>
+                <small v-if="topCategoryAmount != null" class="text-muted">{{ formatPriceWithSymbol(currentUser && currentUser.currency, topCategoryAmount, 2) }}</small>
+              </div>
+            </div>
+          </b-card>
+        </b-col>
+      </b-row>
+
+      <!-- Charts -->
+      <b-row v-if="!isLoading" class="mb-4">
+        <b-col lg="6" class="mb-3">
+          <b-card class="shadow-sm border-0 h-100">
+            <h5 class="card-title mb-3">{{ $t('Deposits_by_Category') || 'Deposits by Category' }} ({{ $t('Distribution') || 'Distribution' }})</h5>
+            <div v-if="chartDataLength" class="chart-wrapper">
+              <apexchart type="donut" height="320" :options="apexPieOptions" :series="apexPieSeries" />
+            </div>
+            <div v-else class="text-center text-muted py-5">{{ $t('No_Data') || 'No data for the selected period' }}</div>
+          </b-card>
+        </b-col>
+        <b-col lg="6" class="mb-3">
+          <b-card class="shadow-sm border-0 h-100">
+            <h5 class="card-title mb-3">{{ $t('Deposits_by_Category') || 'Deposits by Category' }} ({{ $t('Total_Deposits') }})</h5>
+            <div v-if="chartDataLength" class="chart-wrapper">
+              <apexchart type="bar" height="320" :options="apexBarOptions" :series="apexBarSeries" />
+            </div>
+            <div v-else class="text-center text-muted py-5">{{ $t('No_Data') || 'No data for the selected period' }}</div>
+          </b-card>
+        </b-col>
+      </b-row>
 
       <b-card class="wrapper" v-if="!isLoading">
         <vue-good-table
@@ -44,9 +112,19 @@
         }"
           styleClass="tableOne table-hover vgt-table mt-3"
         >
+          <template slot="table-row" slot-scope="props">
+            <span v-if="props.column.field == 'total_deposits'">
+              {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total_deposits, 2) }}
+            </span>
+            <span v-else>
+              {{ props.formattedRow[props.column.field] }}
+            </span>
+          </template>
   
          <div slot="table-actions" class="mt-2 mb-3">
-          
+            <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
+              <i class="i-Printer"></i> {{ $t("print") }}
+            </b-button>
             <b-button @click="deposits_report_pdf()" size="sm" variant="outline-success ripple m-1">
               <i class="i-File-Copy"></i> PDF
             </b-button>
@@ -68,17 +146,23 @@
   
   
   <script>
-  import NProgress from "nprogress";
-  import jsPDF from "jspdf";
-  import "jspdf-autotable";
+import NProgress from "nprogress";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import VueApexCharts from "vue-apexcharts";
 
-  import DateRangePicker from 'vue2-daterange-picker'
-  //you need to import the CSS manually
-  import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
-  import moment from 'moment'
+import DateRangePicker from 'vue2-daterange-picker'
+//you need to import the CSS manually
+import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
+import moment from 'moment'
+import { mapGetters } from "vuex";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting
+} from "../../../../utils/priceFormat";
   
   export default {
-    components: { DateRangePicker },
+    components: { DateRangePicker, apexchart: VueApexCharts },
     metaInfo: {
       title: "Deposits Report"
     },
@@ -130,6 +214,7 @@
     },
   
     computed: {
+      ...mapGetters(["currentUser"]),
       columns() {
         return [
           {
@@ -139,7 +224,6 @@
             thClass: "text-left",
             sortable: false
           },
-         
           {
             label: this.$t("Total_Deposits"),
             field: "total_deposits",
@@ -149,10 +233,66 @@
             thClass: "text-left",
             sortable: false
           },
-
-         
         ];
-      }
+      },
+      totalDeposits() {
+        return (this.reports || []).reduce((sum, r) => sum + parseFloat(r.total_deposits || 0), 0);
+      },
+      categoryCount() {
+        return (this.reports || []).length;
+      },
+      topCategoryName() {
+        const reports = this.reports || [];
+        if (!reports.length) return '';
+        const top = reports.reduce((best, r) => {
+          const val = parseFloat(r.total_deposits || 0);
+          return val > (best ? parseFloat(best.total_deposits || 0) : 0) ? r : best;
+        }, null);
+        return top ? top.category_name : '';
+      },
+      topCategoryAmount() {
+        const reports = this.reports || [];
+        if (!reports.length) return null;
+        const top = reports.reduce((best, r) => {
+          const val = parseFloat(r.total_deposits || 0);
+          return val > (best ? parseFloat(best.total_deposits || 0) : 0) ? r : best;
+        }, null);
+        return top ? parseFloat(top.total_deposits || 0) : null;
+      },
+      chartDataLength() {
+        return (this.reports || []).length;
+      },
+      apexPieSeries() {
+        return (this.reports || []).map(r => parseFloat(r.total_deposits || 0));
+      },
+      apexPieOptions() {
+        const totalStr = this.currentUser && this.currentUser.currency
+          ? `${this.currentUser.currency} ${Number(this.totalDeposits).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : String(this.totalDeposits);
+        return {
+          chart: { type: 'donut', toolbar: { show: false } },
+          labels: (this.reports || []).map(r => r.category_name || ''),
+          legend: { position: 'bottom', fontSize: '12px' },
+          colors: ['#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316', '#ef4444'],
+          dataLabels: { enabled: true, formatter(val) { return val ? Number(val).toFixed(1) + '%' : ''; } },
+          plotOptions: { pie: { donut: { size: '55%', labels: { show: true, total: { show: true, label: this.$t('Total_Deposits'), formatter: () => totalStr } } } } },
+        };
+      },
+      apexBarSeries() {
+        return [{ name: this.$t('Total_Deposits'), data: (this.reports || []).map(r => parseFloat(r.total_deposits || 0)) }];
+      },
+      apexBarOptions() {
+        return {
+          chart: { type: 'bar', toolbar: { show: false }, stacked: false },
+          plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
+          dataLabels: { enabled: true },
+          xaxis: { categories: (this.reports || []).map(r => r.category_name || ''), labels: { rotate: -45, style: { fontSize: '11px' } } },
+          yaxis: { labels: { formatter: (val) => (this.currentUser && this.currentUser.currency ? `${this.currentUser.currency} ${Number(val).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : String(val)) } },
+          colors: ['#0ea5e9'],
+          legend: { show: false },
+          grid: { borderColor: '#e5e7eb', strokeDashArray: 4, xaxis: { lines: { show: false } } },
+        };
+      },
     },
   
     methods: {
@@ -177,8 +317,8 @@
         pdf.setFont("VazirmatnBold"); 
 
         let columns = [
-          { title: self.$t("Deposit_Category"), dataKey: "category_name" },
-          { title: self.$t("Total_Deposits"), dataKey: "total_deposits" },
+          { header: self.$t("Deposit_Category"), dataKey: "category_name" },
+          { header: self.$t("Total_Deposits"), dataKey: "total_deposits" },
         ];
 
         // Calculate totals
@@ -190,7 +330,7 @@
           
         }];
 
-        pdf.autoTable({
+        autoTable(pdf, {
              columns: columns,
              body: self.reports,
              foot: footer,
@@ -206,13 +346,13 @@
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
              footStyles: {
-               fillColor: [230, 230, 230], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
         });
@@ -274,28 +414,143 @@
         while (formated.length < dec) formated += "0";
         return `${value[0]}.${formated}`;
       },
+
+      // Price formatting for display only (does NOT affect calculations or stored values)
+      // Uses the global/system price_format setting when available; otherwise falls back
+      // to the existing formatNumber helper to preserve current behavior.
+      formatPriceDisplay(number, dec) {
+        try {
+          const decimals = Number.isInteger(dec) ? dec : 0;
+          const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+          if (key) {
+            this.price_format_key = key;
+          }
+          const effectiveKey = key || null;
+          return formatPriceDisplayHelper(number, decimals, effectiveKey);
+        } catch (e) {
+          return this.formatNumber(number, dec);
+        }
+      },
+
+      formatPriceWithSymbol(symbol, number, dec) {
+        const safeSymbol = symbol || "";
+        const value = this.formatPriceDisplay(number, dec);
+        return safeSymbol ? `${safeSymbol} ${value}` : value;
+      },
+
+    //------ Print Table Only - Print ALL deposits data with all columns
+    printTableOnly() {
+      const title = `${this.$t("Reports")} / ${this.$t("Deposits_Report")}`;
+      const reports = Array.isArray(this.rows[0]?.children) ? this.rows[0].children : [];
+      
+      // Build table header with all columns
+      let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
+      tableHTML += '<thead><tr>';
+      
+      this.columns.forEach(col => {
+        tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
+      });
+      tableHTML += '</tr></thead><tbody>';
+      
+      // Build table rows with all data - format each cell according to column type
+      reports.forEach(report => {
+        tableHTML += '<tr>';
+        this.columns.forEach(col => {
+          let cellValue = '';
+          
+          if (col.field === 'category_name') {
+            cellValue = report.category_name || '';
+          } else if (col.field === 'total_deposits') {
+            cellValue = this.formatPriceWithSymbol(this.currentUser?.currency, report.total_deposits, 2);
+          } else {
+            // Default: get value directly from report object
+            cellValue = report[col.field] || '';
+          }
+          
+          tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
+        });
+        tableHTML += '</tr>';
+      });
+      
+      tableHTML += '</tbody></table>';
+
+      const w = window.open("", "_blank");
+      if (!w) {
+        alert("Please allow popups to print");
+        return;
+      }
+
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML)
+        .join("\n");
+
+      const doc = w.document;
+      doc.open();
+      doc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="${window.location.origin}/" />
+    <title>${title}</title>
+    ${links}
+    <style>
+      /* Force visibility in print (some global POS print CSS hides body) */
+      @media print { 
+        body, body * { visibility: visible !important; }
+        @page { size: A4 landscape; margin: 0.3cm; }
+      }
+      body { margin: 0.3cm; font-family: Arial, sans-serif; }
+      .print-header { font-weight: 600; margin-bottom: 10px; font-size: 14px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 10px; }
+      th { background-color: #f5f5f5; font-weight: bold; }
+      tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+  </head>
+  <body>
+    <div class="print-header">${title}</div>
+    ${tableHTML}
+  </body>
+</html>`);
+      doc.close();
+
+      w.focus();
+      setTimeout(() => {
+        w.print();
+        w.close();
+      }, 400);
+    },
   
     //----------------------------- Submit Date Picker -------------------\\
     Submit_filter_dateRange() {
-      var self = this;
-      self.startDate =  self.dateRange.startDate.toJSON().slice(0, 10);
-      self.endDate = self.dateRange.endDate.toJSON().slice(0, 10);
-      self.get_deposits_report(1);
+      const pad = (n) => String(n).padStart(2, "0");
+      const formatLocalDate = (d) =>
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      this.startDate = formatLocalDate(new Date(this.dateRange.startDate));
+      this.endDate = formatLocalDate(new Date(this.dateRange.endDate));
+      this.get_deposits_report(1);
     },
 
 
     get_data_loaded() {
-      var self = this;
+      const self = this;
       if (self.today_mode) {
-        let startDate = new Date("01/01/2000");  // Set start date to "01/01/2000"
-        let endDate = new Date();  // Set end date to current date
-
-        self.startDate = startDate.toISOString();
-        self.endDate = endDate.toISOString();
-
-        self.dateRange.startDate = startDate.toISOString();
-        self.dateRange.endDate = endDate.toISOString();
+        const startDate = new Date("01/01/2000");
+        const endDate = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        const formatLocalDate = (d) =>
+          `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        self.startDate = formatLocalDate(startDate);
+        self.endDate = formatLocalDate(endDate);
+        self.dateRange.startDate = startDate;
+        self.dateRange.endDate = endDate;
       }
+    },
+
+    // Same as dashboard: format date for picker display (YYYY-MM-DD, local time via moment)
+    fmt(d) {
+      return moment(d).format("YYYY-MM-DD");
     },
 
   
@@ -351,3 +606,19 @@
     }
   };
   </script>
+
+  <style scoped>
+  .deposit-summary-card .summary-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: #fff;
+  }
+  .deposit-card-total .summary-icon { background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); }
+  .deposit-card-categories .summary-icon { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); }
+  .deposit-card-top .summary-icon { background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); }
+  .chart-wrapper { min-height: 280px; }
+  </style>

@@ -1,13 +1,11 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
-import axios from 'axios';
 
 Vue.use(Vuex);
 
 const state = {
     isAuthenticated: false,
     Permissions: null,
-    allmodules: null,
     user: {},
     loading: false,
     error: null,
@@ -15,10 +13,12 @@ const state = {
     Default_Language: 'en',
     show_language: 1,
     availableLanguages: [],
+    date_format: 'YYYY-MM-DD', // Default date format from database
+    price_format: null, // Price format from database
+    dark_mode: false, // Dark mode from database
 };
 
 const getters = {
-    getallmodules: state => state.allmodules,
     isAuthenticated: state => state.isAuthenticated,
     currentUser: state => state.user,
     currentUserPermissions: state => state.Permissions,
@@ -28,7 +28,10 @@ const getters = {
     show_language: state => state.show_language,
     error: state => state.error,
     getAvailableLanguages: state => state.availableLanguages,
-
+    getDateFormat: state => state.date_format,
+    getPriceFormat: state => state.price_format,
+    getDarkMode: state => state.dark_mode,
+    getTimezone: state => (state.user && state.user.timezone) || 'UTC',
 };
 
 const mutations = {
@@ -46,9 +49,7 @@ const mutations = {
     setPermissions(state, Permissions) {
         state.Permissions = Permissions;
     },
-    setallmodules(state, allmodules) {
-        state.allmodules = allmodules;
-    },
+
     setUser(state, user) {
         state.user = user;
     },
@@ -69,10 +70,18 @@ const mutations = {
     setAvailableLanguages(state, languages) {
         state.availableLanguages = languages;
     },
+    setDateFormat(state, dateFormat) {
+        state.date_format = dateFormat;
+    },
+    setPriceFormat(state, priceFormat) {
+        state.price_format = priceFormat;
+    },
+    setDarkMode(state, darkMode) {
+        state.dark_mode = darkMode;
+    },
     logout(state) {
         state.user = null;
         state.Permissions = null;
-        state.allmodules = null;
         state.loading = false;
         state.error = null;
     },
@@ -82,22 +91,33 @@ const actions = {
     async refreshUserPermissions({ commit }, i18n) {
         try {
             const userAuth = await axios.get("get_user_auth");
-            const { permissions, ModulesEnabled, user, notifs } = userAuth.data;
+            const { permissions, user, notifs } = userAuth.data;
 
             commit('setPermissions', permissions);
-            commit('setallmodules', ModulesEnabled);
             commit('setUser', user);
             commit('Notifs_alert', notifs);
             commit('show_language', user.show_language);
             commit('SetDefaultLanguage', { i18n, Language: user.default_language || 'en' });
+            // Set date format from database
+            commit('setDateFormat', user.date_format || 'YYYY-MM-DD');
+            // Set price format from database
+            commit('setPriceFormat', user.price_format || null);
+            // Set dark mode from database and sync with config store
+            const darkMode = user.dark_mode ?? false;
+            commit('setDarkMode', darkMode);
+            // Sync dark mode to config store (themeMode) - access config module mutation
+            commit('config/setDarkMode', darkMode, { root: true });
 
         } catch (error) {
             commit('setPermissions', null);
-            commit('setallmodules', null);
             commit('setUser', null);
             commit('Notifs_alert', null);
             commit('show_language', null);
             commit('SetDefaultLanguage', { i18n, Language: 'en' });
+            commit('setDateFormat', 'YYYY-MM-DD');
+            commit('setPriceFormat', null);
+            commit('setDarkMode', false);
+            commit('config/setDarkMode', false, { root: true });
         }
     },
 
@@ -113,7 +133,8 @@ const actions = {
    logout({ commit }) {
     axios.post('/logout', {}, { baseURL: '' }) // override the baseURL here
         .then(() => {
-            window.location.href = '/login';
+            // Full page navigation OUT of the SPA
+            window.location.replace('/login');
         });
     }
 };

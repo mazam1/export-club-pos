@@ -149,7 +149,7 @@
                             [
                               {label: 'received', value: 'received'},
                               {label: 'pending', value: 'pending'},
-                               {label: 'შეკვეთილი', value: 'ordered'}
+                               {label: 'ordered', value: 'ordered'}
                             ]"
                       ></v-select>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>

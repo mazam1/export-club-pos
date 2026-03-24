@@ -1,5 +1,7 @@
 <?php
 
+namespace Database\Seeders;
+
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -15,7 +17,7 @@ class PaymentMethodsSeeder extends Seeder
         $paymentMethods = [
             ['id' => 1, 'name' => 'Credit Card'],
             ['id' => 2, 'name' => 'Cash'],
-            ['id' => 3, 'name' => 'Cheque'],
+            ['id' => 3, 'name' => 'Check'],
             ['id' => 4, 'name' => 'TPE'],
             ['id' => 5, 'name' => 'Western Union'],
             ['id' => 6, 'name' => 'bank transfer'],

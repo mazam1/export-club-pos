@@ -12,13 +12,13 @@ class Task extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'title','project_id','start_date','end_date','company_id','description','status'
+        'title', 'project_id', 'start_date', 'end_date', 'company_id', 'description', 'status',
 
     ];
 
     protected $casts = [
-        'project_id'  => 'integer',
-        'company_id'  => 'integer',
+        'project_id' => 'integer',
+        'company_id' => 'integer',
     ];
 
     public function project()
@@ -35,6 +35,4 @@ class Task extends Model
     {
         return $this->belongsToMany('App\Models\Employee');
     }
-
-
 }

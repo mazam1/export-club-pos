@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class role_user extends Model
 {
-
     protected $table = 'role_user';
+
     protected $fillable = [
         'user_id', 'role_id',
     ];
@@ -16,5 +16,4 @@ class role_user extends Model
         'user_id' => 'integer',
         'role_id' => 'integer',
     ];
-
 }

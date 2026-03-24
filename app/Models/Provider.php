@@ -9,11 +9,18 @@ class Provider extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'name', 'code', 'adresse', 'phone', 'country', 'email', 'city','tax_number'
+        'name', 'code', 'adresse', 'phone', 'country', 'email', 'city', 'tax_number',
     ];
 
     protected $casts = [
         'code' => 'integer',
     ];
 
+    /**
+     * Get custom field values for this provider
+     */
+    public function customFieldValues()
+    {
+        return $this->morphMany(CustomFieldValue::class, 'entity', 'entity_type', 'entity_id');
+    }
 }

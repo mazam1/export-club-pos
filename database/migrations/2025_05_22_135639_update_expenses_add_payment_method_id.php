@@ -9,14 +9,14 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-     public function up(): void
+    public function up(): void
     {
         Schema::table('expenses', function (Blueprint $table) {
             $table->integer('payment_method_id')->nullable()->after('amount');
 
             $table->foreign('payment_method_id')
-                  ->references('id')
-                  ->on('payment_methods');
+                ->references('id')
+                ->on('payment_methods');
         });
     }
 

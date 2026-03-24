@@ -30,7 +30,7 @@
         }"
         :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
       >
-        <div slot="selected-row-actions">
+        <div slot="selected-row-actions" v-if="currentUserPermissions.includes('Quotations_delete')">
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
         </div>
         <div slot="table-actions" class="mt-2 mb-3">
@@ -64,7 +64,10 @@
         </div>
 
         <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
+          <span v-if="props.column.field == 'date'">
+            {{ formatDisplayDate(props.row.date) }}
+          </span>
+          <span v-else-if="props.column.field == 'actions'">
             <div>
               <b-dropdown
                 id="dropdown-left"
@@ -149,6 +152,9 @@
               <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
             </router-link>
           </div>
+          <span v-else-if="props.column.field == 'GrandTotal'">
+            {{ formatPriceWithSymbol(currentUser.currency, props.row.GrandTotal, 2) }}
+          </span>
         </template>
       </vue-good-table>
     </div>
@@ -238,7 +244,12 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
+import Util from '../../../../utils';
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting
+} from "../../../../utils/priceFormat";
 
 export default {
   metaInfo: {
@@ -276,7 +287,9 @@ export default {
         message: "",
         client_name: "",
         quote_Ref: ""
-      }
+      },
+      // Optional price format key for frontend display (loaded from system settings/localStorage)
+      price_format_key: null
     };
   },
   mounted: function() {
@@ -320,7 +333,6 @@ export default {
         {
           label: this.$t("Status"),
           field: "statut",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left"
         },
@@ -334,7 +346,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false
@@ -420,66 +431,87 @@ export default {
 
     //------------------------------------- Quotations PDF -------------------------\\
     Quotation_PDF() {
-      var self = this;
-      let pdf = new jsPDF("p", "pt");
-
+      const pdf = new jsPDF("p", "pt");
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
+      try {
+        pdf.addFont(fontPath, "Vazirmatn", "normal");
+        pdf.addFont(fontPath, "Vazirmatn", "bold");
+      } catch(e) { /* ignore if already added */ }
+      pdf.setFont("Vazirmatn", "normal");
 
-      let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("Customer"), dataKey: "client_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("Status"), dataKey: "statut" },
-        { title: self.$t("Total"), dataKey: "GrandTotal" }
+      const headers = [
+        this.$t("date"),
+        this.$t("Reference"),
+        this.$t("Customer"),
+        this.$t("warehouse"),
+        this.$t("Status"),
+        this.$t("Total")
       ];
 
-       // Calculate totals
-       let totalGrandTotal = self.quotations.reduce((sum, quotation) => sum + parseFloat(quotation.GrandTotal || 0), 0);
-     
-      let footer = [{
-        date:  self.$t("Total"),
-        Ref: '',
-        client_name: '',
-        warehouse_name: '',
-        statut: '',
-        GrandTotal: `${totalGrandTotal.toFixed(2)}`,
-       
-      }];
+      const body = (this.quotations || []).map(r => ([
+        r.date,
+        r.Ref,
+        r.client_name,
+        r.warehouse_name,
+        r.statut,
+        r.GrandTotal
+      ]));
 
+      const totalGrandTotal = (this.quotations || []).reduce((s, q) => s + parseFloat(q.GrandTotal || 0), 0);
+      const footer = [[ this.$t('Total'), '', '', '', '', totalGrandTotal.toFixed(2) ]];
 
-      pdf.autoTable({
-        columns: columns,
-        body: self.quotations,
+      const marginX = 40;
+      const rtl =
+        (this.$i18n && ['ar','fa','ur','he'].includes(this.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+
+      autoTable(pdf, {
+        head: [headers],
+        body,
         foot: footer,
-        startY: 70,
-        theme: "grid", 
-        didDrawPage: (data) => {
-          pdf.setFont("VazirmatnBold");
-          pdf.setFontSize(18);
-          pdf.text("Quotation List", 40, 25);   
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        footStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        columnStyles: { 
+          0: { halign: rtl ? 'right' : 'left' },  // Date
+          1: { halign: rtl ? 'right' : 'left' },  // Reference
+          2: { halign: rtl ? 'right' : 'left' },  // Customer
+          3: { halign: rtl ? 'right' : 'left' },  // Warehouse
+          4: { halign: rtl ? 'right' : 'left' },  // Status
+          5: { halign: 'left' }                   // Total (always right-aligned for numbers)
         },
-        styles: {
-          font: "VazirmatnBold", 
-          halign: "center", // 
-        },
-        headStyles: {
-          fillColor: [200, 200, 200], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
-        footStyles: {
-          fillColor: [230, 230, 230], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+
+          // Header banner
+          pdf.setFillColor(63,81,181);
+          pdf.rect(0, 0, pageW, 60, 'F');
+
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = this.$t('ListQuotations') || 'Quotation List';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
+
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
       });
 
-
       pdf.save("Quotation_List.pdf");
-
     },
 
     Send_WhatsApp(id) {
@@ -558,7 +590,7 @@ export default {
           setTimeout(() => NProgress.done(), 500);
           this.makeToast(
             "success",
-            this.$t("Send.TitleEmail"),
+            this.$t("SendEmail"),
             this.$t("Success")
           );
         })
@@ -737,6 +769,50 @@ export default {
             });
         }
       });
+    },
+    //----------------------------------------- Format Display Date (for tables) -------------------------------\\
+    formatDisplayDate(value) {
+      if (!value) return '';
+      // Get date format from Vuex store (loaded from database) or fallback
+      const dateFormat = this.$store.getters.getDateFormat || Util.getDateFormat(this.$store);
+      return Util.formatDisplayDate(value, dateFormat);
+    },
+
+    //------------------------------Formetted Numbers -------------------------\\
+    formatNumber(number, dec) {
+      const value = (typeof number === "string"
+        ? number
+        : number.toString()
+      ).split(".");
+      if (dec <= 0) return value[0];
+      let formated = value[1] || "";
+      if (formated.length > dec)
+        return `${value[0]}.${formated.substr(0, dec)}`;
+      while (formated.length < dec) formated += "0";
+      return `${value[0]}.${formated}`;
+    },
+
+    // Price formatting for display only (does NOT affect calculations or stored values)
+    // Uses the global/system price_format setting when available; otherwise falls back
+    // to the existing formatNumber helper to preserve current behavior.
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = Number.isInteger(dec) ? dec : 0;
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
+        const effectiveKey = key || null;
+        return formatPriceDisplayHelper(number, decimals, effectiveKey);
+      } catch (e) {
+        return this.formatNumber(number, dec);
+      }
+    },
+
+    formatPriceWithSymbol(symbol, number, dec) {
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
     }
   },
 

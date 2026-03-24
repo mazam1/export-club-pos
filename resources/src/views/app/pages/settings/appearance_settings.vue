@@ -145,6 +145,62 @@
               </b-card-body>
             </b-card>
           </b-col>
+
+          <!-- Login Page Appearance -->
+          <b-col lg="12" md="12" sm="12" class="mt-3">
+            <b-card no-body>
+              <b-card-header class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">{{$t('Appearance_Settings')}} - Login Page</h6>
+              </b-card-header>
+              <b-card-body>
+                <b-row>
+                  <b-col lg="6" md="6" sm="12">
+                    <b-form-group label="Login hero title">
+                      <b-form-input
+                        v-model="setting.login_hero_title"
+                        class="form-control"
+                      ></b-form-input>
+                    </b-form-group>
+                  </b-col>
+
+                  <b-col lg="6" md="6" sm="12">
+                    <b-form-group label="Login hero subtitle">
+                      <b-form-input
+                        v-model="setting.login_hero_subtitle"
+                        class="form-control"
+                      ></b-form-input>
+                    </b-form-group>
+                  </b-col>
+
+                  <b-col lg="6" md="6" sm="12">
+                    <b-form-group label="Login panel title">
+                      <b-form-input
+                        v-model="setting.login_panel_title"
+                        class="form-control"
+                      ></b-form-input>
+                    </b-form-group>
+                  </b-col>
+
+                  <b-col lg="6" md="6" sm="12">
+                    <b-form-group label="Login panel subtitle">
+                      <b-form-input
+                        v-model="setting.login_panel_subtitle"
+                        class="form-control"
+                      ></b-form-input>
+                    </b-form-group>
+                  </b-col>
+
+                  <b-col md="12">
+                    <b-form-group>
+                      <b-button variant="primary" type="submit">
+                        <i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}
+                      </b-button>
+                    </b-form-group>
+                  </b-col>
+                </b-row>
+              </b-card-body>
+            </b-card>
+          </b-col>
         </b-row>
       </b-form>
     </validation-observer>
@@ -172,7 +228,11 @@ export default {
         app_name:"",
         page_title_suffix:"",
         developed_by:"",
-       
+        // Login page appearance
+        login_hero_title: "",
+        login_hero_subtitle: "",
+        login_panel_title: "",
+        login_panel_subtitle: "",
       },
 
     };
@@ -242,6 +302,11 @@ export default {
       self.data.append("page_title_suffix", self.setting.page_title_suffix);
       self.data.append("developed_by", self.setting.developed_by);
       self.data.append("footer", self.setting.footer);
+      // Login page appearance
+      self.data.append("login_hero_title", self.setting.login_hero_title || "");
+      self.data.append("login_hero_subtitle", self.setting.login_hero_subtitle || "");
+      self.data.append("login_panel_title", self.setting.login_panel_title || "");
+      self.data.append("login_panel_subtitle", self.setting.login_panel_subtitle || "");
      
       self.data.append("_method", "put");
 

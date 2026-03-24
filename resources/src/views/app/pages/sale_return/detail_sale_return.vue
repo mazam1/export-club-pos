@@ -122,16 +122,16 @@
                   <tr>
                     <td>{{$t('OrderTax')}}</td>
                     <td>
-                      <span>{{currentUser.currency}} {{sale_return.TaxNet.toFixed(2)}} ({{formatNumber(sale_return.tax_rate,2)}} %)</span>
+                      <span>{{ formatPriceWithSymbol(currentUser.currency, sale_return.TaxNet, 2) }} ({{formatNumber(sale_return.tax_rate,2)}} %)</span>
                     </td>
                   </tr>
                   <tr>
                     <td>{{$t('Discount')}}</td>
-                    <td>{{currentUser.currency}} {{sale_return.discount.toFixed(2)}}</td>
+                    <td>{{ formatPriceWithSymbol(currentUser.currency, sale_return.discount, 2) }}</td>
                   </tr>
                   <tr>
                     <td>{{$t('Shipping')}}</td>
-                    <td>{{currentUser.currency}} {{sale_return.shipping.toFixed(2)}}</td>
+                    <td>{{ formatPriceWithSymbol(currentUser.currency, sale_return.shipping, 2) }}</td>
                   </tr>
                   <tr>
                     <td>
@@ -140,7 +140,7 @@
                     <td>
                       <span
                         class="font-weight-bold"
-                      >{{currentUser.currency}} {{sale_return.GrandTotal}}</span>
+                      >{{ formatPriceWithSymbol(currentUser.currency, sale_return.GrandTotal, 2) }}</span>
                     </td>
                   </tr>
                   <tr>
@@ -150,7 +150,7 @@
                     <td>
                       <span
                         class="font-weight-bold"
-                      >{{currentUser.currency}} {{sale_return.paid_amount}}</span>
+                      >{{ formatPriceWithSymbol(currentUser.currency, sale_return.paid_amount, 2) }}</span>
                     </td>
                   </tr>
                   <tr>
@@ -160,7 +160,7 @@
                     <td>
                       <span
                         class="font-weight-bold"
-                      >{{currentUser.currency}} {{sale_return.due}}</span>
+                      >{{ formatPriceWithSymbol(currentUser.currency, sale_return.due, 2) }}</span>
                     </td>
                   </tr>
                 </tbody>
@@ -183,6 +183,10 @@
 <script>
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting
+} from "../../../../utils/priceFormat";
 
 export default {
   computed: mapGetters(["currentUserPermissions", "currentUser"]),
@@ -196,7 +200,9 @@ export default {
       sale_return: {},
       details: [],
       company: {},
-      email: {}
+      email: {},
+      // Optional price format key for frontend display (loaded from system settings/localStorage)
+      price_format_key: null
     };
   },
 
@@ -261,6 +267,29 @@ export default {
         return `${value[0]}.${formated.substr(0, dec)}`;
       while (formated.length < dec) formated += "0";
       return `${value[0]}.${formated}`;
+    },
+
+    // Price formatting for display only (does NOT affect calculations or stored values)
+    // Uses the global/system price_format setting when available; otherwise falls back
+    // to the existing formatNumber helper to preserve current behavior.
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = Number.isInteger(dec) ? dec : 0;
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
+        const effectiveKey = key || null;
+        return formatPriceDisplayHelper(number, decimals, effectiveKey);
+      } catch (e) {
+        return this.formatNumber(number, dec);
+      }
+    },
+
+    formatPriceWithSymbol(symbol, number, dec) {
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
     },
 
     //----------------------------------- Get Details Sale Return ------------------------------\\

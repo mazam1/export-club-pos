@@ -1,9 +1,9 @@
 <?php
 
+use Database\Seeders\TranslationSeeder;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-use Database\Seeders\TranslationSeeder; // ✅ import the seeder
+use Illuminate\Support\Facades\Schema; // ✅ import the seeder
 
 return new class extends Migration
 {

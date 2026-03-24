@@ -26,7 +26,7 @@
       }"
         styleClass="tableOne table-hover vgt-table"
       >
-        <div slot="selected-row-actions">
+        <div slot="selected-row-actions" v-if="currentUserPermissions && currentUserPermissions.includes('expense_delete')">
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
         </div>
         <div slot="table-actions" class="mt-2 mb-3">
@@ -60,28 +60,128 @@
         </div>
 
         <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
+          <span v-if="props.column.field == 'date'">
+            {{ formatDisplayDate(props.row.date) }}
+          </span>
+          <span v-else-if="props.column.field == 'documents'">
+            <span v-if="props.row.documents_count > 0" class="badge badge-info">
+              <i class="i-File"></i> {{ props.row.documents_count }}
+            </span>
+            <span v-else class="text-muted">-</span>
+          </span>
+          <span v-else-if="props.column.field == 'actions'">
+            <a
+              title="Attach Documents"
+              class="cursor-pointer mr-2"
+              v-b-tooltip.hover
+              @click="Manage_Documents(props.row.id)"
+            >
+              <i class="i-File text-20 text-info"></i>
+            </a>
             <router-link
               v-if="currentUserPermissions && currentUserPermissions.includes('expense_edit')"
               title="Edit"
               v-b-tooltip.hover
               :to="'/app/expenses/edit/'+props.row.id"
             >
-              <i class="i-Edit text-25 text-success"></i>
+              <i class="i-Edit text-20 text-success"></i>
             </router-link>
             <a
               title="Delete"
-              class="cursor-pointer"
+              class="cursor-pointer ml-2"
               v-b-tooltip.hover
               v-if="currentUserPermissions && currentUserPermissions.includes('expense_delete')"
               @click="Remove_Expense(props.row.id)"
             >
-              <i class="i-Close-Window text-25 text-danger"></i>
+              <i class="i-Close-Window text-20 text-danger"></i>
             </a>
           </span>
         </template>
       </vue-good-table>
     </div>
+
+    <!-- Modal Manage Documents -->
+    <b-modal
+      hide-footer
+      size="lg"
+      id="Manage_Documents"
+      :title="$t('Attach_Documents')"
+    >
+      <b-row>
+        <!-- Upload Section -->
+        <b-col lg="12" md="12" sm="12" class="mb-3">
+          <b-form-group :label="$t('Upload_Documents')">
+            <b-form-file
+              v-model="selectedFiles"
+              :placeholder="$t('Choose_files_or_drop_them_here')"
+              :drop-placeholder="$t('Drop_files_here')"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
+              @change="onFileChange"
+            ></b-form-file>
+          </b-form-group>
+          <b-button
+            variant="primary"
+            size="sm"
+            @click="Upload_Documents"
+            :disabled="!selectedFiles || selectedFiles.length === 0 || uploadProcessing"
+          >
+            <i class="i-Upload"></i> {{$t('Upload')}}
+          </b-button>
+          <div v-if="uploadProcessing" class="mt-2">
+            <div class="spinner sm spinner-primary"></div>
+          </div>
+        </b-col>
+
+        <!-- Documents List -->
+        <b-col lg="12" md="12" sm="12">
+          <h5>{{$t('Attached_Documents')}}</h5>
+          <div class="table-responsive">
+            <table class="table table-hover table-bordered table-sm">
+              <thead>
+                <tr>
+                  <th scope="col">{{$t('File_Name')}}</th>
+                  <th scope="col">{{$t('Size')}}</th>
+                  <th scope="col">{{$t('Uploaded_Date')}}</th>
+                  <th scope="col">{{$t('Action')}}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="documents.length <= 0">
+                  <td colspan="4" class="text-center">{{$t('NodataAvailable')}}</td>
+                </tr>
+                <tr v-for="document in documents" :key="document.id">
+                  <td>
+                    <i class="i-File mr-1"></i>
+                    {{document.name}}
+                  </td>
+                  <td>{{formatFileSize(document.size)}}</td>
+                  <td>{{formatDateTime(document.created_at)}}</td>
+                  <td>
+                    <div role="group" aria-label="Document actions" class="btn-group">
+                      <button
+                        title="Download"
+                        class="btn btn-icon btn-success btn-sm"
+                        @click="Download_Document(document)"
+                      >
+                        <i class="i-Download"></i>
+                      </button>
+                      <button
+                        title="Delete"
+                        class="btn btn-icon btn-danger btn-sm"
+                        @click="Remove_Document(document.id)"
+                      >
+                        <i class="i-Close"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </b-col>
+      </b-row>
+    </b-modal>
 
     <!-- Multiple Filters -->
     <b-sidebar id="sidebar-right" :title="$t('Filter')" bg-variant="white" right shadow>
@@ -176,7 +276,8 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
+import Util from '../../../../utils';
 
 export default {
   metaInfo: {
@@ -208,7 +309,11 @@ export default {
       warehouses: [],
       payment_methods: [],
       accounts: [],
-      expense_Category: []
+      expense_Category: [],
+      documents: [],
+      selectedFiles: [],
+      currentExpenseId: null,
+      uploadProcessing: false
     };
   },
 
@@ -271,9 +376,14 @@ export default {
           thClass: "text-left"
         },
         {
+          label: this.$t("Documents"),
+          field: "documents",
+          tdClass: "text-center",
+          thClass: "text-center"
+        },
+        {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false
@@ -289,63 +399,115 @@ export default {
       let pdf = new jsPDF("p", "pt");
 
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
+      try { pdf.addFont(fontPath, "Vazirmatn", "normal"); pdf.addFont(fontPath, "Vazirmatn", "bold"); } catch(e){}
+      pdf.setFont("Vazirmatn", "normal");
 
-      let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("Account"), dataKey: "account_name" },
-        { title: self.$t("Categorie"), dataKey: "category_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("ModePaiement"), dataKey: "payment_method" },
-        { title: self.$t("Amount"), dataKey: "amount" },
+      const headers = [
+        self.$t("date"),
+        self.$t("Reference"),
+        self.$t("Account"),
+        self.$t("Categorie"),
+        self.$t("warehouse"),
+        self.$t("ModePaiement"),
+        self.$t("Amount")
       ];
+
+      const body = (self.expenses || []).map(expense => ([
+        expense.date,
+        expense.Ref,
+        expense.account_name,
+        expense.category_name,
+        expense.warehouse_name,
+        expense.payment_method,
+        expense.amount
+      ]));
 
       // Calculate totals
       let totalGrandTotal = self.expenses.reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
      
-     let footer = [{
-       date: self.$t("Total"),
-       Ref: '',
-       account_name: '',
-       category_name: '',
-       warehouse_name: '',
-       payment_method: '',
-       amount: `${totalGrandTotal.toFixed(2)}`,
-      
-     }];
+      const footer = [[
+        self.$t("Total"),
+        '',
+        '',
+        '',
+        '',
+        '',
+        totalGrandTotal.toFixed(2)
+      ]];
 
-     pdf.autoTable({
-      columns: columns,
-        body: self.expenses,
+      const marginX = 40;
+      const rtl =
+        (self.$i18n && ['ar','fa','ur','he'].includes(self.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+
+      autoTable(pdf, {
+        head: [headers],
+        body: body,
         foot: footer,
-        startY: 70,
-        theme: "grid", 
-        didDrawPage: (data) => {
-          pdf.setFont("VazirmatnBold");
-          pdf.setFontSize(18);
-          pdf.text("Expense List", 40, 25);   
-        },
-        styles: {
-          font: "VazirmatnBold", 
-          halign: "center", // 
-        },
-        headStyles: {
-          fillColor: [200, 200, 200], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
-        footStyles: {
-          fillColor: [230, 230, 230], 
-          textColor: [0, 0, 0], 
-          fontStyle: "bold", 
-        },
-    });
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        footStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
 
+          // Header banner
+          pdf.setFillColor(63,81,181);
+          pdf.rect(0, 0, pageW, 60, 'F');
 
-     pdf.save("Expense_List.pdf");
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = self.$t('Expense_List') || 'Expense List';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
 
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
+      });
+
+      pdf.save("Expense_List.pdf");
+
+    },
+
+    //----------------------------------------- Format File Size -------------------------------\\
+    formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    },
+
+    //----------------------------------------- Format Date Time -------------------------------\\
+    formatDateTime(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}`;
+    },
+    //----------------------------------------- Format Display Date (for tables) -------------------------------\\
+    formatDisplayDate(value) {
+      if (!value) return '';
+      // Get date format from Vuex store (loaded from database) or fallback
+      const dateFormat = this.$store.getters.getDateFormat || Util.getDateFormat(this.$store);
+      return Util.formatDisplayDate(value, dateFormat);
     },
 
     //------ update Params Table
@@ -480,6 +642,139 @@ export default {
             this.isLoading = false;
           }, 500);
         });
+    },
+
+    //---------------------- Manage Expense Documents -------------------------------\\
+    Manage_Documents(expenseId) {
+      this.currentExpenseId = expenseId;
+      this.selectedFiles = [];
+      NProgress.start();
+      NProgress.set(0.1);
+      this.Get_Documents(expenseId);
+    },
+
+    //----------------------------------------- Get Documents -------------------------------\\
+    Get_Documents(expenseId) {
+      axios
+        .get("expenses/" + expenseId + "/documents")
+        .then(response => {
+          this.documents = response.data.documents || [];
+          setTimeout(() => {
+            NProgress.done();
+            this.$bvModal.show("Manage_Documents");
+          }, 500);
+        })
+        .catch(error => {
+          setTimeout(() => NProgress.done(), 500);
+          this.makeToast("danger", this.$t("Failed_to_load_documents"), this.$t("Failed"));
+        });
+    },
+
+    //----------------------------------------- On File Change -------------------------------\\
+    onFileChange(event) {
+      this.selectedFiles = event.target.files || [];
+    },
+
+    //----------------------------------------- Upload Documents -------------------------------\\
+    Upload_Documents() {
+      if (!this.selectedFiles || this.selectedFiles.length === 0) {
+        this.makeToast("warning", this.$t("Please_select_files"), this.$t("Warning"));
+        return;
+      }
+
+      this.uploadProcessing = true;
+      NProgress.start();
+      NProgress.set(0.1);
+
+      const formData = new FormData();
+      for (let i = 0; i < this.selectedFiles.length; i++) {
+        formData.append('documents[]', this.selectedFiles[i]);
+      }
+      formData.append('expense_id', this.currentExpenseId);
+
+      axios
+        .post("expenses/" + this.currentExpenseId + "/documents", formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        .then(response => {
+          this.uploadProcessing = false;
+          this.selectedFiles = [];
+          this.Get_Documents(this.currentExpenseId);
+          this.Get_Expenses(this.serverParams.page);
+          this.makeToast("success", this.$t("Documents_uploaded_successfully"), this.$t("Success"));
+          setTimeout(() => NProgress.done(), 500);
+        })
+        .catch(error => {
+          this.uploadProcessing = false;
+          setTimeout(() => NProgress.done(), 500);
+          this.makeToast("danger", this.$t("Failed_to_upload_documents"), this.$t("Failed"));
+        });
+    },
+
+    //----------------------------------------- Download Document -------------------------------\\
+    Download_Document(doc) {
+      NProgress.start();
+      NProgress.set(0.1);
+
+      axios
+        .get("expenses/documents/" + doc.id + "/download", {
+          responseType: "blob"
+        })
+        .then(response => {
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const link = window.document.createElement("a");
+          link.href = url;
+          link.setAttribute("download", doc.name);
+          window.document.body.appendChild(link);
+          link.click();
+          window.document.body.removeChild(link);
+          setTimeout(() => NProgress.done(), 500);
+        })
+        .catch(error => {
+          setTimeout(() => NProgress.done(), 500);
+          this.makeToast("danger", this.$t("Failed_to_download_document"), this.$t("Failed"));
+        });
+    },
+
+    //----------------------------------------- Remove Document -------------------------------\\
+    Remove_Document(documentId) {
+      this.$swal({
+        title: this.$t("Delete_Title"),
+        text: this.$t("Delete_Text"),
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        cancelButtonText: this.$t("Delete_cancelButtonText"),
+        confirmButtonText: this.$t("Delete_confirmButtonText")
+      }).then(result => {
+        if (result.value) {
+          NProgress.start();
+          NProgress.set(0.1);
+          axios
+            .delete("expenses/documents/" + documentId)
+            .then(() => {
+              this.$swal(
+                this.$t("Delete_Deleted"),
+                this.$t("Deleted_in_successfully"),
+                "success"
+              );
+              this.Get_Documents(this.currentExpenseId);
+              this.Get_Expenses(this.serverParams.page);
+              setTimeout(() => NProgress.done(), 500);
+            })
+            .catch(() => {
+              setTimeout(() => NProgress.done(), 500);
+              this.$swal(
+                this.$t("Delete_Failed"),
+                this.$t("Delete_Therewassomethingwronge"),
+                "warning"
+              );
+            });
+        }
+      });
     },
 
     //------------------------------- Remove Expense -------------------------\\

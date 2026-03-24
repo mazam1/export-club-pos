@@ -19,6 +19,110 @@
                   />
                 </b-modal>
 
+                <!-- Quick Add Supplier Modal -->
+                <validation-observer ref="Quick_Add_Supplier_Form">
+                  <b-modal hide-footer size="lg" id="Quick_Add_Supplier" :title="$t('Quick_Add_Supplier')">
+                    <b-form @submit.prevent="Submit_Quick_Add_Supplier" class="quick-add-supplier-form">
+                      <b-row>
+                        <!-- Supplier Name -->
+                        <b-col md="6" sm="12">
+                          <validation-provider
+                            name="Name Supplier"
+                            :rules="{ required: true}"
+                            v-slot="validationContext"
+                          >
+                            <b-form-group :label="$t('SupplierName') + ' ' + '*'">
+                              <b-form-input
+                                :state="getValidationState(validationContext)"
+                                aria-describedby="supplier-name-feedback"
+                                label="name"
+                                :placeholder="$t('SupplierName')"
+                                v-model="supplier.name"
+                              ></b-form-input>
+                              <b-form-invalid-feedback id="supplier-name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                            </b-form-group>
+                          </validation-provider>
+                        </b-col>
+
+                        <!-- Supplier Email -->
+                        <b-col md="6" sm="12">
+                          <b-form-group :label="$t('Email')">
+                            <b-form-input
+                              label="email"
+                              v-model="supplier.email"
+                              :placeholder="$t('Email')"
+                            ></b-form-input>
+                          </b-form-group>
+                        </b-col>
+
+                        <!-- Supplier Phone -->
+                        <b-col md="6" sm="12">
+                          <b-form-group :label="$t('Phone')">
+                            <b-form-input
+                              label="Phone"
+                              v-model="supplier.phone"
+                              :placeholder="$t('Phone')"
+                            ></b-form-input>
+                          </b-form-group>
+                        </b-col>
+
+                        <!-- Supplier Country -->
+                        <b-col md="6" sm="12">
+                          <b-form-group :label="$t('Country')">
+                            <b-form-input
+                              label="Country"
+                              v-model="supplier.country"
+                              :placeholder="$t('Country')"
+                            ></b-form-input>
+                          </b-form-group>
+                        </b-col>
+
+                        <!-- Supplier City -->
+                        <b-col md="6" sm="12">
+                          <b-form-group :label="$t('City')">
+                            <b-form-input
+                              label="City"
+                              v-model="supplier.city"
+                              :placeholder="$t('City')"
+                            ></b-form-input>
+                          </b-form-group>
+                        </b-col>
+
+                        <!-- Supplier Tax Number -->
+                        <b-col md="6" sm="12">
+                          <b-form-group :label="$t('Tax_Number')">
+                            <b-form-input
+                              label="Tax Number"
+                              v-model="supplier.tax_number"
+                              :placeholder="$t('Tax_Number')"
+                            ></b-form-input>
+                          </b-form-group>
+                        </b-col>
+
+                        <!-- Supplier Address -->
+                        <b-col md="12" sm="12">
+                          <b-form-group :label="$t('Adress')">
+                            <textarea
+                              label="Adress"
+                              class="form-control"
+                              rows="4"
+                              v-model="supplier.adresse"
+                              :placeholder="$t('Adress')"
+                            ></textarea>
+                          </b-form-group>
+                        </b-col>
+
+                        <b-col md="12" class="mt-3">
+                          <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('Quick_Add_Supplier')">{{ $t('Cancel') }}</b-button>
+                          <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{$t('submit')}}</b-button>
+                          <div v-once class="typo__p" v-if="SubmitProcessing">
+                            <div class="spinner sm spinner-primary mt-3"></div>
+                          </div>
+                        </b-col>
+                      </b-row>
+                    </b-form>
+                  </b-modal>
+                </validation-observer>
 
                  <!-- date  -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
@@ -44,14 +148,28 @@
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Supplier" :rules="{ required: true}">
                     <b-form-group slot-scope="{ valid, errors }" :label="$t('Supplier') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="purchase.supplier_id"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Supplier')"
-                        :options="suppliers.map(suppliers => ({label: suppliers.name, value: suppliers.id}))"
-                      />
+                      <b-input-group class="category-input-group">
+                        <v-select
+                          :class="{'is-invalid': !!errors.length}"
+                          :state="errors[0] ? false : (valid ? true : null)"
+                          v-model="purchase.supplier_id"
+                          :reduce="label => label.value"
+                          :placeholder="$t('Choose_Supplier')"
+                          :options="suppliers.map(suppliers => ({label: suppliers.name, value: suppliers.id}))"
+                        />
+                        <b-input-group-append
+                          v-if="currentUserPermissions && currentUserPermissions.includes('Suppliers_add')"
+                        >
+                          <b-button
+                            variant="primary"
+                            @click="Quick_Add_Supplier"
+                            :title="$t('Quick_Add_Supplier')"
+                            class="category-add-btn"
+                          >
+                            <i class="i-Add"></i>
+                          </b-button>
+                        </b-input-group-append>
+                      </b-input-group>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
@@ -497,6 +615,16 @@ export default {
       Submit_Processing_detail:false,
       warehouses: [],
       suppliers: [],
+      supplier: {
+        id: "",
+        name: "",
+        email: "",
+        phone: "",
+        country: "",
+        city: "",
+        tax_number: "",
+        adresse: ""
+      },
       products: [],
       details: [],
       units: [],
@@ -1057,9 +1185,9 @@ export default {
 
     Get_Product_Details(product_id, variant_id) {
       axios.get("/show_product_data/" + product_id +"/"+ variant_id).then(response => {
-        this.product.discount = 0;
-        this.product.DiscountNet = 0;
-        this.product.discount_Method = "2";
+        this.product.discount           = response.data.discount;
+        this.product.DiscountNet        = response.data.DiscountNet;
+        this.product.discount_Method    = response.data.discount_method;
         this.product.product_id = response.data.id;
         this.product.name = response.data.name;
         this.product.Net_cost = response.data.Net_cost;
@@ -1075,6 +1203,82 @@ export default {
         this.add_product();
         this.Calcul_Total();
       });
+    },
+
+    //------------------------------ Quick Add Supplier -------------------------\\
+    Quick_Add_Supplier() {
+      this.reset_Form_supplier();
+      this.$bvModal.show("Quick_Add_Supplier");
+    },
+
+    reset_Form_supplier() {
+      this.supplier = {
+        id: "",
+        name: "",
+        email: "",
+        phone: "",
+        country: "",
+        city: "",
+        tax_number: "",
+        adresse: ""
+      };
+    },
+
+    Submit_Quick_Add_Supplier() {
+      NProgress.start();
+      NProgress.set(0.1);
+      this.SubmitProcessing = true;
+      this.$refs.Quick_Add_Supplier_Form &&
+        this.$refs.Quick_Add_Supplier_Form.validate().then(success => {
+          if (!success) {
+            NProgress.done();
+            this.SubmitProcessing = false;
+            this.makeToast(
+              "danger",
+              this.$t("Please_fill_the_form_correctly"),
+              this.$t("Failed")
+            );
+            return;
+          }
+
+          axios
+            .post("providers", {
+              name: this.supplier.name,
+              email: this.supplier.email || "",
+              phone: this.supplier.phone || "",
+              tax_number: this.supplier.tax_number || "",
+              country: this.supplier.country || "",
+              city: this.supplier.city || "",
+              adresse: this.supplier.adresse || ""
+            })
+            .then(({ data }) => {
+              NProgress.done();
+              this.SubmitProcessing = false;
+
+              const newSupplier = data && data.provider ? data.provider : data;
+              if (newSupplier && newSupplier.id) {
+                this.suppliers.push({
+                  id: newSupplier.id,
+                  name: newSupplier.name,
+                  phone: newSupplier.phone || ""
+                });
+                this.purchase.supplier_id = newSupplier.id;
+              }
+
+              this.makeToast(
+                "success",
+                this.$t("Successfully_Created"),
+                this.$t("Success")
+              );
+              this.$bvModal.hide("Quick_Add_Supplier");
+              this.reset_Form_supplier();
+            })
+            .catch(error => {
+              NProgress.done();
+              this.SubmitProcessing = false;
+              this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+            });
+        });
     },
 
     //---------------------------------------Get Elements Purchase ------------------------------\\
@@ -1113,5 +1317,33 @@ export default {
     height: 50px;
     margin-right: 8px; /* Adjust spacing as needed */
     cursor: pointer;
+  }
+
+  /* ===== v-select in input-group ===== */
+  .category-input-group {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .category-input-group .v-select {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .category-input-group .v-select .vs__dropdown-toggle {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    height: 100%;
+  }
+
+  .category-input-group .v-select .vs__dropdown-toggle,
+  .category-input-group .v-select .vs__dropdown-toggle .vs__selected-options {
+    height: 100%;
+  }
+
+  .category-add-btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    white-space: nowrap;
   }
 </style>

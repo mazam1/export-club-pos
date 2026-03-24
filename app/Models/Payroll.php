@@ -12,15 +12,15 @@ class Payroll extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'user_id','date','employee_id','account_id','amount','payment_method_id','payment_status','Ref',
-        'created_at', 'updated_at', 'deleted_at'
+        'user_id', 'date', 'employee_id', 'account_id', 'amount', 'payment_method_id', 'payment_status', 'Ref',
+        'created_at', 'updated_at', 'deleted_at',
     ];
 
     protected $casts = [
-        'amount'      => 'double',
-        'user_id'     => 'integer',
+        'amount' => 'double',
+        'user_id' => 'integer',
         'employee_id' => 'integer',
-        'account_id'  => 'integer',
+        'account_id' => 'integer',
         'payment_method_id' => 'integer',
     ];
 

@@ -104,12 +104,12 @@
                       <td><span>{{detail.code}} ({{detail.name}})</span>
                         <p v-show="detail.is_imei && detail.imei_number !==null ">{{$t('IMEI_SN')}} : {{detail.imei_number}}</p>
                       </td>
-                      <td>{{currentUser.currency}} {{formatNumber(detail.Net_cost ,3)}}</td>
+                      <td>{{ formatPriceWithSymbol(currentUser.currency, detail.Net_cost, 3) }}</td>
                       <td>{{formatNumber(detail.quantity,2)}} {{detail.unit_purchase}}</td>
-                      <td>{{currentUser.currency}} {{formatNumber(detail.cost,2)}}</td>
-                      <td>{{currentUser.currency}} {{formatNumber(detail.DiscountNet,2)}}</td>
-                      <td>{{currentUser.currency}} {{formatNumber(detail.taxe,2)}}</td>
-                      <td>{{currentUser.currency}} {{detail.total.toFixed(2)}}</td>
+                      <td>{{ formatPriceWithSymbol(currentUser.currency, detail.cost, 2) }}</td>
+                      <td>{{ formatPriceWithSymbol(currentUser.currency, detail.DiscountNet, 2) }}</td>
+                      <td>{{ formatPriceWithSymbol(currentUser.currency, detail.taxe, 2) }}</td>
+                      <td>{{ formatPriceWithSymbol(currentUser.currency, detail.total, 2) }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -123,7 +123,7 @@
                       <span>{{$t('OrderTax')}}</span>
                     </td>
                     <td>
-                      <span>{{currentUser.currency}} {{purchase_return.TaxNet.toFixed(2)}} ({{formatNumber(purchase_return.tax_rate,2)}} %)</span>
+                      <span>{{ formatPriceWithSymbol(currentUser.currency, purchase_return.TaxNet, 2) }} ({{formatNumber(purchase_return.tax_rate,2)}} %)</span>
                     </td>
                   </tr>
                   <tr>
@@ -131,7 +131,7 @@
                       <span>{{$t('Discount')}}</span>
                     </td>
                     <td>
-                      <span>{{currentUser.currency}} {{purchase_return.discount.toFixed(2)}}</span>
+                      <span>{{ formatPriceWithSymbol(currentUser.currency, purchase_return.discount, 2) }}</span>
                     </td>
                   </tr>
                   <tr>
@@ -139,7 +139,7 @@
                       <span>{{$t('Shipping')}}</span>
                     </td>
                     <td>
-                      <span>{{currentUser.currency}} {{purchase_return.shipping.toFixed(2)}}</span>
+                      <span>{{ formatPriceWithSymbol(currentUser.currency, purchase_return.shipping, 2) }}</span>
                     </td>
                   </tr>
                   <tr>
@@ -149,7 +149,7 @@
                     <td>
                       <span
                         class="font-weight-bold"
-                      >{{currentUser.currency}} {{purchase_return.GrandTotal}}</span>
+                      >{{ formatPriceWithSymbol(currentUser.currency, purchase_return.GrandTotal, 2) }}</span>
                     </td>
                   </tr>
                   <tr>
@@ -159,7 +159,7 @@
                     <td>
                       <span
                         class="font-weight-bold"
-                      >{{currentUser.currency}} {{purchase_return.paid_amount}}</span>
+                      >{{ formatPriceWithSymbol(currentUser.currency, purchase_return.paid_amount, 2) }}</span>
                     </td>
                   </tr>
                   <tr>
@@ -169,7 +169,7 @@
                     <td>
                       <span
                         class="font-weight-bold"
-                      >{{currentUser.currency}} {{purchase_return.due}}</span>
+                      >{{ formatPriceWithSymbol(currentUser.currency, purchase_return.due, 2) }}</span>
                     </td>
                   </tr>
                 </tbody>
@@ -191,6 +191,10 @@
 <script>
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting
+} from "../../../../utils/priceFormat";
 
 export default {
   computed: mapGetters(["currentUserPermissions", "currentUser"]),
@@ -208,7 +212,9 @@ export default {
         to: "",
         subject: "",
         message: ""
-      }
+      },
+      // Optional price format key for frontend display (loaded from system settings/localStorage)
+      price_format_key: null
     };
   },
 
@@ -263,6 +269,29 @@ export default {
         return `${value[0]}.${formated.substr(0, dec)}`;
       while (formated.length < dec) formated += "0";
       return `${value[0]}.${formated}`;
+    },
+
+    // Price formatting for display only (does NOT affect calculations or stored values)
+    // Uses the global/system price_format setting when available; otherwise falls back
+    // to the existing formatNumber helper to preserve current behavior.
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = Number.isInteger(dec) ? dec : 0;
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
+        const effectiveKey = key || null;
+        return formatPriceDisplayHelper(number, decimals, effectiveKey);
+      } catch (e) {
+        return this.formatNumber(number, dec);
+      }
+    },
+
+    formatPriceWithSymbol(symbol, number, dec) {
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
     },
 
 

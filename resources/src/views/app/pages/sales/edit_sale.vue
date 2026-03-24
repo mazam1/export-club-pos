@@ -47,6 +47,7 @@
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
                         v-model="sale.client_id"
+                        disabled
                         :reduce="label => label.value"
                         :placeholder="$t('Choose_Customer')"
                         :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
@@ -179,7 +180,7 @@
                   </div>
                 </b-col>
 
-                <div class="offset-md-9 col-md-3 mt-4">
+                <div class="offset-md-8 col-md-4 mt-4">
                   <table class="table table-striped table-sm">
                     <tbody>
                       <tr>
@@ -190,7 +191,19 @@
                       </tr>
                       <tr>
                         <td class="bold">{{$t('Discount')}}</td>
-                        <td>{{currentUser.currency}} {{sale.discount.toFixed(2)}}</td>
+                        <td>
+                          <!-- If percentage: show percent value AND discount amount; else amount only -->
+                          <template v-if="String(sale.discount_Method || '2') === '1'">
+                            {{ formatNumber(sale.discount, 2) }}% ({{ currentUser.currency }} {{ getCurrentSaleDiscountAmount().toFixed(2) }})
+                          </template>
+                          <template v-else>
+                            {{currentUser.currency}} {{ getCurrentSaleDiscountAmount().toFixed(2) }}
+                          </template>
+                        </td>
+                      </tr>
+                      <tr v-if="discount_from_points && discount_from_points > 0">
+                        <td class="bold">{{$t('Discount_from_Points')}}</td>
+                        <td>{{currentUser.currency}} {{discount_from_points.toFixed(2)}}</td>
                       </tr>
                       <tr>
                         <td class="bold">{{$t('Shipping')}}</td>
@@ -242,21 +255,90 @@
                     v-slot="validationContext"
                   >
                     <b-form-group :label="$t('Discount')">
-                      <b-input-group :append="currentUser.currency">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="Discount-feedback"
-                          label="Discount"
-                          v-model.number="sale.discount"
-                          @keyup="keyup_Discount()"
-                        ></b-form-input>
-                      </b-input-group>
+                      <div class="d-flex" style="gap:8px; align-items:center;">
+                        <b-input-group :append="sale.discount_Method === '1' ? '%' : currentUser.currency" class="flex-grow-1">
+                          <b-form-input
+                            :state="getValidationState(validationContext)"
+                            aria-describedby="Discount-feedback"
+                            label="Discount"
+                            v-model.number="sale.discount"
+                            @keyup="keyup_Discount()"
+                          ></b-form-input>
+                        </b-input-group>
+                        <b-form-select
+                          v-model="sale.discount_Method"
+                          :options="[
+                            { text: 'Fixed', value: '2' },
+                            { text: 'Percent %', value: '1' }
+                          ]"
+                          style="max-width: 110px;"
+                        ></b-form-select>
+                      </div>
                       <b-form-invalid-feedback
                         id="Discount-feedback"
                       >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
                 </b-col>
+
+                <!-- Points to convert (loyalty) -->
+                <b-col
+                  lg="4"
+                  md="4"
+                  sm="12"
+                  class="mb-3"
+                  v-if="showPointsSection && currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_sale')"
+                >
+                  <label>Points to convert</label>
+                  <div class="field mb-2">
+                    <b-form-input
+                      ref="pointsInput"
+                      v-model.number="points_to_convert"
+                      @input="onPointsToConvertInput"
+                      type="text"
+                      min="1"
+                      :max="selectedClientPoints"
+                      step="1"
+                      :disabled="selectedClientPoints === 0 || pointsConverted"
+                      placeholder="e.g., 200"
+                    ></b-form-input>
+                    <div class="hint mt-1">
+                      Total available:
+                      <strong>{{ selectedClientPoints }}</strong> pts
+                    </div>
+                  </div>
+
+                  <div class="actions d-flex align-items-center" style="gap:10px;">
+                    <b-button
+                      :variant="pointsConverted ? 'secondary' : 'dark'"
+                      @click="convertPointsToDiscount"
+                      :disabled="(!pointsConverted && (selectedClientPoints === 0 || !pointsInputValid))"
+                    >
+                      <template v-if="!pointsConverted">Convert</template>
+                      <template v-else>Unconvert</template>
+                    </b-button>
+                    <small
+                      v-if="!pointsConverted && points_to_convert && !pointsInputValid"
+                      class="warn"
+                    >
+                      Enter a value from 1 to your available points.
+                    </small>
+                    <small
+                      v-if="!pointsConverted && pointsInputValid"
+                      class="ok"
+                    >
+                      Looks good.
+                    </small>
+                  </div>
+
+                  <div class="result mt-2" v-if="discount_from_points > 0">
+                    ✅ Discount of
+                    <strong>{{ discount_from_points }}</strong>
+                    {{ currentUser.currency }}
+                    will be applied
+                  </div>
+                </b-col>
+                
 
                 <!-- Shipping  -->
                 <b-col lg="4" md="4" sm="12" class="mb-3" v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_sale')">
@@ -488,6 +570,16 @@ export default {
       details: [],
       detail: {},
       sales: [],
+      showPointsSection: false,
+      // Points / loyalty state
+      selectedClientPoints: 0,
+      initialClientPoints: 0,
+      points_to_convert: 0,
+      discount_from_points: 0,
+      used_points: 0,
+      clientIsEligible: false,
+      pointsConverted: false,
+      point_to_amount_rate: 0,
       sale: {
         id: "",
         date: "",
@@ -498,7 +590,8 @@ export default {
         tax_rate: 0,
         TaxNet: 0,
         shipping: 0,
-        discount: 0
+        discount: 0,
+        discount_Method: "2", // "1" for percentage, "2" for fixed (default)
       },
       total: 0,
       GrandTotal: 0,
@@ -532,8 +625,22 @@ export default {
     };
   },
 
+  watch: {
+    // Recalculate totals whenever discount type changes (fixed / percentage)
+    'sale.discount_Method'(newVal, oldVal) {
+      this.Calcul_Total();
+    }
+  },
+
   computed: {
-    ...mapGetters(["currentUserPermissions","currentUser"])
+    ...mapGetters(["currentUserPermissions","currentUser"]),
+
+    // Simple validity check for points_to_convert (same behavior as create_sale)
+    pointsInputValid() {
+      const max = Number(this.selectedClientPoints) || 0;
+      const val = Number(this.points_to_convert);
+      return Number.isInteger(val) && val >= 1 && val <= max;
+    }
   },
 
   methods: {
@@ -568,6 +675,10 @@ export default {
             this.$t("Please_fill_the_form_correctly"),
             this.$t("Failed")
           );
+        } else if (Number(this.GrandTotal) < 0) {
+          const msg = this.$t ? `${this.$t('pos.Total_Payable')} ${this.$t('cannot_be_negative') || 'cannot be negative'}` : 'Total Payable cannot be negative';
+          this.makeToast('warning', msg, this.$t ? this.$t('Warning') : 'Warning');
+          return;
         } else {
           this.Update_Sale();
         }
@@ -684,6 +795,8 @@ export default {
 
     },
 
+    
+
     // Search Products
     search(){
       if (this.timer) {
@@ -760,6 +873,8 @@ export default {
     getResultValue(result) {
       return result.code + " " + "(" + result.name + ")";
     },
+
+
 
     //-------------- Submit Search Product
 
@@ -943,6 +1058,118 @@ export default {
       }
     },
 
+    // Calculate discount amount for current sale (for display in summary card)
+    getCurrentSaleDiscountAmount() {
+      try {
+        const discountMethod = String(this.sale.discount_Method || '2'); // Default to fixed for backward compatibility
+        const discountValue = Number(this.sale.discount || 0);
+        const subtotal = this.total || 0;
+
+        if (discountMethod === '1') {
+          // Percentage discount on subtotal (manual discount only, no points)
+          return parseFloat((subtotal * (discountValue / 100)).toFixed(2));
+        } else {
+          // Fixed discount (manual discount only, no points)
+          return parseFloat(Math.min(discountValue, subtotal).toFixed(2));
+        }
+      } catch (e) {
+        return Number(this.sale.discount || 0);
+      }
+    },
+
+    // Handle manual input for points to convert (keep it within [0, available])
+    onPointsToConvertInput() {
+      let max = Number(this.selectedClientPoints) || 0;
+      let val = Number(this.points_to_convert);
+      if (!Number.isFinite(val)) val = 0;
+      if (val < 0) val = 0;
+      val = Math.floor(val);
+      if (val > max) {
+        this.makeToast &&
+          this.makeToast(
+            "warning",
+            this.$t ? this.$t("Entered_points_exceed_available") : "Entered points exceed available",
+            this.$t ? this.$t("Warning") : "Warning"
+          );
+        val = max;
+      }
+      this.points_to_convert = val;
+    },
+
+    // Convert / unconvert points to discount (same behavior as create_sale)
+    convertPointsToDiscount() {
+      if (this.pointsConverted) {
+        // We are UN-converting points for this sale.
+        // Increase the visible available points by the amount that was used on this sale,
+        // to reflect the rollback that will happen on save.
+        const prevUsed = Number(this.used_points || 0);
+        if (prevUsed > 0) {
+          const currentAvail = Number(this.selectedClientPoints || 0);
+          this.selectedClientPoints = currentAvail + prevUsed;
+          this.initialClientPoints = this.selectedClientPoints;
+        }
+
+        // Reset conversion - sale.discount remains unchanged (it only contains manual discount)
+        this.discount_from_points = 0;
+        this.used_points = 0;
+        this.points_to_convert = 0;
+
+        this.pointsConverted = false;
+      } else {
+        const maxPoints = Number(this.selectedClientPoints) || 0;
+        let pts = Number(this.points_to_convert);
+        if (!Number.isFinite(pts) || pts <= 0) {
+          this.makeToast &&
+            this.makeToast(
+              "warning",
+              this.$t ? this.$t("Please_enter_points_to_convert") : "Please enter points to convert",
+              this.$t ? this.$t("Warning") : "Warning"
+            );
+          return;
+        }
+        if (pts > maxPoints) {
+          this.makeToast &&
+            this.makeToast(
+              "warning",
+              this.$t ? this.$t("Entered_points_exceed_available") : "Entered points exceed available",
+              this.$t ? this.$t("Warning") : "Warning"
+            );
+          this.points_to_convert = maxPoints;
+          pts = maxPoints;
+          this.$nextTick &&
+            this.$nextTick(() => {
+              const r = this.$refs && this.$refs.pointsInput;
+              if (r && r.$el) {
+                try {
+                  r.$el.value = String(this.points_to_convert);
+                } catch (e) {}
+              }
+            });
+        }
+        const discount = parseFloat((pts * this.point_to_amount_rate).toFixed(2));
+        this.discount_from_points = discount;
+        // Don't merge points into sale.discount - keep them separate so input shows only manual discount
+        this.used_points = pts;
+        // ensure input reflects final used points
+        this.points_to_convert = pts;
+        this.$nextTick &&
+          this.$nextTick(() => {
+            const r = this.$refs && this.$refs.pointsInput;
+            if (r && r.$el) {
+              try {
+                r.$el.value = String(this.points_to_convert);
+              } catch (e) {}
+            }
+          });
+        this.pointsConverted = true;
+        // reduce available points display until saved
+        const baseAvail = Number(this.initialClientPoints || this.selectedClientPoints) || 0;
+        this.selectedClientPoints = Math.max(0, baseAvail - pts);
+      }
+
+      this.Calcul_Total(); // Recalculate grand total
+    },
+
     //---------- keyup Shipping
 
     keyup_Shipping() {
@@ -981,8 +1208,32 @@ export default {
         this.total = parseFloat(this.total + this.details[i].subtotal);
       }
 
+      // Calculate discount based on type (backward compatible: default to fixed if not set)
+      const discountMethod = String(this.sale.discount_Method || '2');
+      const discountValue = Number(this.sale.discount || 0);
+      let discountAmount = 0;
+
+      if (discountMethod === '1') {
+        // Percentage discount on subtotal
+        const percentAmount = parseFloat((this.total * (discountValue / 100)).toFixed(2));
+        // Points-based discount is always a fixed amount; apply it in addition, but never exceed remaining subtotal
+        const remainingAfterPercent = Math.max(this.total - percentAmount, 0);
+        const pointsAmount = parseFloat(
+          Math.min(Number(this.discount_from_points || 0), remainingAfterPercent).toFixed(2)
+        );
+        discountAmount = percentAmount + pointsAmount;
+      } else {
+        // Fixed discount: apply both manual discount and points discount separately
+        const manualDiscount = parseFloat(Math.min(discountValue, this.total).toFixed(2));
+        const remainingAfterManual = Math.max(this.total - manualDiscount, 0);
+        const pointsDiscount = parseFloat(
+          Math.min(Number(this.discount_from_points || 0), remainingAfterManual).toFixed(2)
+        );
+        discountAmount = manualDiscount + pointsDiscount;
+      }
+
       const total_without_discount = parseFloat(
-        this.total - this.sale.discount
+        (this.total - discountAmount).toFixed(2)
       );
       this.sale.TaxNet = parseFloat(
         (total_without_discount * this.sale.tax_rate) / 100
@@ -1038,6 +1289,11 @@ export default {
     //--------------------------------- Update Sale -------------------------\\
     Update_Sale() {
       if (this.verifiedForm()) {
+        if (Number(this.GrandTotal) < 0) {
+          const msg = this.$t ? `${this.$t('pos.Total_Payable')} ${this.$t('cannot_be_negative') || 'cannot be negative'}` : 'Total Payable cannot be negative';
+          this.makeToast('warning', msg, this.$t ? this.$t('Warning') : 'Warning');
+          return;
+        }
         this.SubmitProcessing = true;
         // Start the progress bar.
         NProgress.start();
@@ -1054,8 +1310,15 @@ export default {
             tax_rate: this.sale.tax_rate?this.sale.tax_rate:0,
             TaxNet: this.sale.TaxNet?this.sale.TaxNet:0,
             discount: this.sale.discount?this.sale.discount:0,
+            // Ensure order-level discount method is sent when editing
+            discount_Method: String(this.sale.discount_Method || '2'),
             shipping: this.sale.shipping?this.sale.shipping:0,
-            details: this.details
+            details: this.details.map(d => ({
+              ...d,
+              price_type: d.price_type || 'retail'
+            })),
+            discount_from_points: this.discount_from_points,
+            used_points: this.used_points,
           })
           .then(response => {
             this.makeToast(
@@ -1090,14 +1353,21 @@ export default {
         this.product.del = 0;
         this.product.id = 0;
         this.product.etat = "new";
-        this.product.discount = 0;
-        this.product.DiscountNet = 0;
-        this.product.discount_Method = "2";
+        this.product.discount           = response.data.discount;
+        this.product.DiscountNet        = response.data.DiscountNet;
+        this.product.discount_Method    = response.data.discount_method;
         this.product.product_id = response.data.id;
         this.product.name = response.data.name;
         this.product.product_type = response.data.product_type;
         this.product.Net_price = response.data.Net_price;
         this.product.Unit_price = response.data.Unit_price;
+        this.product.Unit_price_wholesale = response.data.Unit_price_wholesale;
+        this.product.wholesale_Net_price = response.data.wholesale_Net_price;
+        this.product.min_price = response.data.min_price;
+        // baselines for toggle
+        this.product.retail_unit_price = response.data.Unit_price;
+        this.product.wholesale_unit_price = response.data.Unit_price_wholesale;
+        this.product.price_type = 'retail';
         this.product.taxe = response.data.tax_price;
         this.product.tax_method = response.data.tax_method;
         this.product.tax_percent = response.data.tax_percent;
@@ -1105,6 +1375,10 @@ export default {
         this.product.sale_unit_id = response.data.sale_unit_id;
         this.product.is_imei = response.data.is_imei;
         this.product.imei_number = '';
+        // ensure min price respected on default
+        if (this.product.Net_price < (this.product.min_price || 0)) {
+          this.product.price_type = 'retail';
+        }
         this.add_product();
         this.Calcul_Total();
       });
@@ -1116,13 +1390,84 @@ export default {
       axios
         .get(`sales/${id}/edit`)
         .then(response => {
-          this.sale = response.data.sale;
+          const rawSale = response.data.sale || {};
+
+          // Normalize discount method coming from backend:
+          // 1 / '1' / 'percent' / 'percentage'  => '1'
+          // 2 / '2' / 'fixed'                   => '2'
+          // null/undefined                      => '2' (fixed by default)
+          let methodRaw = rawSale.discount_Method;
+          let normalizedMethod = '2';
+          if (methodRaw !== undefined && methodRaw !== null) {
+            const dm = String(methodRaw).toLowerCase().trim();
+            if (dm === '1' || dm === 'percent' || dm === 'percentage') {
+              normalizedMethod = '1';
+            } else if (dm === '2' || dm === 'fixed') {
+              normalizedMethod = '2';
+            }
+          }
+
+          this.sale = {
+            ...rawSale,
+            discount_Method: normalizedMethod,
+          };
+
           this.details = response.data.details;
           this.clients = response.data.clients;
           this.warehouses = response.data.warehouses;
-          this.Get_Products_By_Warehouse(this.sale.warehouse_id);
-          this.Calcul_Total();
-          this.isLoading = false;
+          this.point_to_amount_rate = response.data.point_to_amount_rate;
+          this.discount_from_points = response.data.discount_from_points || 0;
+          this.used_points = this.sale.used_points > 0 ? this.sale.used_points : 0;
+
+          // Fetch current loyalty points for this client to drive the points UI
+          if (this.sale.client_id) {
+            axios
+              .get(`/get_points_client/${this.sale.client_id}`)
+              .then(res => {
+                const data = res.data || {};
+                if (data.is_royalty_eligible || this.discount_from_points > 0 || this.used_points > 0) {
+                  this.selectedClientPoints = Number(data.points || 0);
+                  this.initialClientPoints = Number(data.points || 0);
+                  this.clientIsEligible = this.selectedClientPoints > 0;
+                } else {
+                  this.selectedClientPoints = 0;
+                  this.initialClientPoints = 0;
+                  this.clientIsEligible = false;
+                }
+                // Show section if client has points OR this sale already used points/discount_from_points
+                this.showPointsSection =
+                  (this.clientIsEligible && this.selectedClientPoints > 0) ||
+                  (this.used_points && this.used_points > 0) ||
+                  (this.discount_from_points && this.discount_from_points > 0);
+                // If sale already has discount_from_points, treat as converted
+                if (this.discount_from_points > 0 && this.used_points > 0) {
+                  this.pointsConverted = true;
+                  this.points_to_convert = this.used_points;
+                }
+              })
+              .catch(() => {
+                // On failure, just keep points UI hidden by default
+                this.selectedClientPoints = 0;
+                this.initialClientPoints = 0;
+                this.clientIsEligible = false;
+                this.showPointsSection =
+                  (this.used_points && this.used_points > 0) ||
+                  (this.discount_from_points && this.discount_from_points > 0);
+              })
+              .finally(() => {
+                this.Get_Products_By_Warehouse(this.sale.warehouse_id);
+                this.Calcul_Total();
+                this.isLoading = false;
+              });
+          } else {
+            // No client id, just proceed with existing data
+            this.showPointsSection =
+              (this.used_points && this.used_points > 0) ||
+              (this.discount_from_points && this.discount_from_points > 0);
+            this.Get_Products_By_Warehouse(this.sale.warehouse_id);
+            this.Calcul_Total();
+            this.isLoading = false;
+          }
         })
         .catch(response => {
           setTimeout(() => {
@@ -1151,5 +1496,8 @@ export default {
     height: 50px;
     margin-right: 8px; /* Adjust spacing as needed */
     cursor: pointer;
-  }
+  }  
+
+  
+
 </style>

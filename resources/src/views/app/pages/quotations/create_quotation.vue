@@ -1080,9 +1080,9 @@ export default {
 
     Get_Product_Details(product_id, variant_id) {
       axios.get("/show_product_data/" + product_id +"/"+ variant_id).then(response => {
-        this.product.discount = 0;
-        this.product.DiscountNet = 0;
-        this.product.discount_Method = "2";
+        this.product.discount = response.data.discount;
+        this.product.DiscountNet = response.data.DiscountNet;
+        this.product.discount_Method = response.data.discount_method;
         this.product.product_id = response.data.id;
         this.product.product_type = response.data.product_type;
         this.product.name = response.data.name;

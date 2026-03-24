@@ -13,12 +13,12 @@
           :locale-data="locale" > 
 
           <template v-slot:input="picker" style="min-width: 350px;">
-              {{ picker.startDate.toJSON().slice(0, 10)}} - {{ picker.endDate.toJSON().slice(0, 10)}}
+              {{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}
           </template>        
         </date-range-picker>
       </b-col>
 
-      <b-card class="wrapper" v-if="!isLoading">
+      <b-card class="wrapper print-table-only" v-if="!isLoading">
         <vue-good-table
           mode="remote"
           :columns="columns"
@@ -44,9 +44,19 @@
         }"
           styleClass="tableOne table-hover vgt-table mt-3"
         >
+          <template slot="table-row" slot-scope="props">
+            <span v-if="props.column.field == 'total_sales'">
+              {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total_sales, 2) }}
+            </span>
+            <span v-else>
+              {{ props.formattedRow[props.column.field] }}
+            </span>
+          </template>
   
          <div slot="table-actions" class="mt-2 mb-3">
-          
+          <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
+            <i class="i-Printer"></i> {{ $t("print") }}
+          </b-button>
             <b-button @click="report_pdf()" size="sm" variant="outline-success ripple m-1">
               <i class="i-File-Copy"></i> PDF
             </b-button>
@@ -70,13 +80,17 @@
   <script>
   import NProgress from "nprogress";
   import jsPDF from "jspdf";
-  import "jspdf-autotable";
+  import autoTable from "jspdf-autotable";
   import { mapGetters } from "vuex";
 
   import DateRangePicker from 'vue2-daterange-picker'
   //you need to import the CSS manually
   import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
   import moment from 'moment'
+  import {
+    formatPriceDisplay as formatPriceDisplayHelper,
+    getPriceFormatSetting
+  } from "../../../../utils/priceFormat";
   
   export default {
     components: { DateRangePicker },
@@ -127,7 +141,9 @@
         currency: "",
         reports: [],
         report: {},
-        warehouse_id: 0
+        warehouse_id: 0,
+        // Optional price format key for frontend display (loaded from system settings/Vuex store)
+        price_format_key: null
       };
     },
   
@@ -161,12 +177,21 @@
     methods: {
 
       
-     sumCount(rowObj) {
+    // Group footer helper for vue-good-table.
+    // Returns a formatted string so the footer row inside the table
+    // looks like a normal data row, but uses the global price format & currency.
+    sumCount(rowObj) {
+      if (!rowObj || !Array.isArray(rowObj.children)) {
+        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
+      }
       let sum = 0;
       for (let i = 0; i < rowObj.children.length; i++) {
-        sum += rowObj.children[i].total_sales;
+        const value = Number(rowObj.children[i].total_sales) || 0;
+        if (Number.isFinite(value)) {
+          sum += value;
+        }
       }
-      return sum.toFixed(2) + ' ' + this.currency;
+      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
     },
 
 
@@ -183,8 +208,8 @@
         pdf.setFont("VazirmatnBold"); 
 
         let columns = [
-          { title: self.$t("Categorie"), dataKey: "category_name" },
-          { title: self.$t("total_sales"), dataKey: "total_sales" },
+          { header: self.$t("Categorie"), dataKey: "category_name" },
+          { header: self.$t("total_sales"), dataKey: "total_sales" },
         ];
 
         // Calculate totals
@@ -196,7 +221,7 @@
           
         }];
 
-        pdf.autoTable({
+        autoTable(pdf, {
              columns: columns,
              body: self.reports,
              foot: footer,
@@ -212,13 +237,13 @@
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
              footStyles: {
-               fillColor: [230, 230, 230], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
         });
@@ -280,28 +305,165 @@
         while (formated.length < dec) formated += "0";
         return `${value[0]}.${formated}`;
       },
+
+      // Price formatting for display only (does NOT affect calculations or stored values)
+      // Uses the global/system price_format setting when available; otherwise falls back
+      // to the existing toLocaleString behavior to preserve current behavior.
+      formatPriceDisplay(number, dec) {
+        try {
+          const decimals = Number.isInteger(dec) ? dec : 2;
+          const n = Number(number || 0);
+          const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+          if (key) {
+            this.price_format_key = key;
+          }
+          const effectiveKey = key || null;
+          return formatPriceDisplayHelper(n, decimals, effectiveKey);
+        } catch (e) {
+          const n = Number(number || 0);
+          return n.toLocaleString(undefined, { maximumFractionDigits: dec || 2 });
+        }
+      },
+
+      formatPriceWithSymbol(symbol, number, dec) {
+        const safeSymbol = symbol || "";
+        const value = this.formatPriceDisplay(number, dec);
+        return safeSymbol ? `${safeSymbol} ${value}` : value;
+      },
+
+    //------ Print Table Only
+    printTableOnly() {
+      const root = this.$el;
+      if (!root) {
+        window.print();
+        return;
+      }
+
+      const tableCard = root.querySelector(".print-table-only");
+      if (!tableCard) {
+        window.print();
+        return;
+      }
+
+      // Get reports data from rows[0].children or this.reports
+      const reportsData = Array.isArray(this.rows[0]?.children) && this.rows[0].children.length > 0 
+        ? this.rows[0].children 
+        : (this.reports || []);
+
+      // Manually construct the table HTML from reports data
+      let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
+
+      // Table Header
+      tableHtml += `<thead><tr>`;
+      this.columns.forEach(col => {
+        tableHtml += `<th class="text-left">${col.label}</th>`;
+      });
+      tableHtml += `</tr></thead>`;
+
+      // Table Body
+      tableHtml += `<tbody>`;
+      reportsData.forEach(row => {
+        tableHtml += `<tr>`;
+        this.columns.forEach(col => {
+          let cellContent = row[col.field];
+          if (col.field === 'total_sales') {
+            // Format with currency symbol using formatPriceWithSymbol
+            cellContent = this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, row.total_sales, 2);
+          }
+          tableHtml += `<td class="text-left">${cellContent || ''}</td>`;
+        });
+        tableHtml += `</tr>`;
+      });
+      tableHtml += `</tbody>`;
+
+      // Table Footer (Totals)
+      const totalSales = reportsData.reduce((sum, report) => sum + parseFloat(report.total_sales || 0), 0);
+      tableHtml += `<tfoot><tr>`;
+      tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
+      tableHtml += `<td class="text-left font-weight-bold">${this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, totalSales, 2)}</td>`;
+      tableHtml += `</tr></tfoot>`;
+
+      tableHtml += `</table>`;
+
+      const w = window.open("", "_blank");
+      if (!w) {
+        window.print();
+        return;
+      }
+
+      const title = `${this.$t("Reports")} / ${this.$t("Sales_by_Category")}`;
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML)
+        .join("\n");
+
+      const inlineStyles = Array.from(document.querySelectorAll("style"))
+        .filter(s => !((s.textContent || "").includes("@media print")))
+        .map(s => s.outerHTML)
+        .join("\n");
+
+      const doc = w.document;
+      doc.open();
+      doc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="${window.location.origin}/" />
+    <title>${title}</title>
+    ${links}
+    ${inlineStyles}
+    <style>
+      @media print { body, body * { visibility: visible !important; } }
+      body { margin: 0.3cm; }
+      .print-header { font-weight: 600; margin-bottom: 8px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      th { background-color: #f2f2f2; }
+    </style>
+  </head>
+  <body>
+    <div class="print-header">${title}</div>
+    ${tableHtml}
+  </body>
+</html>`);
+      doc.close();
+
+      w.focus();
+      setTimeout(() => {
+        w.print();
+        w.close();
+      }, 400);
+    },
   
     //----------------------------- Submit Date Picker -------------------\\
     Submit_filter_dateRange() {
-      var self = this;
-      self.startDate =  self.dateRange.startDate.toJSON().slice(0, 10);
-      self.endDate = self.dateRange.endDate.toJSON().slice(0, 10);
-      self.get_sales_by_category(1);
+      const pad = (n) => String(n).padStart(2, "0");
+      const formatLocalDate = (d) =>
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      this.startDate = formatLocalDate(new Date(this.dateRange.startDate));
+      this.endDate = formatLocalDate(new Date(this.dateRange.endDate));
+      this.get_sales_by_category(1);
     },
 
 
     get_data_loaded() {
-      var self = this;
+      const self = this;
       if (self.today_mode) {
-        let startDate = new Date("01/01/2000");  // Set start date to "01/01/2000"
-        let endDate = new Date();  // Set end date to current date
-
-        self.startDate = startDate.toISOString();
-        self.endDate = endDate.toISOString();
-
-        self.dateRange.startDate = startDate.toISOString();
-        self.dateRange.endDate = endDate.toISOString();
+        const startDate = new Date("01/01/2000");
+        const endDate = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        const formatLocalDate = (d) =>
+          `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        self.startDate = formatLocalDate(startDate);
+        self.endDate = formatLocalDate(endDate);
+        self.dateRange.startDate = startDate;
+        self.dateRange.endDate = endDate;
       }
+    },
+
+    // Same as dashboard: format date for picker display (YYYY-MM-DD, local time via moment)
+    fmt(d) {
+      return moment(d).format("YYYY-MM-DD");
     },
 
   

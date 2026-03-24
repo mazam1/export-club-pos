@@ -13,12 +13,12 @@
           :locale-data="locale" > 
 
           <template v-slot:input="picker" style="min-width: 350px;">
-              {{ picker.startDate.toJSON().slice(0, 10)}} - {{ picker.endDate.toJSON().slice(0, 10)}}
+              {{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}
           </template>        
         </date-range-picker>
       </b-col>
 
-      <b-card class="wrapper" v-if="!isLoading">
+      <b-card class="wrapper print-table-only" v-if="!isLoading">
         <vue-good-table
           mode="remote"
           :columns="columns"
@@ -46,7 +46,9 @@
         >
   
          <div slot="table-actions" class="mt-2 mb-3">
-          
+          <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
+            <i class="i-Printer"></i> {{ $t("print") }}
+          </b-button>
             <b-button @click="report_pdf()" size="sm" variant="outline-success ripple m-1">
               <i class="i-File-Copy"></i> PDF
             </b-button>
@@ -70,7 +72,7 @@
   <script>
   import NProgress from "nprogress";
   import jsPDF from "jspdf";
-  import "jspdf-autotable";
+  import autoTable from "jspdf-autotable";
   import { mapGetters } from "vuex";
 
   import DateRangePicker from 'vue2-daterange-picker'
@@ -168,6 +170,110 @@
       return sum.toFixed(2) + ' ' + this.currency;
     },
 
+    //------ Print Table Only
+    printTableOnly() {
+      const root = this.$el;
+      if (!root) {
+        window.print();
+        return;
+      }
+
+      const tableCard = root.querySelector(".print-table-only");
+      if (!tableCard) {
+        window.print();
+        return;
+      }
+
+      // Get reports data from rows[0].children or this.reports
+      const reportsData = Array.isArray(this.rows[0]?.children) && this.rows[0].children.length > 0 
+        ? this.rows[0].children 
+        : (this.reports || []);
+
+      // Manually construct the table HTML from reports data
+      let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
+
+      // Table Header
+      tableHtml += `<thead><tr>`;
+      this.columns.forEach(col => {
+        tableHtml += `<th class="text-left">${col.label}</th>`;
+      });
+      tableHtml += `</tr></thead>`;
+
+      // Table Body
+      tableHtml += `<tbody>`;
+      reportsData.forEach(row => {
+        tableHtml += `<tr>`;
+        this.columns.forEach(col => {
+          let cellContent = row[col.field];
+          if (col.field === 'total_sales') {
+            // Format with currency
+            cellContent = `${parseFloat(row.total_sales || 0).toFixed(2)} ${this.currency || ''}`;
+          }
+          tableHtml += `<td class="text-left">${cellContent || ''}</td>`;
+        });
+        tableHtml += `</tr>`;
+      });
+      tableHtml += `</tbody>`;
+
+      // Table Footer (Totals)
+      const totalSales = reportsData.reduce((sum, report) => sum + parseFloat(report.total_sales || 0), 0);
+      tableHtml += `<tfoot><tr>`;
+      tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
+      tableHtml += `<td class="text-left font-weight-bold">${totalSales.toFixed(2)} ${this.currency || ''}</td>`;
+      tableHtml += `</tr></tfoot>`;
+
+      tableHtml += `</table>`;
+
+      const w = window.open("", "_blank");
+      if (!w) {
+        window.print();
+        return;
+      }
+
+      const title = `${this.$t("Reports")} / ${this.$t("Sales_by_Brand")}`;
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML)
+        .join("\n");
+
+      const inlineStyles = Array.from(document.querySelectorAll("style"))
+        .filter(s => !((s.textContent || "").includes("@media print")))
+        .map(s => s.outerHTML)
+        .join("\n");
+
+      const doc = w.document;
+      doc.open();
+      doc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="${window.location.origin}/" />
+    <title>${title}</title>
+    ${links}
+    ${inlineStyles}
+    <style>
+      @media print { body, body * { visibility: visible !important; } }
+      body { margin: 0.3cm; }
+      .print-header { font-weight: 600; margin-bottom: 8px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      th { background-color: #f2f2f2; }
+    </style>
+  </head>
+  <body>
+    <div class="print-header">${title}</div>
+    ${tableHtml}
+  </body>
+</html>`);
+      doc.close();
+
+      w.focus();
+      setTimeout(() => {
+        w.print();
+        w.close();
+      }, 400);
+    },
+
   
        //----------------------------------- Sales PDF ------------------------------\\
       report_pdf() {
@@ -179,8 +285,8 @@
         pdf.setFont("VazirmatnBold"); 
 
         let columns = [
-          { title: self.$t("Brand"), dataKey: "brand_name" },
-          { title: self.$t("total_sales"), dataKey: "total_sales" },
+          { header: self.$t("Brand"), dataKey: "brand_name" },
+          { header: self.$t("total_sales"), dataKey: "total_sales" },
         ];
 
         // Calculate totals
@@ -192,7 +298,7 @@
           
         }];
 
-        pdf.autoTable({
+        autoTable(pdf, {
              columns: columns,
              body: self.reports,
              foot: footer,
@@ -208,13 +314,13 @@
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
              footStyles: {
-               fillColor: [230, 230, 230], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
         });
@@ -279,25 +385,33 @@
   
     //----------------------------- Submit Date Picker -------------------\\
     Submit_filter_dateRange() {
-      var self = this;
-      self.startDate =  self.dateRange.startDate.toJSON().slice(0, 10);
-      self.endDate = self.dateRange.endDate.toJSON().slice(0, 10);
-      self.get_sales_by_brand(1);
+      const pad = (n) => String(n).padStart(2, "0");
+      const formatLocalDate = (d) =>
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      this.startDate = formatLocalDate(new Date(this.dateRange.startDate));
+      this.endDate = formatLocalDate(new Date(this.dateRange.endDate));
+      this.get_sales_by_brand(1);
     },
 
 
     get_data_loaded() {
-      var self = this;
+      const self = this;
       if (self.today_mode) {
-        let startDate = new Date("01/01/2000");  // Set start date to "01/01/2000"
-        let endDate = new Date();  // Set end date to current date
-
-        self.startDate = startDate.toISOString();
-        self.endDate = endDate.toISOString();
-
-        self.dateRange.startDate = startDate.toISOString();
-        self.dateRange.endDate = endDate.toISOString();
+        const startDate = new Date("01/01/2000");
+        const endDate = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        const formatLocalDate = (d) =>
+          `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        self.startDate = formatLocalDate(startDate);
+        self.endDate = formatLocalDate(endDate);
+        self.dateRange.startDate = startDate;
+        self.dateRange.endDate = endDate;
       }
+    },
+
+    // Same as dashboard: format date for picker display (YYYY-MM-DD, local time via moment)
+    fmt(d) {
+      return moment(d).format("YYYY-MM-DD");
     },
 
   

@@ -1,15 +1,13 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\BaseController;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AuthController extends BaseController
 {
-
-    //--------------- Function Login ----------------\\
+    // --------------- Function Login ----------------\\
 
     public function getAccessToken(Request $request)
     {
@@ -48,7 +46,7 @@ class AuthController extends BaseController
         ]);
     }
 
-    //--------------- Function Logout ----------------\\
+    // --------------- Function Logout ----------------\\
 
     public function logout()
     {
@@ -56,9 +54,9 @@ class AuthController extends BaseController
             $user = Auth::user()->token();
             $user->revoke();
             $this->destroyCookie('Stocky_token');
+
             return response()->json('success');
         }
 
     }
-
 }

@@ -12,6 +12,6 @@ class LeaveType extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'title'
+        'title',
     ];
 }

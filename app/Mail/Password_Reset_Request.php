@@ -11,6 +11,7 @@ class Password_Reset_Request extends Mailable
     use Queueable, SerializesModels;
 
     public $url;
+
     public $token;
 
     /**
@@ -29,7 +30,6 @@ class Password_Reset_Request extends Mailable
      *
      * @return $this
      */
-
     public function build()
     {
         return

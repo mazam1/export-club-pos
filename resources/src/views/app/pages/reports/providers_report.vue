@@ -4,7 +4,7 @@
 
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
 
-    <b-card class="wrapper" v-if="!isLoading">
+    <b-card class="wrapper print-table-only" v-if="!isLoading">
       <vue-good-table
         mode="remote"
         :columns="columns"
@@ -30,6 +30,11 @@
       }"
         styleClass="tableOne table-hover vgt-table mt-4"
       >
+        <div slot="table-actions" class="mt-2 mb-3">
+          <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
+            <i class="i-Printer"></i> {{ $t("print") }}
+          </b-button>
+        </div>
        <template slot="table-row" slot-scope="props">
           <span v-if="props.column.field == 'actions'">
             <a title="PDF" class="cursor-pointer" v-b-tooltip.hover @click="Download_PDF(props.row , props.row.id)">
@@ -142,7 +147,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false
@@ -301,6 +305,117 @@ export default {
         return `${value[0]}.${formated.substr(0, dec)}`;
       while (formated.length < dec) formated += "0";
       return `${value[0]}.${formated}`;
+    },
+
+    //------ Print Table Only
+    printTableOnly() {
+      const root = this.$el;
+      if (!root) {
+        window.print();
+        return;
+      }
+
+      const tableCard = root.querySelector(".print-table-only");
+      if (!tableCard) {
+        window.print();
+        return;
+      }
+
+      // Get providers data from rows[0].children or this.providers
+      const providersData = Array.isArray(this.rows[0]?.children) && this.rows[0].children.length > 0 
+        ? this.rows[0].children 
+        : (this.providers || []);
+
+      // Manually construct the table HTML from providers data
+      let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
+
+      // Table Header
+      tableHtml += `<thead><tr>`;
+      this.columns.filter(col => col.field !== 'actions').forEach(col => {
+        tableHtml += `<th class="text-left">${col.label}</th>`;
+      });
+      tableHtml += `</tr></thead>`;
+
+      // Table Body
+      tableHtml += `<tbody>`;
+      providersData.forEach(row => {
+        tableHtml += `<tr>`;
+        this.columns.filter(col => col.field !== 'actions').forEach(col => {
+          let cellContent = row[col.field];
+          if (['total_amount', 'total_paid', 'due', 'return_Due'].includes(col.field)) {
+            cellContent = this.formatNumber(row[col.field], 2);
+          }
+          tableHtml += `<td class="text-left">${cellContent || ''}</td>`;
+        });
+        tableHtml += `</tr>`;
+      });
+      tableHtml += `</tbody>`;
+
+      // Table Footer (Totals)
+      const totalAmount = this.sumCount(this.rows[0]);
+      const totalPaid = this.sumCount2(this.rows[0]);
+      const totalDue = this.sumCount3(this.rows[0]);
+      const totalReturnDue = this.sumCount4(this.rows[0]);
+
+      tableHtml += `<tfoot><tr>`;
+      tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
+      tableHtml += `<td colspan="2"></td>`; // Span for SupplierName, Phone
+      tableHtml += `<td class="text-left font-weight-bold">${this.formatNumber(totalAmount, 2)}</td>`;
+      tableHtml += `<td class="text-left font-weight-bold">${this.formatNumber(totalPaid, 2)}</td>`;
+      tableHtml += `<td class="text-left font-weight-bold">${this.formatNumber(totalDue, 2)}</td>`;
+      tableHtml += `<td class="text-left font-weight-bold">${this.formatNumber(totalReturnDue, 2)}</td>`;
+      tableHtml += `</tr></tfoot>`;
+
+      tableHtml += `</table>`;
+
+      const w = window.open("", "_blank");
+      if (!w) {
+        window.print();
+        return;
+      }
+
+      const title = `${this.$t("Reports")} / ${this.$t("SuppliersReport")}`;
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML)
+        .join("\n");
+
+      const inlineStyles = Array.from(document.querySelectorAll("style"))
+        .filter(s => !((s.textContent || "").includes("@media print")))
+        .map(s => s.outerHTML)
+        .join("\n");
+
+      const doc = w.document;
+      doc.open();
+      doc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="${window.location.origin}/" />
+    <title>${title}</title>
+    ${links}
+    ${inlineStyles}
+    <style>
+      @media print { body, body * { visibility: visible !important; } }
+      body { margin: 0.3cm; }
+      .print-header { font-weight: 600; margin-bottom: 8px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      th { background-color: #f2f2f2; }
+    </style>
+  </head>
+  <body>
+    <div class="print-header">${title}</div>
+    ${tableHtml}
+  </body>
+</html>`);
+      doc.close();
+
+      w.focus();
+      setTimeout(() => {
+        w.print();
+        w.close();
+      }, 400);
     },
 
     //--------------------------- Get Customer Report -------------\\

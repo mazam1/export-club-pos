@@ -1,17 +1,16 @@
 <?php
 
 namespace App\Http\Controllers\hrm;
-use App\Http\Controllers\Controller;
 
-use Illuminate\Http\Request;
-use App\Models\LeaveType;
+use App\Http\Controllers\Controller;
 use App\Models\Leave;
+use App\Models\LeaveType;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class LeaveTypeController extends Controller
 {
-
-    //----------- GET ALL  Leave type --------------\\
+    // ----------- GET ALL  Leave type --------------\\
 
     public function index(Request $request)
     {
@@ -34,7 +33,7 @@ class LeaveTypeController extends Controller
                 });
             });
         $totalRows = $leave_types->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $leave_types = $leave_types->offset($offSet)
@@ -48,50 +47,51 @@ class LeaveTypeController extends Controller
         ]);
     }
 
-    //----------- Store new Leave --------------\\
+    // ----------- Store new Leave --------------\\
 
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Leave::class);
 
         request()->validate([
-            'title'      => 'required|string',
+            'title' => 'required|string',
         ]);
 
         LeaveType::create([
-            'title'           => $request['title'],
+            'title' => $request['title'],
         ]);
 
         return response()->json(['success' => true]);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
-        }
 
-    //-----------Update Leave --------------\\
+    }
+
+    // -----------Update Leave --------------\\
 
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Leave::class);
 
         request()->validate([
-            'title'           => 'required|string',
+            'title' => 'required|string',
         ]);
 
         LeaveType::whereId($id)->update([
-            'title'           => $request['title'],
+            'title' => $request['title'],
         ]);
-    
+
         return response()->json(['success' => true]);
 
         return response()->json(['success' => true]);
     }
 
-    //----------- Delete  Leave --------------\\
+    // ----------- Delete  Leave --------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -104,7 +104,7 @@ class LeaveTypeController extends Controller
         return response()->json(['success' => true]);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -120,6 +120,4 @@ class LeaveTypeController extends Controller
 
         return response()->json(['success' => true]);
     }
-
-
 }

@@ -12,9 +12,6 @@ class Company extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        "name",'email','phone','country'
+        'name', 'email', 'phone', 'country',
     ];
-
-
-
 }

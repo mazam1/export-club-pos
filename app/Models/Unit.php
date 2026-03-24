@@ -18,5 +18,4 @@ class Unit extends Model
         'is_active' => 'integer',
 
     ];
-
 }

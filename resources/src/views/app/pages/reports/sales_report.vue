@@ -12,12 +12,12 @@
           :locale-data="locale" > 
 
           <template v-slot:input="picker" style="min-width: 350px;">
-              {{ picker.startDate.toJSON().slice(0, 10)}} - {{ picker.endDate.toJSON().slice(0, 10)}}
+              {{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}
           </template>        
         </date-range-picker>
       </b-col>
 
-    <b-card class="wrapper" v-if="!isLoading">
+    <b-card class="wrapper print-table-only" v-if="!isLoading">
       <vue-good-table
         mode="remote"
         :columns="columns"
@@ -48,6 +48,9 @@
             <i class="i-Filter-2"></i>
             {{ $t("Filter") }}
           </b-button>
+          <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
+            <i class="i-Printer"></i> {{ $t("print") }}
+          </b-button>
           <b-button @click="Sales_PDF()" size="sm" variant="outline-success ripple m-1">
             <i class="i-File-Copy"></i> PDF
           </b-button>
@@ -64,7 +67,10 @@
         </div>
 
         <template slot="table-row" slot-scope="props">
-          <div v-if="props.column.field == 'statut'">
+          <span v-if="props.column.field == 'date'">
+            {{ formatDisplayDate(props.row.date) }}
+          </span>
+          <div v-else-if="props.column.field == 'statut'">
             <span
               v-if="props.row.statut == 'completed'"
               class="badge badge-outline-success"
@@ -87,6 +93,23 @@
             >{{$t('partial')}}</span>
             <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
           </div>
+          <span v-else-if="props.column.field === 'Ref' && props.row.id">
+            <router-link :to="{ name: 'detail_sale', params: { id: props.row.id } }" class="text-primary">
+              {{ props.formattedRow[props.column.field] }}
+            </router-link>
+          </span>
+          <span v-else-if="props.column.field == 'GrandTotal'">
+            {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.GrandTotal, 2) }}
+          </span>
+          <span v-else-if="props.column.field == 'paid_amount'">
+            {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.paid_amount, 2) }}
+          </span>
+          <span v-else-if="props.column.field == 'due'">
+            {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.due, 2) }}
+          </span>
+          <span v-else>
+            {{ props.formattedRow[props.column.field] }}
+          </span>
         </template>
       </vue-good-table>
     </b-card>
@@ -184,11 +207,17 @@
 <script>
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import DateRangePicker from 'vue2-daterange-picker'
 //you need to import the CSS manually
 import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
 import moment from 'moment'
+import Util from '../../../../utils'
+import { mapGetters } from "vuex";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting
+} from "../../../../utils/priceFormat";
 
 export default {
   metaInfo: {
@@ -246,6 +275,8 @@ components: { DateRangePicker },
       today_mode: true,
       to: "",
       from: "",
+      // Optional price format key for frontend display (loaded from system settings/localStorage)
+      price_format_key: null
     };
   },
 
@@ -258,12 +289,7 @@ components: { DateRangePicker },
           tdClass: "text-left",
           thClass: "text-left"
         },
-        {
-          label: 'Seller',
-          field: "seller",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
+       
 
         {
           label: this.$t("Reference"),
@@ -287,14 +313,13 @@ components: { DateRangePicker },
         {
           label: this.$t("Status"),
           field: "statut",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left"
         },
         {
           label: this.$t("Total"),
           field: "GrandTotal",
-          type: "decimal",
+          // Let headerField return a formatted string; avoid vue-good-table's decimal re-formatting.
           headerField: this.sumCount,
           tdClass: "text-left",
           thClass: "text-left"
@@ -302,7 +327,6 @@ components: { DateRangePicker },
         {
           label: this.$t("Paid"),
           field: "paid_amount",
-          type: "decimal",
           headerField: this.sumCount2,
           tdClass: "text-left",
           thClass: "text-left"
@@ -310,7 +334,6 @@ components: { DateRangePicker },
         {
           label: this.$t("Due"),
           field: "due",
-          type: "decimal",
           headerField: this.sumCount3,
           tdClass: "text-left",
           thClass: "text-left"
@@ -318,39 +341,88 @@ components: { DateRangePicker },
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          html: true,
+          tdClass: "text-left",
+          thClass: "text-left"
+        },
+        {
+          label: this.$t("AddedBy"),
+          field: "user_name",
           tdClass: "text-left",
           thClass: "text-left"
         }
       ];
+    },
+    ...mapGetters(["currentUser"]),
+
+    // Global footer totals used in the custom tfoot slot
+    footerTotals() {
+      const sales = Array.isArray(this.sales) ? this.sales : [];
+      let grand = 0;
+      let paid = 0;
+      let due = 0;
+
+      for (let i = 0; i < sales.length; i++) {
+        const row = sales[i] || {};
+        const g = parseFloat(row.GrandTotal) || 0;
+        const p = parseFloat(row.paid_amount) || 0;
+        const d = parseFloat(row.due) || 0;
+        if (!isNaN(g)) grand += g;
+        if (!isNaN(p)) paid += p;
+        if (!isNaN(d)) due += d;
+      }
+
+      return {
+        grandTotal: grand,
+        paidTotal: paid,
+        dueTotal: due,
+      };
     }
   },
 
   methods: {
 
+    // Group footer helpers for vue-good-table.
+    // These return already formatted strings so the footer row
+    // inside the table looks like a normal data row, but uses
+    // the global price format & currency.
     sumCount(rowObj) {
-     
-    	let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        sum += rowObj.children[i].GrandTotal;
+      if (!rowObj || !Array.isArray(rowObj.children)) {
+        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
       }
-      return sum;
+      let sum = 0;
+      for (let i = 0; i < rowObj.children.length; i++) {
+        const value = Number(rowObj.children[i].GrandTotal) || 0;
+        if (Number.isFinite(value)) {
+          sum += value;
+        }
+      }
+      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
     },
     sumCount2(rowObj) {
-     
-    	let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        sum += rowObj.children[i].paid_amount;
+      if (!rowObj || !Array.isArray(rowObj.children)) {
+        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
       }
-      return sum;
+      let sum = 0;
+      for (let i = 0; i < rowObj.children.length; i++) {
+        const value = Number(rowObj.children[i].paid_amount) || 0;
+        if (Number.isFinite(value)) {
+          sum += value;
+        }
+      }
+      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
     },
     sumCount3(rowObj) {
-     
-    	let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        sum += rowObj.children[i].due;
+      if (!rowObj || !Array.isArray(rowObj.children)) {
+        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
       }
-      return sum;
+      let sum = 0;
+      for (let i = 0; i < rowObj.children.length; i++) {
+        const value = Number(rowObj.children[i].due) || 0;
+        if (Number.isFinite(value)) {
+          sum += value;
+        }
+      }
+      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
     },
 
     //---- update Params Table
@@ -399,6 +471,114 @@ components: { DateRangePicker },
       this.Get_Sales(this.serverParams.page);
     },
 
+    //------ Print Table Only - Print ALL sales data with all columns
+    printTableOnly() {
+      const title = `${this.$t("Reports")} / ${this.$t("SalesReport")}`;
+      const sales = Array.isArray(this.sales) ? this.sales : [];
+      
+      // Build table header with all columns
+      let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
+      tableHTML += '<thead><tr>';
+      
+      this.columns.forEach(col => {
+        tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
+      });
+      tableHTML += '</tr></thead><tbody>';
+      
+      // Build table rows with all data - format each cell according to column type
+      sales.forEach(sale => {
+        tableHTML += '<tr>';
+        this.columns.forEach(col => {
+          let cellValue = '';
+          
+          if (col.field === 'date') {
+            cellValue = this.formatDisplayDate(sale.date) || '';
+          } else if (col.field === 'statut') {
+            const status = sale.statut || '';
+            if (status === 'completed') {
+              cellValue = this.$t('complete');
+            } else if (status === 'pending') {
+              cellValue = this.$t('Pending');
+            } else {
+              cellValue = this.$t('Ordered');
+            }
+          } else if (col.field === 'payment_status') {
+            const status = sale.payment_status || '';
+            if (status === 'paid') {
+              cellValue = this.$t('Paid');
+            } else if (status === 'partial') {
+              cellValue = this.$t('partial');
+            } else {
+              cellValue = this.$t('Unpaid');
+            }
+          } else if (col.field === 'Ref') {
+            cellValue = sale.Ref || '';
+          } else if (col.field === 'GrandTotal') {
+            cellValue = this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sale.GrandTotal, 2);
+          } else if (col.field === 'paid_amount') {
+            cellValue = this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sale.paid_amount, 2);
+          } else if (col.field === 'due') {
+            cellValue = this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sale.due, 2);
+          } else {
+            // Default: get value directly from sale object
+            cellValue = sale[col.field] || '';
+          }
+          
+          tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
+        });
+        tableHTML += '</tr>';
+      });
+      
+      tableHTML += '</tbody></table>';
+
+      const w = window.open("", "_blank");
+      if (!w) {
+        alert("Please allow popups to print");
+        return;
+      }
+
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML)
+        .join("\n");
+
+      const doc = w.document;
+      doc.open();
+      doc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="${window.location.origin}/" />
+    <title>${title}</title>
+    ${links}
+    <style>
+      /* Force visibility in print (some global POS print CSS hides body) */
+      @media print { 
+        body, body * { visibility: visible !important; }
+        @page { size: A4 landscape; margin: 0.3cm; }
+      }
+      body { margin: 0.3cm; font-family: Arial, sans-serif; }
+      .print-header { font-weight: 600; margin-bottom: 10px; font-size: 14px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 10px; }
+      th { background-color: #f5f5f5; font-weight: bold; }
+      tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+  </head>
+  <body>
+    <div class="print-header">${title}</div>
+    ${tableHTML}
+  </body>
+</html>`);
+      doc.close();
+
+      w.focus();
+      setTimeout(() => {
+        w.print();
+        w.close();
+      }, 400);
+    },
+
     //------ Reset Filter
     Reset_Filter() {
       this.search = "";
@@ -425,68 +605,140 @@ components: { DateRangePicker },
       return `${value[0]}.${formated}`;
     },
 
+    // Price formatting for display only (does NOT affect calculations or stored values)
+    // Uses the global/system price_format setting when available; otherwise falls back
+    // to the existing formatNumber helper to preserve current behavior.
+    formatPriceDisplay(number, dec) {
+      try {
+        // Handle null, undefined, empty string, or NaN
+        if (number === null || number === undefined || number === '') {
+          number = 0;
+        }
+        const n = Number(number);
+        if (isNaN(n) || !isFinite(n)) {
+          return this.formatNumber(0, dec || 2);
+        }
+        
+        const decimals = Number.isInteger(dec) ? dec : (dec ? parseInt(dec) : 2);
+        // Always check store directly to ensure we get the latest value
+        const key = getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
+        const effectiveKey = key || null;
+        return formatPriceDisplayHelper(n, decimals, effectiveKey);
+      } catch (e) {
+        // Fallback to formatNumber with safe value
+        return this.formatNumber(0, dec || 2);
+      }
+    },
+
+    formatPriceWithSymbol(symbol, number, dec) {
+      try {
+        const safeSymbol = symbol || (this.currentUser && this.currentUser.currency) || "";
+        const value = this.formatPriceDisplay(number, dec);
+        return safeSymbol ? `${safeSymbol} ${value}` : value;
+      } catch (e) {
+        const safeSymbol = symbol || "";
+        const value = this.formatPriceDisplay(number, dec);
+        return safeSymbol ? `${safeSymbol} ${value}` : value;
+      }
+    },
+
     //----------------------------------- Sales PDF ------------------------------\\
     Sales_PDF() {
       var self = this;
       let pdf = new jsPDF("p", "pt");
 
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
+      try {
+        pdf.addFont(fontPath, "Vazirmatn", "normal");
+        pdf.addFont(fontPath, "Vazirmatn", "bold");
+      } catch(e) {}
+      pdf.setFont("Vazirmatn", "normal");
 
-      let columns = [
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("Customer"), dataKey: "client_name" },
-        { title: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { title: self.$t("Status"), dataKey: "statut" },
-        { title: self.$t("Total"), dataKey: "GrandTotal" },
-        { title: self.$t("Paid"), dataKey: "paid_amount" },
-        { title: self.$t("Due"), dataKey: "due" },
-        { title: self.$t("PaymentStatus"), dataKey: "payment_status" }
+      const headers = [
+        self.$t("Reference"),
+        self.$t("Customer"),
+        self.$t("warehouse"),
+        self.$t("Status"),
+        self.$t("Total"),
+        self.$t("Paid"),
+        self.$t("Due"),
+        self.$t("PaymentStatus"),
+        self.$t("AddedBy"),
       ];
 
-      
-       // Calculate totals
+      const body = (self.sales || []).map(sale => ([
+        sale.Ref,
+        sale.client_name,
+        sale.warehouse_name,
+        sale.statut,
+        sale.GrandTotal,
+        sale.paid_amount,
+        sale.due,
+        sale.payment_status,
+        sale.user_name || '---'
+      ]));
+
+      // Calculate totals
       let totalGrandTotal = self.sales.reduce((sum, sale) => sum + parseFloat(sale.GrandTotal || 0), 0);
       let totalPaidAmount = self.sales.reduce((sum, sale) => sum + parseFloat(sale.paid_amount || 0), 0);
       let totalDue = self.sales.reduce((sum, sale) => sum + parseFloat(sale.due || 0), 0);
 
-      let footer = [{
-        Ref: self.$t("Total"),
-        client_name: '',
-        warehouse_name: '',
-        statut: '',
-        GrandTotal: `${totalGrandTotal.toFixed(2)}`,
-        paid_amount: `${totalPaidAmount.toFixed(2)}`,
-        due: `${totalDue.toFixed(2)}`,
-        payment_status: '',
-      }];
+      const footer = [[
+        self.$t("Total"),
+        '',
+        '',
+        '',
+        totalGrandTotal.toFixed(2),
+        totalPaidAmount.toFixed(2),
+        totalDue.toFixed(2),
+        '',
+        ''
+      ]];
 
-      pdf.autoTable({
-             columns: columns,
-             body: self.sales,
-             foot: footer,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Sales report", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
-               fontStyle: "bold", 
-             },
-             footStyles: {
-               fillColor: [230, 230, 230], 
-               textColor: [0, 0, 0], 
-               fontStyle: "bold", 
-             },
+      const marginX = 40;
+      const rtl =
+        (self.$i18n && ['ar','fa','ur','he'].includes(self.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+
+      autoTable(pdf, {
+        head: [headers],
+        body: body,
+        foot: footer,
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [26,86,219], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        footStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [26,86,219], textColor: 255 },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+
+          // Header banner
+          pdf.setFillColor(26,86,219);
+          pdf.rect(0, 0, pageW, 60, 'F');
+
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = 'Sales report';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
+
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
       });
 
       pdf.save("Sales_report.pdf");
@@ -507,11 +759,15 @@ components: { DateRangePicker },
 
     //----------------------------- Submit Date Picker -------------------\\
     Submit_filter_dateRange() {
-      var self = this;
-      self.startDate =  self.dateRange.startDate.toJSON().slice(0, 10);
-      self.endDate = self.dateRange.endDate.toJSON().slice(0, 10);
-      self.Get_Sales(1);
-    },
+  const pad = (n) => String(n).padStart(2, "0");
+  const formatLocalDate = (d) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  this.startDate = formatLocalDate(new Date(this.dateRange.startDate));
+  this.endDate   = formatLocalDate(new Date(this.dateRange.endDate));
+
+  this.Get_Sales(1);
+},
 
 
     get_data_loaded() {
@@ -586,6 +842,18 @@ components: { DateRangePicker },
             this.today_mode = false;
           }, 500);
         });
+    },
+    //----------------------------------------- Format Display Date (for tables) -------------------------------\\
+    formatDisplayDate(value) {
+      if (!value) return '';
+      // Get date format from Vuex store (loaded from database) or fallback
+      const dateFormat = this.$store.getters.getDateFormat || Util.getDateFormat(this.$store);
+      return Util.formatDisplayDate(value, dateFormat);
+    },
+
+    // Same as dashboard: format date for picker display (YYYY-MM-DD, local time via moment)
+    fmt(d) {
+      return moment(d).format("YYYY-MM-DD");
     }
   },
   //----------------------------- Created function-------------------\\

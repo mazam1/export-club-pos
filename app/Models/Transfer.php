@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 class Transfer extends Model
 {
     protected $table = 'transfers';
+
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'id', 'date','user_id', 'from_warehouse_id', 'to_warehouse_id','time',
-        'items', 'statut', 'notes', 'GrandTotal', 'discount', 'shipping', 'TaxNet', 'tax_rate',
+        'id', 'date', 'user_id', 'from_warehouse_id', 'to_warehouse_id', 'time',
+        'items', 'statut', 'approval_status', 'notes', 'GrandTotal', 'discount', 'shipping', 'TaxNet', 'tax_rate',
         'created_at', 'updated_at', 'deleted_at',
     ];
 
@@ -48,4 +49,24 @@ class Transfer extends Model
         return $this->belongsTo('App\Models\Warehouse', 'to_warehouse_id');
     }
 
+    /**
+     * Accessor to ensure OLD TRANSFERS SAFETY:
+     * any existing row with a NULL approval_status is treated as "approved".
+     */
+    public function getApprovalStatusAttribute($value)
+    {
+        if ($value === null) {
+            return 'approved';
+        }
+
+        return $value;
+    }
+
+    /**
+     * Convenience helper for business logic.
+     */
+    public function isApproved()
+    {
+        return $this->approval_status === 'approved';
+    }
 }

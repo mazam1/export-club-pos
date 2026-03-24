@@ -2,14 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Http\Controllers\BaseController;
 use Illuminate\Console\Command;
-use Illuminate\Http\Request;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Cookie;
-
-
 
 class Migrate extends Command
 {
@@ -37,18 +31,15 @@ class Migrate extends Command
         parent::__construct();
     }
 
-
     /**
      * Execute the console command.
      *
      * @return int
      */
-
-  
     public function handle()
     {
         \Artisan::call('migrate:fresh --force');
-        Artisan::call('migrate' , ['--force' => true , '--path' => 'vendor/laravel/passport/database/migrations']);
+        Artisan::call('migrate', ['--force' => true, '--path' => 'vendor/laravel/passport/database/migrations']);
         \Artisan::call('passport:install');
     }
 }

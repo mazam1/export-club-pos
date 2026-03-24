@@ -279,7 +279,7 @@
 + Enhanced support for add-ons
 + Multiple Barcode Printing: Print several barcodes simultaneously.
 + Added the ability to print barcodes one by one for the stickers
-+ Added Option to Sshow/Hide Price in Barcode Labels
++ Added Option to Show/Hide Price in Barcode Labels
 + Combo Product: Added the ability to create combo products.
 + Project & Task Management: New tools for managing projects and tasks.
 + More Filters in all reports
@@ -373,3 +373,296 @@
 
 + Updated the documentation for better clarity.
 + Resolved several other bugs to improve performance and stability.
+
+
+# Version 5.1 Release Notes
+🚀 Highlight Features
+
+
+✅ Online Store (NEW)
++ Launch your own online store directly from the system.
+
+✅ Royalty Points System
++ Reward customers with points for purchases and activities
+
+
+✅ Customer Ledger
++ View a complete history of customer transactions, including sales, payments, and returns.
+
+✅ Inactive Customers Report
++ Identify clients with no purchases in the last 30, 60, or 90 days.
+
+✅ Zero Sales Products Report
++ Products that haven’t sold at all within a selected timeframe.
+
+✅ Dead Stock Report
++ Products with no movement or sales within a set period.
+
+✅ Stock Aging Report 
++ how long items have stayed in inventory.
+
+✅ Stock Transfer Report 
++ Analyze and visualize all stock movements between warehouses with KPIs, charts, and detailed tables.
+
+✅ Stock Adjustment Report 
++ Track and analyze all inventory corrections (additions and removals) with detailed KPIs, charts, and tables.
+
+✅ Top Suppliers Report 
++ Purchases value & volume by vendor.
+
+✅ Draft Invoices Report
++ View invoices that were created but never finalized or sent.
+
+✅ Discount Summary Report
++ Overview of total discount value given.
+
+✅ Tax Summary Report
++ Overview of total taxable base and tax collected.
+
+✅ Seller Report
++ Generate detailed reports 
+
+✅ Featured Product Option
++ New checkbox “Featured Product” in product form.
+
+✅ Add Discount Field During Product Creation
++ Allow setting discount and discount_method when creating a new product.
+
+✅ Seller Name on Receipt
++ Automatically include the seller’s name on the printed sales receipt.
+
+✅ Import via Excel (NEW)
++ Now you can import products and data directly from Excel files, instead of CSV.
+
+✅ Bug Fixes and Improvements
+
++ Updated the documentation for better clarity.
++ Resolved several other bugs to improve performance and stability.
+
+
+
+# Version 5.2 — Release Notes
+
+🚀 New in the Latest Version
+
+✅ Redesigned POS interface — modern, clean, and optimized for all screen sizes
+
+✅ Added Customer Display (Double Screen) — show real-time cart, totals, and thank-you message on a secondary screen for customers
+
+✅ Added Cash Register module for accurate shift and cash tracking
+
+✅ Introduced Retail, Wholesale, and Minimum Price options for flexible selling
+
+✅ Added WooCommerce Integration — sync products,categories,  stock, seamlessly between your online store and POS
+
+✅ Added QuickBooks Integration for advanced accounting and auto-syncing invoices and clients
+
+✅ Upgraded to Laravel 12 — Stocky now requires PHP ≥ 8.2
+
+✅ Updated Node.js and all dependencies for better performance and build speed
+
+✅ Added Vertical Sidebar Layout — switch between horizontal and vertical sidebar layouts via the customizer for a personalized UI experience
+
+✅ Added Duplicate Product option — quickly clone product details.
+
+✅ Streamlined performance and improved overall app stability.
+
+✅ Enhanced user experience across multiple modules.
+
+✅ Better documentation for smoother installation and setup.
+
+
+🛡️ Security Improvements
+
+✅ Fixed a vulnerability issue to strengthen system protection and maintain data integrity.
+
+✅ Applied additional internal checks for safer input handling.
+
+🧰 Bug Fixes & Enhancements
+
+✅ Updated documentation for better clarity and setup guidance.
+
+✅ Resolved multiple minor bugs to improve performance and reliability.
+
+
+
+# Version 5.3 — Release Notes
+
+🚀 New in the Latest Version
+
+✅ ZATCA (Fatoorah) e‑Invoicing — (KSA)
+
+✅ Advanced Accounting (V2) module added
++ Chart of Accounts (hierarchical)
++ Double‑entry Journal Entries
++ Trial Balance report (by date range and account type)
++ Profit & Loss report (with period filters)
++ Balance Sheet report (Assets, Liabilities, Equity from CoA)
++ Tax Report & VAT Summary (read‑only, auto from legacy sales/purchases)
+
+✅ Customer Loyalty Points Report (NEW)
++ Track loyalty points by customer within a date range
+
+✅ Asset Management — Feature Added
+
+✅ Damage Management: Track damaged items and deduct from stock.
+
+✅ Cash Flow Report – inflow/outflow summary by account or method.
+
+✅ Attendance Report – daily or monthly summary with total hours.
+
+✅ Return Ratio Report – Sales returns vs total sales, purchase returns vs total purchases.
+
+✅ Negative Stock Report – Identify items that fell below zero.
+
+🧰 Bug Fixes & Enhancements
+
+✅ Updated documentation for better clarity and setup guidance.
+
+✅ Resolved multiple minor bugs to improve performance and reliability.
+
+ 
+# ✅ Version 5.4 — Release Notes
+
+🚀 New in the Latest Version
+
+✅ Offline POS Sync
++ Use the POS offline and automatically sync all sales once the internet is restored. Smooth, reliable, and fast.
+
+✅ Cloud Backup Support 
++ Added an option in Backup Database to store backups directly in the cloud (Google Drive / Dropbox / S3-compatible storage).
+
+✅ Security Settings Tab 
++ Introduced a new tab under System Settings that enhances overall account security.
+
+✅ Login Device Management 
++ View all active login sessions, including device details, IP address, login time, and last activity, with options to logout specific devices or all other devices.
+
+✅ Client Opening Balance (Due) added to properly handle existing customer outstanding balances.
+
+✅ Added Client Credit Limit with smart enforcement: fully paid sales are allowed, while partial or unpaid sales are restricted once the limit is reached.
+
+✅ Default VAT Setting
++ Set a global VAT percentage from Settings. It will be applied automatically to POS.
+
+✅ Document Attachments
++ You can now upload and attach documents to Purchases , Sales , Expenses.
+
+✅ New Feature: Custom Fields for Customers & Suppliers
++ Added support for custom fields for both Customers and Suppliers.
++ Admins can create, edit, and delete custom fields from System Settings.
+
+✅ Service & Maintenance Module
++ A complete system to manage service jobs:
++ Assign customers & technicians
++ Create dynamic checklist templates
++ Track status, notes, and job details
+
+✅ Technician Management
++ Add, edit, and manage technicians, assign jobs, and monitor their service performance.
+
+✅ Service Reports
++ New reporting system:
++ Service Job Report
++ Checklist Completion Report
++ Customer Maintenance History Report
+
+✅ Stock Transfer Approval
++ Enable manager approval before transferring stock between warehouses, ensuring better control and preventing mistakes.
+
+✅ Dynamic Appearance Settings
++ Customize logo, favicon, page title, and login page texts (hero and panel titles/subtitles) without touching code.
+
+✅ Login Activity Report
+
++ Introduced a Login Activity Report that displays all login sessions, including active and historical records.
+
++ Helps administrators monitor user access, track login history, and enhance account security.
+
+✅ Show/Hide Products in Online Store
++ Choose which products appear in your online store.
+
+✅ Enable/Disable Online Store
++ Turn the entire online store feature on or off with a single setting.
+
+✅ Print product labels directly from Purchases for quick labeling and inventory organization.
+
+✅ Booking Module
++ Create and manage customer bookings
+
+✅ Improved label printing and added support for more sticker sizes
+
+✅ Added a Date Format selector in System Settings
+
+✅ Added Reference Prefix customization in System Settings
+
+✅ Added Price Format customization in System Settings.
++ Users can choose how prices are display
+
+✅ Product Status (Active / Inactive)
+
+✅ New Dashboard Cards with Date-Range Filters
+
+✅ Subcategory Feature Added
+
+✅ Quick Add Category & Brand (+) in Product Form
+
+✅ Added customization options for POS Receipt.
+
+✅ Optimized dark mode for better readability and contrast.
+
+✅ Added the ability to choose between Thermal invoice and A4 invoice in POS.
+
+
+🧰 Bug Fixes & Enhancements
+
+✅ Updated documentation for better clarity and setup guidance.
+
+✅ Resolved multiple minor bugs to improve performance and reliability.
+
+
+
+# ✅ Version 5.5 — Release Notes
+
+🚀 New in the Latest Version
+
+✅ Added product dimensions: length, width, and height.
+
+✅ Improved WooCommerce sync to work bi-directionally (WooCommerce ↔ system), ensuring data stays consistent on both sides.
+
+✅ Added AI Reports for smarter insights and analyse
+
+✅ Added the ability to update product cost and price via Excel file for existing products.
+
+✅ Added Analytics Report
+
+✅ Added Stock Inventory Valuation
+
+✅ Added option to send email for booking confirmation.
+
+✅ Added option to allow or prevent overselling in the online store.
+
+✅ Added option to hide out-of-stock products in the online store.
+
+✅ Added option to import products with type "Service" via Excel file.
+
+✅ Added multi-screen support for the Customer/POS display.
+
+✅ Added option to import Sales via CSV file.
+
+✅ Added Warranty & Guarantee Dates on Sales
+
+✅ Added a new Warranty/Guarantee Report to track sold items with their warranty_date and guarantee_date.
+
+✅ Added total footer to all tables for better summary visibility.
+
+✅ Added print option to all reports for easy printing and sharing.
+
+✅ Improved Expenses and Deposit Reports for better accuracy and tracking.
+
+🧰 Bug Fixes & Enhancements
+
+✅ Updated documentation for better clarity and setup guidance.
+
+✅ Resolved multiple minor bugs to improve performance and reliability.
+

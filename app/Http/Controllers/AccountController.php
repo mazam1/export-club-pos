@@ -3,15 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
-use App\Models\Role;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class AccountController extends BaseController
 {
-
-    //-------------- Get All Account ---------------\\
+    // -------------- Get All Account ---------------\\
 
     public function index(Request $request)
     {
@@ -25,17 +22,17 @@ class AccountController extends BaseController
         $dir = $request->SortType;
 
         // Check If User Has Permission View  All Records
-        $Accounts= Account::where('deleted_at', '=', null)
-            
+        $Accounts = Account::where('deleted_at', '=', null)
+
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('account_num', 'LIKE', "%{$request->search}%")
-                    ->orWhere('account_name', 'LIKE', "%{$request->search}%");
+                        ->orWhere('account_name', 'LIKE', "%{$request->search}%");
                 });
             });
 
         $totalRows = $Accounts->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $account_data = $Accounts->offset($offSet)
@@ -51,7 +48,7 @@ class AccountController extends BaseController
             $item['account_name'] = $account->account_name;
             $item['balance'] = $account->balance;
             $item['note'] = $account->note;
-           
+
             $data[] = $item;
         }
 
@@ -62,7 +59,7 @@ class AccountController extends BaseController
 
     }
 
-    //-------------- Store New Account ---------------\\
+    // -------------- Store New Account ---------------\\
 
     public function store(Request $request)
     {
@@ -85,14 +82,15 @@ class AccountController extends BaseController
         return response()->json(['success' => true], 200);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
-    //
-    
+    public function show($id)
+    {
+        //
+
     }
 
-    //-------------- Update Account ---------------\\
+    // -------------- Update Account ---------------\\
 
     public function update(Request $request, $id)
     {
@@ -114,7 +112,7 @@ class AccountController extends BaseController
 
     }
 
-    //-------------- Delete Account ---------------\\
+    // -------------- Delete Account ---------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -128,7 +126,7 @@ class AccountController extends BaseController
         return response()->json(['success' => true], 200);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -142,7 +140,7 @@ class AccountController extends BaseController
                 'deleted_at' => Carbon::now(),
             ]);
         }
+
         return response()->json(['success' => true], 200);
     }
-
 }

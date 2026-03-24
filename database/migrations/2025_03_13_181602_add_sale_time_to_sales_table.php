@@ -15,8 +15,8 @@ return new class extends Migration
             $table->time('time')->nullable()->after('date'); // Adds a nullable time column
         });
 
-         // Set a default time for existing records
-         DB::table('sales')->update(['time' => '12:00:00']);
+        // Set a default time for existing records
+        DB::table('sales')->update(['time' => '12:00:00']);
     }
 
     /**

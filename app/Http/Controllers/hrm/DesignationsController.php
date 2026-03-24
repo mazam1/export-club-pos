@@ -1,18 +1,16 @@
 <?php
 
 namespace App\Http\Controllers\hrm;
-use App\Http\Controllers\Controller;
 
-use Illuminate\Http\Request; 
-use App\Models\Designation;
+use App\Http\Controllers\Controller;
 use App\Models\Company;
-use App\Models\Department;
+use App\Models\Designation;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class DesignationsController extends Controller
 {
-
-    //----------- GET ALL  Designations --------------\\
+    // ----------- GET ALL  Designations --------------\\
 
     public function index(Request $request)
     {
@@ -25,7 +23,7 @@ class DesignationsController extends Controller
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        $data = array();
+        $data = [];
         $designations = Designation::with('department')->where('deleted_at', '=', null)
 
         // Search With Multiple Param
@@ -35,7 +33,7 @@ class DesignationsController extends Controller
                 });
             });
         $totalRows = $designations->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $designations = $designations->offset($offSet)
@@ -51,13 +49,13 @@ class DesignationsController extends Controller
             $item['company_id'] = $designation['company']->id;
             $item['department_name'] = $designation['department']->department;
             $item['department_id'] = $designation['department']->id;
-            
+
             $data[] = $item;
         }
-    
+
         return response()->json([
             'designations' => $data,
-            'totalRows'   => $totalRows,
+            'totalRows' => $totalRows,
         ]);
     }
 
@@ -65,76 +63,79 @@ class DesignationsController extends Controller
     {
         $this->authorizeForUser($request->user('api'), 'create', Designation::class);
 
-        $companies = Company::where('deleted_at', '=', null)->get(['id','name']);
+        $companies = Company::where('deleted_at', '=', null)->get(['id', 'name']);
+
         return response()->json([
-            'companies' =>$companies,
+            'companies' => $companies,
         ]);
 
     }
 
-    //----------- Store new designation --------------\\
+    // ----------- Store new designation --------------\\
 
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Designation::class);
 
         request()->validate([
-            'designation'   => 'required|string',
-            'company_id'    => 'required',
-            'department'    => 'required',
+            'designation' => 'required|string',
+            'company_id' => 'required',
+            'department' => 'required',
         ]);
 
         Designation::create([
-            'designation'   => $request['designation'],
-            'company_id'    => $request['company_id'],
+            'designation' => $request['designation'],
+            'company_id' => $request['company_id'],
             'department_id' => $request['department'],
         ]);
 
         return response()->json(['success' => true]);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
+
     }
 
-    //------------ function edit -----------\\
+    // ------------ function edit -----------\\
 
-    public function edit(Request $request , $id)
+    public function edit(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Designation::class);
 
-        $companies = Company::where('deleted_at', '=', null)->get(['id','name']);
+        $companies = Company::where('deleted_at', '=', null)->get(['id', 'name']);
+
         return response()->json([
-            'companies' =>$companies,
+            'companies' => $companies,
         ]);
 
     }
 
-    //-----------Update designation --------------\\
+    // -----------Update designation --------------\\
 
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Designation::class);
 
         request()->validate([
-            'designation'   => 'required|string',
-            'company_id'   => 'required',
-            'department'    => 'required',
+            'designation' => 'required|string',
+            'company_id' => 'required',
+            'department' => 'required',
         ]);
 
         Designation::whereId($id)->update([
-            'designation'   => $request['designation'],
-            'company_id'    => $request['company_id'],
+            'designation' => $request['designation'],
+            'company_id' => $request['company_id'],
             'department_id' => $request['department'],
         ]);
 
         return response()->json(['success' => true]);
     }
 
-    //----------- Delete  designation --------------\\
+    // ----------- Delete  designation --------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -151,7 +152,7 @@ class DesignationsController extends Controller
         return response()->json(['success' => true]);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -170,9 +171,8 @@ class DesignationsController extends Controller
 
     public function Get_designations_by_department(Request $request)
     {
-        $designations = Designation::where('department_id' , $request->id)->where('deleted_at', '=', null)->get();
+        $designations = Designation::where('department_id', $request->id)->where('deleted_at', '=', null)->get();
 
         return response()->json($designations);
     }
-
 }

@@ -12,18 +12,16 @@ class EmployeeAccount extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'employee_id','bank_name','bank_branch','account_no','note'
+        'employee_id', 'bank_name', 'bank_branch', 'account_no', 'note',
 
     ];
 
     protected $casts = [
-        'employee_id'     => 'integer',
+        'employee_id' => 'integer',
     ];
-
 
     public function employee()
     {
         return $this->hasOne('App\Models\Employee', 'id', 'employee_id');
     }
-
 }

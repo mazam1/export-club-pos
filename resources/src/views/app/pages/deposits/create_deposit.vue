@@ -50,7 +50,7 @@
                 <!-- Deposit_Category  -->
                 <b-col lg="4" md="6" sm="12">
                   <validation-provider name="category" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('deposit_Category') + ' ' + '*'">
+                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Deposit_Category') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"

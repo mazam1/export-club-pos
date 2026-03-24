@@ -1,18 +1,16 @@
 <?php
 
 namespace App\Http\Controllers\hrm;
-use App\Http\Controllers\Controller;
 
-use Illuminate\Http\Request;
-use App\Models\Employee;
-use App\Models\Holiday;
+use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\Holiday;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class HolidayController extends Controller
 {
-
-    //----------- GET ALL Holidays --------------\\
+    // ----------- GET ALL Holidays --------------\\
 
     public function index(Request $request)
     {
@@ -35,7 +33,7 @@ class HolidayController extends Controller
                 });
             });
         $totalRows = $holidays->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $holidays = $holidays->offset($offSet)
@@ -52,7 +50,7 @@ class HolidayController extends Controller
             $item['start_date'] = $holiday->start_date;
             $item['end_date'] = $holiday->end_date;
             $item['description'] = $holiday->description;
-            
+
             $data[] = $item;
         }
 
@@ -62,86 +60,86 @@ class HolidayController extends Controller
         ]);
     }
 
-
-
     public function create(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Holiday::class);
 
-        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','name']);
+        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
+
         return response()->json([
-            'companies' =>$companies,
+            'companies' => $companies,
         ]);
     }
 
-    //----------- Store new Holiday --------------\\
+    // ----------- Store new Holiday --------------\\
 
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Holiday::class);
 
         request()->validate([
-            'title'           => 'required|string',
-            'start_date'      => 'required',
-            'end_date'        => 'required',
-            'company_id'      => 'required',
+            'title' => 'required|string',
+            'start_date' => 'required',
+            'end_date' => 'required',
+            'company_id' => 'required',
         ]);
 
         Holiday::create([
-            'company_id'      => $request['company_id'],
-            'title'           => $request['title'],
-            'start_date'      => $request['start_date'],
-            'end_date'        => $request['end_date'],
-            'description'     => $request['description'],
+            'company_id' => $request['company_id'],
+            'title' => $request['title'],
+            'start_date' => $request['start_date'],
+            'end_date' => $request['end_date'],
+            'description' => $request['description'],
         ]);
 
         return response()->json(['success' => true]);
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
+
     }
 
-
-    public function edit(Request $request ,$id)
+    public function edit(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Holiday::class);
 
-        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','name']);
+        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
+
         return response()->json([
-            'companies' =>$companies,
+            'companies' => $companies,
         ]);
 
     }
 
-    //-----------Update Holiday --------------\\
+    // -----------Update Holiday --------------\\
 
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Holiday::class);
 
         request()->validate([
-            'title'           => 'required|string|max:255',
-            'start_date'      => 'required',
-            'end_date'        => 'required',
-            'company_id'      => 'required',
+            'title' => 'required|string|max:255',
+            'start_date' => 'required',
+            'end_date' => 'required',
+            'company_id' => 'required',
         ]);
 
         Holiday::whereId($id)->update([
-            'company_id'      => $request['company_id'],
-            'title'           => $request['title'],
-            'start_date'      => $request['start_date'],
-            'end_date'        => $request['end_date'],
-            'description'     => $request['description'],
+            'company_id' => $request['company_id'],
+            'title' => $request['title'],
+            'start_date' => $request['start_date'],
+            'end_date' => $request['end_date'],
+            'description' => $request['description'],
         ]);
 
         return response()->json(['success' => true]);
     }
 
-    //----------- Delete  Holiday --------------\\
+    // ----------- Delete  Holiday --------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -151,11 +149,10 @@ class HolidayController extends Controller
             'deleted_at' => Carbon::now(),
         ]);
 
-
         return response()->json(['success' => true]);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -171,6 +168,4 @@ class HolidayController extends Controller
 
         return response()->json(['success' => true]);
     }
-
-
 }

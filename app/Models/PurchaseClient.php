@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-
 use Illuminate\Database\Eloquent\Model;
 
 class PurchaseClient extends Model
@@ -10,7 +9,7 @@ class PurchaseClient extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'date','client_id','Ref','statut','created_at','GrandTotal','updated_at', 'deleted_at'
+        'date', 'client_id', 'Ref', 'statut', 'created_at', 'GrandTotal', 'updated_at', 'deleted_at',
     ];
 
     protected $casts = [
@@ -27,5 +26,4 @@ class PurchaseClient extends Model
     {
         return $this->belongsTo('App\Models\Client');
     }
-
 }

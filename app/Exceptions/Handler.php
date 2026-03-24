@@ -2,14 +2,10 @@
 
 namespace App\Exceptions;
 
-use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
-use Illuminate\Auth\AuthenticationException;
-use Throwable;
 use Exception;
-use App\Http\Controllers\BaseController;
-
-
-
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Throwable;
 
 class Handler extends ExceptionHandler
 {
@@ -18,7 +14,6 @@ class Handler extends ExceptionHandler
      *
      * @var arrays
      */
- 
     protected $dontReport = [
         \Illuminate\Auth\AuthenticationException::class,
         \Illuminate\Auth\Access\AuthorizationException::class,
@@ -43,7 +38,6 @@ class Handler extends ExceptionHandler
     /**
      * Report or log an exception.
      *
-     * @param  \Throwable  $exception
      * @return void
      *
      * @throws \Exception
@@ -57,54 +51,48 @@ class Handler extends ExceptionHandler
      * Render an exception into an HTTP response.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \Throwable  $exception
      * @return \Symfony\Component\HttpFoundation\Response
      *
      * @throws \Throwable
      */
-      
 
-        // public function destroyCookie($cookie_name){
-        
-        //     $domain = ($_SERVER['SERVER_NAME'] != 'localhost') ? $_SERVER['SERVER_NAME'] : '.'.$_SERVER['SERVER_NAME'];
+    // public function destroyCookie($cookie_name){
 
-        //     if (isset($_COOKIE[$cookie_name])) {
-        //         unset($_COOKIE[$cookie_name]);  
-        //         setcookie($cookie_name, '', time() - 2147483647, '/', $domain); // empty value and old timestamp
-        //     }
-        // }
-        // protected function unauthenticated($request, AuthenticationException $exception)
-        // {
-        //     if ($request->expectsJson()) {
-        //         $this->destroyCookie('Stocky_token');
+    //     $domain = ($_SERVER['SERVER_NAME'] != 'localhost') ? $_SERVER['SERVER_NAME'] : '.'.$_SERVER['SERVER_NAME'];
 
-        //         return response()->json([
-        //             'message' => 'Unauthenticated.',
-        //             'status' => 401,
-        //         ], 401);
-        //     }
+    //     if (isset($_COOKIE[$cookie_name])) {
+    //         unset($_COOKIE[$cookie_name]);
+    //         setcookie($cookie_name, '', time() - 2147483647, '/', $domain); // empty value and old timestamp
+    //     }
+    // }
+    // protected function unauthenticated($request, AuthenticationException $exception)
+    // {
+    //     if ($request->expectsJson()) {
+    //         $this->destroyCookie('Stocky_token');
 
-        // }
+    //         return response()->json([
+    //             'message' => 'Unauthenticated.',
+    //             'status' => 401,
+    //         ], 401);
+    //     }
 
+    // }
 
-        public function render($request, Throwable $exception)
-        {
-            if ($exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
-                return response()->json([
-                    'message' => 'Not found',
-                    'status' => 404,
-                ], 404);
+    public function render($request, Throwable $exception)
+    {
+        if ($exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return response()->json([
+                'message' => 'Not found',
+                'status' => 404,
+            ], 404);
 
-            }else  if ($exception instanceof \Illuminate\Auth\Access\AuthorizationException) {
-                return response()->json([
-                    'message' => 'You are not authorized',
-                    'status' => 403,
-                ], 403);
-            }
-
-            return parent::render($request, $exception);
+        } elseif ($exception instanceof \Illuminate\Auth\Access\AuthorizationException) {
+            return response()->json([
+                'message' => 'You are not authorized',
+                'status' => 403,
+            ], 403);
         }
-       
 
-    
+        return parent::render($request, $exception);
+    }
 }

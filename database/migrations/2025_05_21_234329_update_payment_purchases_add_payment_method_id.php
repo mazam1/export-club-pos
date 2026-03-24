@@ -2,10 +2,11 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         // Step 1: Add the new column
@@ -15,13 +16,13 @@ return new class extends Migration {
 
         // Step 2: Update values based on Reglement
         $mapping = [
-            'credit card'    => 1,
-            'Cash'           => 2,
-            'cheque'         => 3,
-            'tpe'            => 4,
-            'Western Union'  => 5,
-            'bank transfer'  => 6,
-            'other'          => 7,
+            'credit card' => 1,
+            'Cash' => 2,
+            'cheque' => 3,
+            'tpe' => 4,
+            'Western Union' => 5,
+            'bank transfer' => 6,
+            'other' => 7,
         ];
 
         foreach ($mapping as $reglement => $id) {
@@ -35,11 +36,11 @@ return new class extends Migration {
             $table->dropColumn('Reglement');
         });
 
-         // Step 4: Add foreign key constraint
+        // Step 4: Add foreign key constraint
         Schema::table('payment_purchases', function (Blueprint $table) {
             $table->foreign('payment_method_id')
-                  ->references('id')
-                  ->on('payment_methods');
+                ->references('id')
+                ->on('payment_methods');
         });
     }
 
@@ -51,4 +52,3 @@ return new class extends Migration {
         });
     }
 };
-

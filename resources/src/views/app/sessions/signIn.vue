@@ -140,26 +140,32 @@ export default {
           baseURL: '',
         })
         .then(response => {
-
-            this.makeToast(
-              "success",
-              this.$t("Successfully_Logged_In"),
-              this.$t("Success")
-            );
+          this.makeToast(
+            "success",
+            this.$t("Successfully_Logged_In"),
+            this.$t("Success")
+          );
 
           window.location = '/';
-           
+
           NProgress.done();
           this.loading = false;
         })
         .catch(error => {
           NProgress.done();
           this.loading = false;
+          // error may be a string or an object from the backend
+          let msg = this.$t("Incorrect_Login");
+          if (error && typeof error === 'object') {
+            if (error.message) {
+              msg = error.message;
+            }
+          }
           this.makeToast(
-              "danger",
-              this.$t("Incorrect_Login"),
-              this.$t("Failed")
-            );
+            "danger",
+            msg,
+            this.$t("Failed")
+          );
         });
     },
 

@@ -15,16 +15,13 @@ class Password_Reset_Success extends Mailable
      *
      * @return void
      */
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     /**
      * Build the message.
      *
      * @return $this
      */
-
     public function build()
     {
         return

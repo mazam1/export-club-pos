@@ -10,8 +10,8 @@
   }
 
   body{
-    margin: 0.5cm;
-    margin-bottom:1.6cm;
+    /* Physical page margin for the thermal printer */
+    margin: 5mm 4mm;
   }
 
   td,th {padding: 1px 0;}
@@ -26,7 +26,8 @@
  
 
   @page {
-    margin: 0;
+    /* Extra safety margin so content never touches the paper edges */
+    margin: 4mm;
   }
 
 }
@@ -100,6 +101,18 @@ text-align: center;
 align-content: center;
 }
 
+.text-center{
+  text-align: center !important;
+}
+
+.text-right{
+  text-align: right !important;
+}
+
+.text-left{
+  text-align: left !important;
+}
+
 
 
 @media (min-width: 1024px){
@@ -164,8 +177,25 @@ tfoot tr th:first-child {text-align: left;}
 }
 
 #invoice-POS{
-  max-width:400px;
-  margin:0px auto;
+  /* Default thermal roll width; overridden by body.receipt-XX classes below */
+  width: 80mm;
+  max-width: 100%;
+  /* Visible white space around all sides of the receipt */
+  margin: 6mm auto;
+  padding: 5mm 4mm;
+  box-sizing: border-box;
+}
+
+body.receipt-58 #invoice-POS{
+  width: 58mm;
+}
+
+body.receipt-80 #invoice-POS{
+  width: 80mm;
+}
+
+body.receipt-88 #invoice-POS{
+  width: 88mm;
 }
   
 
@@ -178,6 +208,31 @@ tfoot tr th:first-child {text-align: left;}
 .info{
   margin-bottom: 20px;
 }
+
+.info,
+#invoice-POS .info {
+  text-align: center;
+}
+
+/* Minimal bootstrap-like utilities used in receipt layout */
+.d-flex{
+  display: flex;
+}
+
+.justify-content-between{
+  justify-content: space-between;
+}
+
+.w-100{
+  width: 100%;
+}
+
+.mt-1{ margin-top: 2mm; }
+.mt-2{ margin-top: 3mm; }
+.mt-3{ margin-top: 4mm; }
+.mb-1{ margin-bottom: 2mm; }
+.mb-2{ margin-bottom: 3mm; }
+.ml-2{ margin-left: 4mm; }
 
 .info>h2{
   text-align: center;
@@ -216,6 +271,23 @@ text-align: center;
 }
 #bar{
   text-align: center;
+}
+
+/* Responsive ZATCA QR in POS receipt */
+#invoice-POS .zatca-qr{ display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; margin-left:auto; margin-right:auto; }
+#invoice-POS .zatca-qr-title{ font-weight:700; font-size:12px; margin-bottom:6px; letter-spacing:1px; text-transform:uppercase; text-align:center; }
+#invoice-POS .zatca-qr > div{ display:inline-block; margin:0 auto; }
+#invoice-POS .zatca-qr img{ margin-left:auto !important; margin-right:auto !important; max-width:100% !important; width:auto !important; height:auto !important; }
+#invoice-POS .zatca-qr canvas{ display:block !important; margin-left:auto !important; margin-right:auto !important; max-width:100% !important; width:auto !important; height:auto !important; }
+#invoice-POS .zatca-qr table{ margin:0 auto !important; width:auto !important; transform-origin:center center; }
+#invoice-POS .zatca-qr table tr{ border:none !important; }
+@media print{
+  #invoice-POS .zatca-qr{ width:100%; }
+  #invoice-POS .zatca-qr-title{ font-size:12px; margin-bottom:6px; }
+  #invoice-POS .zatca-qr img,
+  #invoice-POS .zatca-qr canvas{ max-width:100% !important; width:100% !important; height:auto !important; }
+  #invoice-POS .zatca-qr table{ transform:scale(0.8); width:auto !important; margin:0 auto !important; }
+  #invoice-POS .zatca-qr table tr{ border:none !important; }
 }
 
 .quantity {

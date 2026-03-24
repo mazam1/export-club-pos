@@ -3,43 +3,57 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use App\utils\helpers;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class CategorieController extends BaseController
 {
-
-    //-------------- Get All Categories ---------------\\
-
+    /**
+     * GET /categories
+     * Query params: page, limit, SortField, SortType, search
+     */
     public function index(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', Category::class);
-        // How many items do you want to display.
-        $perPage = $request->limit;
-        $pageStart = \Request::get('page', 1);
-        // Start displaying items from this number;
-        $offSet = ($pageStart * $perPage) - $perPage;
-        $order = $request->SortField;
-        $dir = $request->SortType;
-        $helpers = new helpers();
 
-        $categories = Category::where('deleted_at', '=', null)
+        // Inputs with sane defaults
+        $page = (int) $request->input('page', 1);
+        $perPage = (string) $request->input('limit', '10');  // may be "-1"
+        $sortField = (string) $request->input('SortField', 'id');
+        $sortType = strtolower((string) $request->input('SortType', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $search = trim((string) $request->input('search', ''));
 
-        // Search With Multiple Param
-            ->where(function ($query) use ($request) {
-                return $query->when($request->filled('search'), function ($query) use ($request) {
-                    return $query->where('name', 'LIKE', "%{$request->search}%")
-                        ->orWhere('code', 'LIKE', "%{$request->search}%");
+        // Whitelist fields to avoid SQL injection on orderBy
+        $allowedSort = ['id', 'name', 'code', 'created_at', 'updated_at'];
+        if (! in_array($sortField, $allowedSort, true)) {
+            $sortField = 'id';
+        }
+
+        $query = Category::query()
+            ->whereNull('deleted_at')
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($qq) use ($search) {
+                    $qq->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%");
                 });
             });
-        $totalRows = $categories->count();
-        if($perPage == "-1"){
-            $perPage = $totalRows;
+
+        // Total before paging (used by vue-good-table)
+        $totalRows = (clone $query)->count();
+
+        // Handle "show all" case
+        if ($perPage === '-1') {
+            $perPage = $totalRows > 0 ? $totalRows : 1;
+        } else {
+            $perPage = max(1, (int) $perPage);
         }
-        $categories = $categories->offset($offSet)
+
+        $offSet = ($page * $perPage) - $perPage;
+
+        $categories = $query
+            ->orderBy($sortField, $sortType)
+            ->offset($offSet)
             ->limit($perPage)
-            ->orderBy($order, $dir)
             ->get();
 
         return response()->json([
@@ -48,52 +62,66 @@ class CategorieController extends BaseController
         ]);
     }
 
-    //-------------- Store New Category ---------------\\
-
+    /**
+     * POST /categories
+     */
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Category::class);
 
-        request()->validate([
-            'name' => 'required',
-            'code' => 'required',
+        $validated = $request->validate([
+            'name' => 'required|string|max:190',
+            'code' => 'required|string|max:190',
+            'icon' => 'nullable|string|max:64',
         ]);
 
-        Category::create([
-            'code' => $request['code'],
-            'name' => $request['name'],
+        $category = Category::create([
+            'code' => $validated['code'],
+            'name' => $validated['name'],
+            'icon' => $validated['icon'] ?? null,
         ]);
-        return response()->json(['success' => true]);
+
+        return response()->json([
+            'success'  => true,
+            'category' => $category,
+        ], 201);
     }
 
-     //------------ function show -----------\\
+    /**
+     * GET /categories/{id}
+     */
+    public function show($id)
+    {
+        $category = Category::whereNull('deleted_at')->findOrFail($id);
 
-    public function show($id){
-        //
-    
+        return response()->json($category);
     }
 
-    //-------------- Update Category ---------------\\
-
+    /**
+     * PUT /categories/{id}
+     */
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Category::class);
 
-        request()->validate([
-            'name' => 'required',
-            'code' => 'required',
+        $validated = $request->validate([
+            'name' => 'required|string|max:190',
+            'code' => 'required|string|max:190',
+            'icon' => 'nullable|string|max:64',
         ]);
 
         Category::whereId($id)->update([
-            'code' => $request['code'],
-            'name' => $request['name'],
+            'code' => $validated['code'],
+            'name' => $validated['name'],
+            'icon' => $validated['icon'] ?? null,
         ]);
-        return response()->json(['success' => true]);
 
+        return response()->json(['success' => true]);
     }
 
-    //-------------- Remove Category ---------------\\
-
+    /**
+     * DELETE /categories/{id}
+     */
     public function destroy(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'delete', Category::class);
@@ -101,23 +129,27 @@ class CategorieController extends BaseController
         Category::whereId($id)->update([
             'deleted_at' => Carbon::now(),
         ]);
+
         return response()->json(['success' => true]);
     }
 
-    //-------------- Delete by selection  ---------------\\
-
+    /**
+     * POST /categories/delete/by_selection
+     * Body: { selectedIds: [1,2,3] }
+     */
     public function delete_by_selection(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'delete', Category::class);
-        $selectedIds = $request->selectedIds;
 
-        foreach ($selectedIds as $category_id) {
-            Category::whereId($category_id)->update([
-                'deleted_at' => Carbon::now(),
-            ]);
+        $selectedIds = (array) $request->input('selectedIds', []);
+        if (empty($selectedIds)) {
+            return response()->json(['success' => true]); // nothing to do
         }
+
+        Category::whereIn('id', $selectedIds)->update([
+            'deleted_at' => Carbon::now(),
+        ]);
 
         return response()->json(['success' => true]);
     }
-
 }

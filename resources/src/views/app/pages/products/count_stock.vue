@@ -180,7 +180,6 @@ export default {
         {
           label: this.$t("file"),
           field: "file_stock",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false

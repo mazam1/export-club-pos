@@ -13,7 +13,8 @@ return [
     |
     */
 
-    'default' => env('QUEUE_CONNECTION', 'sync'),
+    // Use "database" by default so long-running sync can be cancelled.
+    'default' => env('QUEUE_CONNECTION', 'database'),
 
     /*
     |--------------------------------------------------------------------------
@@ -38,7 +39,8 @@ return [
             'driver' => 'database',
             'table' => 'jobs',
             'queue' => 'default',
-            'retry_after' => 90,
+            // Must be greater than the longest-running job, otherwise a slow job can be re-queued and run twice.
+            'retry_after' => env('QUEUE_RETRY_AFTER', 1200),
         ],
 
         'beanstalkd' => [

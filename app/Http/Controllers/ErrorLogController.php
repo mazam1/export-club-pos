@@ -19,7 +19,7 @@ class ErrorLogController extends Controller
 
         return response()->json([
             'logs' => $logs->items(),
-            'total' => $logs->total()
+            'total' => $logs->total(),
         ]);
     }
 }

@@ -64,6 +64,15 @@
             >
               <i class="i-Edit text-25 text-success"></i>
             </a>
+            <a
+              @click="Remove_User(props.row.id)"
+              v-if="currentUserPermissions && currentUserPermissions.includes('users_delete') && currentUser && props.row.id !== currentUser.id"
+              title="Delete"
+              class="cursor-pointer ml-2"
+              v-b-tooltip.hover
+            >
+              <i class="i-Close-Window text-25 text-danger"></i>
+            </a>
           </span>
 
           <div v-else-if="props.column.field == 'statut'">
@@ -133,224 +142,6 @@
       </div>
     </b-sidebar>
 
-    <!-- Add & Edit User -->
-    <validation-observer ref="Create_User">
-      <b-modal hide-footer size="lg" id="New_User" :title="editmode?$t('Edit'):$t('Add')">
-        <b-form @submit.prevent="Submit_User" enctype="multipart/form-data">
-          <b-row>
-            <!-- First name -->
-            <b-col md="6" sm="12">
-              <validation-provider
-                name="Firstname"
-                :rules="{ required: true , min:3 , max:30}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Firstname') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Firstname-feedback"
-                    label="Firstname"
-                    v-model="user.firstname"
-                    :placeholder="$t('Firstname')"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="Firstname-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Last name -->
-            <b-col md="6" sm="12">
-              <validation-provider
-                name="lastname"
-                :rules="{ required: true , min:3 , max:30}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('lastname') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="lastname-feedback"
-                    label="lastname"
-                    v-model="user.lastname"
-                    :placeholder="$t('lastname')"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="lastname-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Username -->
-            <b-col md="6" sm="12">
-              <validation-provider
-                name="username"
-                :rules="{ required: true , min:3 , max:30}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('username') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="username-feedback"
-                    label="username"
-                    v-model="user.username"
-                    :placeholder="$t('username')"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="username-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Phone -->
-            <b-col md="6" sm="12">
-              <validation-provider
-                name="Phone"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Phone') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Phone-feedback"
-                    label="Phone"
-                    v-model="user.phone"
-                    :placeholder="$t('Phone')"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="Phone-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Email -->
-            <b-col md="6" sm="12">
-              <validation-provider
-                name="Email"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Email') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Email-feedback"
-                    label="Email"
-                    v-model="user.email"
-                    :placeholder="$t('Email')"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="Email-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                  <b-alert
-                    show
-                    variant="danger"
-                    class="error mt-1"
-                    v-if="email_exist !=''"
-                  >{{email_exist}}</b-alert>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- password -->
-            <b-col md="6" sm="12" v-if="!editmode">
-              <validation-provider
-                name="password"
-                :rules="{ required: true , min:6 , max:14}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('password') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="password-feedback"
-                    label="password"
-                    type="password"
-                    v-model="user.password"
-                    :placeholder="$t('password')"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="password-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- role -->
-            <b-col md="6" sm="12" class="mb-3">
-              <validation-provider name="role" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('RoleName') + ' ' + '*'">
-                  <v-select
-                    :class="{'is-invalid': !!errors.length}"
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    v-model="user.role_id"
-                    :reduce="label => label.value"
-                    :placeholder="$t('PleaseSelect')"
-                    :options="roles.map(roles => ({label: roles.name, value: roles.id}))"
-                  />
-                  <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Avatar -->
-            <b-col md="6" sm="12" class="mb-3">
-              <validation-provider name="Avatar" ref="Avatar" rules="mimes:image/*|size:200">
-                <b-form-group slot-scope="{validate, valid, errors }" :label="$t('UserImage')">
-                  <input
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    :class="{'is-invalid': !!errors.length}"
-                    @change="onFileSelected"
-                    label="Choose Avatar"
-                    type="file"
-                  >
-                  <b-form-invalid-feedback id="Avatar-feedback">{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- New Password -->
-            <b-col md="6" v-if="editmode" class="mb-3">
-              <validation-provider
-                name="New password"
-                :rules="{min:6 , max:14}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Newpassword')">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Nawpassword-feedback"
-                    :placeholder="$t('LeaveBlank')"
-                    label="New password"
-                    v-model="user.NewPassword"
-                  ></b-form-input>
-                  <b-form-invalid-feedback
-                    id="Nawpassword-feedback"
-                  >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- assigned_warehouses -->
-            <b-col md="4" sm="4">
-              <h5>{{$t('Assigned_warehouses')}}</h5>
-            </b-col>
-
-            <b-col md="8" sm="8">
-              <label class="checkbox checkbox-primary mb-3"><input type="checkbox" v-model="user.is_all_warehouses"><h5>{{$t('All_Warehouses')}} <i v-b-tooltip.hover.bottom title="If 'All Warehouses' Selected , User Can access all data for the selected Warehouses" class="text-info font-weight-bold i-Speach-BubbleAsking"></i></h5><span class="checkmark"></span></label>
-               
-               <b-form-group class="mt-2" :label="$t('Some_warehouses')">
-                  <v-select
-                    multiple
-                    v-model="assigned_warehouses"
-                    @input="Selected_Warehouse"
-                    :reduce="label => label.value"
-                    :placeholder="$t('PleaseSelect')"
-                    :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-                  />
-                </b-form-group>
-            </b-col>
-
-            <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
-            </b-col>
-
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
   </div>
 </template>
 
@@ -358,7 +149,7 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 export default {
   metaInfo: {
@@ -409,7 +200,7 @@ export default {
   },
 
   computed: {
-    ...mapGetters(["currentUserPermissions"]),
+    ...mapGetters(["currentUserPermissions", "currentUser"]),
     columns() {
       return [
         {
@@ -446,7 +237,6 @@ export default {
         {
           label: this.$t("Status"),
           field: "statut",
-          html: true,
           sortable: false,
           tdClass: "text-center",
           thClass: "text-center"
@@ -455,7 +245,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false
@@ -465,24 +254,6 @@ export default {
   },
 
   methods: {
-    //------------- Submit Validation Create & Edit User
-    Submit_User() {
-      this.$refs.Create_User.validate().then(success => {
-        if (!success) {
-          this.makeToast(
-            "danger",
-            this.$t("Please_fill_the_form_correctly"),
-            this.$t("Failed")
-          );
-        } else {
-          if (!this.editmode) {
-            this.Create_User();
-          } else {
-            this.Update_User();
-          }
-        }
-      });
-    },
 
     //------ update Params Table
     updateParams(newProps) {
@@ -598,18 +369,71 @@ export default {
 
     //--------------------------- Users PDF ---------------------------\\
     Users_PDF() {
-      var self = this;
+      const pdf = new jsPDF("p", "pt");
+      const fontPath = "/fonts/Vazirmatn-Bold.ttf";
+      try {
+        pdf.addFont(fontPath, "Vazirmatn", "normal");
+        pdf.addFont(fontPath, "Vazirmatn", "bold");
+      } catch(e) { /* ignore if already added */ }
+      pdf.setFont("Vazirmatn", "normal");
 
-      let pdf = new jsPDF("p", "pt");
-      let columns = [
-        { title: "First Name", dataKey: "firstname" },
-        { title: "Last Name", dataKey: "lastname" },
-        { title: "Username", dataKey: "username" },
-        { title: "Email", dataKey: "email" },
-        { title: "Phone", dataKey: "phone" }
+      const headers = [
+        this.$t("Firstname"),
+        this.$t("lastname"),
+        this.$t("username"),
+        this.$t("Email"),
+        this.$t("Phone")
       ];
-      pdf.autoTable(columns, self.users);
-      pdf.text("User List", 40, 25);
+
+      const body = (this.users || []).map(u => ([
+        u.firstname,
+        u.lastname,
+        u.username,
+        u.email,
+        u.phone
+      ]));
+
+      const marginX = 40;
+      const rtl =
+        (this.$i18n && ["ar","fa","ur","he"].includes(this.$i18n.locale)) ||
+        (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+
+      autoTable(pdf, {
+        head: [headers],
+        body,
+        startY: 110,
+        theme: 'striped',
+        margin: { left: marginX, right: marginX },
+        styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        didDrawPage: (d) => {
+          const pageW = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+
+          // Header banner
+          pdf.setFillColor(63,81,181);
+          pdf.rect(0, 0, pageW, 60, 'F');
+
+          // Title
+          pdf.setTextColor(255);
+          pdf.setFont('Vazirmatn', 'bold');
+          pdf.setFontSize(16);
+          const title = this.$t('UserManagement') || 'User List';
+          rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
+              : pdf.text(title, marginX, 38);
+
+          // Reset text color
+          pdf.setTextColor(33);
+
+          // Footer page numbers
+          pdf.setFontSize(8);
+          const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+          rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
+              : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
+        }
+      });
+
       pdf.save("User_List.pdf");
     },
 
@@ -667,134 +491,14 @@ export default {
         });
     },
 
-    //------------------------------ Show Modal (Create User) -------------------------------\\
+    //------------------------------ Navigate to Create User Page -------------------------------\\
     New_User() {
-      this.reset_Form();
-      this.editmode = false;
-      this.$bvModal.show("New_User");
+      this.$router.push({ name: 'Create_User' });
     },
 
-    //------------------------------ Show Modal (Update User) -------------------------------\\
+    //------------------------------ Navigate to Edit User Page -------------------------------\\
     Edit_User(user) {
-      this.Get_Users(this.serverParams.page);
-      this.reset_Form();
-      this.Get_Data_Edit(user.id);
-      this.user = user;
-      this.user.NewPassword = null;
-      this.editmode = true;
-      this.$bvModal.show("New_User");
-    },
-
-    //---------------------- Get_Data_Edit  ------------------------------\\
-      Get_Data_Edit(id) {
-        axios
-            .get("/users/"+id+"/edit")
-            .then(response => {
-                this.assigned_warehouses   = response.data.assigned_warehouses;
-            })
-            .catch(error => {
-            });
-    },
-
-        
-    //------------------------------ Event Upload Avatar -------------------------------\\
-    async onFileSelected(e) {
-      const { valid } = await this.$refs.Avatar.validate(e);
-
-      if (valid) {
-        this.user.avatar = e.target.files[0];
-      } else {
-        this.user.avatar = "";
-      }
-    },
-
-    //------------------------ Create User ---------------------------\\
-    Create_User() {
-      var self = this;
-      self.SubmitProcessing = true;
-      self.data.append("firstname", self.user.firstname);
-      self.data.append("lastname", self.user.lastname);
-      self.data.append("username", self.user.username);
-      self.data.append("email", self.user.email);
-      self.data.append("password", self.user.password);
-      self.data.append("phone", self.user.phone);
-      self.data.append("role", self.user.role_id);
-      self.data.append("is_all_warehouses", self.user.is_all_warehouses);
-      self.data.append("avatar", self.user.avatar);
-
-      // append array assigned_warehouses
-      if (self.assigned_warehouses.length) {
-        for (var i = 0; i < self.assigned_warehouses.length; i++) {
-          self.data.append("assigned_to[" + i + "]", self.assigned_warehouses[i]);
-        }
-      }else{
-        self.data.append("assigned_to", []);
-      }
-
-      axios
-        .post("users", self.data)
-        .then(response => {
-          self.SubmitProcessing = false;
-          Fire.$emit("Event_User");
-
-          this.makeToast(
-            "success",
-            this.$t("Successfully_Created"),
-            this.$t("Success")
-          );
-        })
-        .catch(error => {
-          self.SubmitProcessing = false;
-          if (error.errors.email.length > 0) {
-            self.email_exist = error.errors.email[0];
-          }
-          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-        });
-    },
-
-    //----------------------- Update User ---------------------------\\
-    Update_User() {
-      var self = this;
-      self.SubmitProcessing = true;
-      self.data.append("firstname", self.user.firstname);
-      self.data.append("lastname", self.user.lastname);
-      self.data.append("username", self.user.username);
-      self.data.append("email", self.user.email);
-      self.data.append("NewPassword", self.user.NewPassword);
-      self.data.append("phone", self.user.phone);
-      self.data.append("role", self.user.role_id);
-      self.data.append("statut", self.user.statut);
-      self.data.append("is_all_warehouses", self.user.is_all_warehouses);
-      self.data.append("avatar", self.user.avatar);
-
-       // append array assigned_warehouses
-      if (self.assigned_warehouses.length) {
-        for (var i = 0; i < self.assigned_warehouses.length; i++) {
-          self.data.append("assigned_to[" + i + "]", self.assigned_warehouses[i]);
-        }
-      }else{
-        self.data.append("assigned_to", []);
-      }
-      self.data.append("_method", "put");
-
-      axios
-        .post("users/" + this.user.id, self.data)
-        .then(response => {
-          this.makeToast(
-            "success",
-            this.$t("Successfully_Updated"),
-            this.$t("Success")
-          );
-          Fire.$emit("Event_User");
-          self.SubmitProcessing = false;
-        })
-        .catch(error => {
-          if (error.errors.email.length > 0) {
-            self.email_exist = error.errors.email[0];
-          }
-          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-          self.SubmitProcessing = false;
-        });
+      this.$router.push({ name: 'Edit_User', params: { id: user.id } });
     },
 
     //----------------------------- Reset Form ---------------------------\\
@@ -820,6 +524,17 @@ export default {
 
     //--------------------------------- Remove User ---------------------------\\
     Remove_User(id) {
+      // Prevent user from deleting their own account
+      if (this.currentUser && id === this.currentUser.id) {
+        this.$swal({
+          title: this.$t("Error"),
+          text: "You cannot delete your own account.",
+          type: "error",
+          confirmButtonText: this.$t("OK")
+        });
+        return;
+      }
+
       this.$swal({
         title: this.$t("Delete_Title"),
         text: this.$t("Delete_Text"),
@@ -842,10 +557,14 @@ export default {
 
               Fire.$emit("Delete_User");
             })
-            .catch(() => {
+            .catch(error => {
+              let errorMessage = "this User already linked with other operation";
+              if (error.response && error.response.data && error.response.data.message) {
+                errorMessage = error.response.data.message;
+              }
               this.$swal(
                 this.$t("Delete_Failed"),
-                "this User already linked with other operation",
+                errorMessage,
                 "warning"
               );
             });
@@ -861,7 +580,6 @@ export default {
     Fire.$on("Event_User", () => {
       setTimeout(() => {
         this.Get_Users(this.serverParams.page);
-        this.$bvModal.hide("New_User");
       }, 500);
     });
 

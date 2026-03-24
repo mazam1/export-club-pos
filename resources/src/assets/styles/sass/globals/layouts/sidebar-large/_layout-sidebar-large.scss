@@ -256,6 +256,9 @@
   .main-content-wrap {
     margin-top: $topbar-height-mobile;
   }
+  .layout-sidebar-large .main-content-wrap {
+    margin-top: 80px;
+  }
   .sidebar-left-secondary,
   .sidebar-left {
     top: $topbar-height-mobile !important;
@@ -286,6 +289,7 @@
   }
   .sidebar-overlay {
     height: calc(100vh - #{$topbar-height-mobile});
+    z-index: 80;
   }
 }
 

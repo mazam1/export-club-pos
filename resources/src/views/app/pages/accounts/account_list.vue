@@ -105,7 +105,7 @@
               >
                 <b-form-group :label="$t('initial_balance') + ' ' + '*'">
                   <b-form-input
-                    type="number"
+                    type="text"
                     :placeholder="$t('Enter_initial_balance')"
                     :state="getValidationState(validationContext)"
                     aria-describedby="initial_balance-feedback"
@@ -216,7 +216,6 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          html: true,
           tdClass: "text-right",
           thClass: "text-right",
           sortable: false

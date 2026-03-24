@@ -1,5 +1,7 @@
 <?php
 
+namespace Database\Seeders;
+
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -12,15 +14,15 @@ class CurrencySeeder extends Seeder
      */
     public function run()
     {
-       	// Insert some stuff
+        // Insert some stuff
         DB::table('currencies')->insert(
-            array(
-                'id'     => 1,
-                'code'   => 'USD',
-                'name'   => 'US Dollar',
+            [
+                'id' => 1,
+                'code' => 'USD',
+                'name' => 'US Dollar',
                 'symbol' => '$',
-            )
-            
+            ]
+
         );
     }
 }

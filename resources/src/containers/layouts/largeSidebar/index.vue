@@ -1,12 +1,22 @@
 <template>
-  <div class="app-admin-wrap layout-sidebar-large clearfix">
-    <top-nav />
+  <div class="app-admin-wrap layout-sidebar-large clearfix" :class="{ 
+    'vertical-layout': getSidebarLayout === 'vertical',
+    'vertical-collapsed': getSidebarLayout === 'vertical' && getVerticalSidebarCollapsed
+  }">
+    <!-- Conditional Top Navigation -->
+    <vertical-top-nav v-if="getSidebarLayout === 'vertical'" />
+    <top-nav v-else />
 
-    <sidebar />
+    <!-- Conditional Sidebar Rendering -->
+    <vertical-sidebar v-if="getSidebarLayout === 'vertical'" />
+    <sidebar v-else />
 
-    <main>
+    <main :class="{ 'with-vertical-sidebar': getSidebarLayout === 'vertical' }">
       <div
-        :class="{ 'sidenav-open': getSideBarToggleProperties.isSideNavOpen }"
+        :class="{ 
+          'sidenav-open': getSideBarToggleProperties.isSideNavOpen && getSidebarLayout !== 'vertical',
+          'with-vertical-topnav': getSidebarLayout === 'vertical'
+        }"
         class="main-content-wrap d-flex flex-column flex-grow-1"
       >
         <transition name="page" mode="out-in">
@@ -22,24 +32,59 @@
 
 <script>
 import Sidebar from "./Sidebar";
+import VerticalSidebar from "./VerticalSidebar";
 import TopNav from "./TopNav";
+import VerticalTopNav from "./VerticalTopNav";
 import appFooter from "../common/footer";
 import { mapGetters, mapActions } from "vuex";
 
 export default {
   components: {
     Sidebar,
+    VerticalSidebar,
     TopNav,
+    VerticalTopNav,
     appFooter,
   },
   data() {
     return {};
   },
   computed: {
-    ...mapGetters(["getSideBarToggleProperties"]),
+    ...mapGetters(["getSideBarToggleProperties", "getSidebarLayout", "getVerticalSidebarCollapsed"]),
   },
   methods: {},
 };
 </script>
-<style>
+<style scoped>
+/* Layout adjustments for vertical sidebar */
+.vertical-layout main.with-vertical-sidebar {
+  margin-left: 240px;
+  transition: margin-left 0.3s ease;
+}
+
+.vertical-layout.vertical-collapsed main.with-vertical-sidebar {
+  margin-left: 0;
+}
+
+/* Adjust content for vertical topnav */
+.with-vertical-topnav {
+  /* padding-top removed for flush layout */
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .vertical-layout main.with-vertical-sidebar {
+    margin-left: 0;
+  }
+}
+
+/* RTL Support */
+html[dir="rtl"] .vertical-layout main.with-vertical-sidebar {
+  margin-left: 0;
+  margin-right: 240px;
+}
+
+html[dir="rtl"] .vertical-layout.vertical-collapsed main.with-vertical-sidebar {
+  margin-right: 70px;
+}
 </style>

@@ -24,16 +24,80 @@
               <span class="nav-text">{{ $t("dashboard") }}</span>
             </router-link>
           </li>
+
+          
+
+          <!-- Store (parent) -->
+         <li
+            v-show="currentUserPermissions && (
+                      currentUserPermissions.includes('Store_settings_view') ||
+                      currentUserPermissions.includes('Orders_view') ||
+                      currentUserPermissions.includes('Collections_view') ||
+                      currentUserPermissions.includes('Banners_view') ||
+                      currentUserPermissions.includes('Subscribers_view') ||
+                      currentUserPermissions.includes('Messages_view')
+                    )"
+            @mouseenter="toggleSubMenu"
+            :class="{ active: selectedParentMenu == 'Store' }"
+            class="nav-item"
+            data-item="Store"
+            :data-submenu="true"
+          >
+            <a class="nav-item-hold" href="#">
+              <i class="nav-icon i-Shopping-Bag"></i>
+              <span class="nav-text">{{$t('Store')}}</span>
+            </a>
+            <div class="triangle"></div>
+          </li>
+
+          <li
+            v-show="currentUserPermissions && (currentUserPermissions.includes('Customers_view')
+                        ||currentUserPermissions.includes('Suppliers_view')
+                        || currentUserPermissions.includes('customers_import')
+                        || currentUserPermissions.includes('Suppliers_import')
+                        || currentUserPermissions.includes('Suppliers_import'))"
+            @mouseenter="toggleSubMenu"
+            :class="{ active: selectedParentMenu == 'People' }"
+            class="nav-item"
+            data-item="People"
+            :data-submenu="true"
+          >
+            <a class="nav-item-hold" href="#">
+              <i class="nav-icon i-Business-Mens"></i>
+              <span class="nav-text">{{$t('People')}}</span>
+            </a>
+            <div class="triangle"></div>
+          </li>
+
+          <li
+            v-show="currentUserPermissions && (currentUserPermissions.includes('users_view')
+                        || currentUserPermissions.includes('permissions_view'))"
+            @mouseenter="toggleSubMenu"
+            :class="{ active: selectedParentMenu == 'User_Management' }"
+            class="nav-item"
+            data-item="User_Management"
+            :data-submenu="true"
+          >
+            <a class="nav-item-hold" href="#">
+              <i class="nav-icon i-Administrator"></i>
+              <span class="nav-text">{{$t('User_Management')}}</span>
+            </a>
+            <div class="triangle"></div>
+          </li>
+
+        
           <li
             v-show="currentUserPermissions 
             && (currentUserPermissions.includes('products_add')
             || currentUserPermissions.includes('products_view') 
+            || currentUserPermissions.includes('product_import') 
             || currentUserPermissions.includes('opening_stock_import') 
             || currentUserPermissions.includes('barcode_view')
              || currentUserPermissions.includes('brand') 
              || currentUserPermissions.includes('unit')  
              || currentUserPermissions.includes('count_stock')  
-             || currentUserPermissions.includes('category'))"
+             || currentUserPermissions.includes('category')
+             || currentUserPermissions.includes('subcategory'))"
             @mouseenter="toggleSubMenu"
             class="nav-item"
             :class="{ active: selectedParentMenu == 'products' }"
@@ -63,24 +127,6 @@
             <div class="triangle"></div>
           </li>
 
-        
-
-         
-          <li
-            v-show="currentUserPermissions && (currentUserPermissions.includes('Quotations_view') 
-                      || currentUserPermissions.includes('Quotations_add'))"
-            @mouseenter="toggleSubMenu"
-            class="nav-item"
-            :class="{ active: selectedParentMenu == 'quotations' }"
-            data-item="quotations"
-            :data-submenu="true"
-          >
-            <a class="nav-item-hold" href="#">
-              <i class="nav-icon i-Checkout-Basket"></i>
-              <span class="nav-text">{{$t('Quotations')}}</span>
-            </a>
-            <div class="triangle"></div>
-          </li>
           <li
             v-show="currentUserPermissions && (currentUserPermissions.includes('Purchases_view') 
                         || currentUserPermissions.includes('Purchases_add'))"
@@ -100,6 +146,7 @@
             v-show="currentUserPermissions && (currentUserPermissions.includes('Sales_view') 
                         || currentUserPermissions.includes('Sales_add')
                         || currentUserPermissions.includes('Pos_view')
+                        || currentUserPermissions.includes('customer_display_screen_setup')
                         || currentUserPermissions.includes('shipment'))"
             class="nav-item"
             @mouseenter="toggleSubMenu"
@@ -129,6 +176,22 @@
           </li>
 
           <li
+            v-show="currentUserPermissions && (currentUserPermissions.includes('Quotations_view')
+                      || currentUserPermissions.includes('Quotations_add'))"
+            @mouseenter="toggleSubMenu"
+            class="nav-item"
+            :class="{ active: selectedParentMenu == 'quotations' }"
+            data-item="quotations"
+            :data-submenu="true"
+          >
+            <a class="nav-item-hold" href="#">
+              <i class="nav-icon i-Checkout-Basket"></i>
+              <span class="nav-text">{{$t('Quotations')}}</span>
+            </a>
+            <div class="triangle"></div>
+          </li>
+
+          <li
             v-if="currentUserPermissions && currentUserPermissions.includes('Purchase_Returns_view')"
             @mouseenter="toggleSubMenu"
             :class="{ active: selectedParentMenu == 'purchase_return' }"
@@ -139,6 +202,38 @@
               <i class="nav-icon i-Left"></i>
               <span class="nav-text">{{ $t("PurchasesReturn") }}</span>
             </router-link>
+          </li>
+
+           <li
+            v-show="currentUserPermissions && (currentUserPermissions.includes('transfer_view')
+                     || currentUserPermissions.includes('transfer_add'))"
+            @mouseenter="toggleSubMenu"
+            class="nav-item"
+            :class="{ active: selectedParentMenu == 'transfers' }"
+            data-item="transfers"
+            :data-submenu="true"
+          >
+            <a class="nav-item-hold" href="#">
+              <i class="nav-icon i-Back"></i>
+              <span class="nav-text">{{$t('StockTransfers')}}</span>
+            </a>
+            <div class="triangle"></div>
+          </li>
+
+          <li
+            v-show="currentUserPermissions 
+              && (currentUserPermissions.includes('damage_view'))"
+            @mouseenter="toggleSubMenu"
+            class="nav-item"
+            :class="{ active: selectedParentMenu == 'damages' }"
+            data-item="damages"
+            :data-submenu="true"
+          >
+            <a class="nav-item-hold" href="#">
+              <i class="nav-icon i-Remove-Bag"></i>
+              <span class="nav-text">{{ $t('Damages') }}</span>
+            </a>
+            <div class="triangle"></div>
           </li>
 
             <li
@@ -165,22 +260,6 @@
             </a>
             <div class="triangle"></div>
           </li>
-
-           <li
-            v-show="currentUserPermissions && (currentUserPermissions.includes('transfer_view')
-                     || currentUserPermissions.includes('transfer_add'))"
-            @mouseenter="toggleSubMenu"
-            class="nav-item"
-            :class="{ active: selectedParentMenu == 'transfers' }"
-            data-item="transfers"
-            :data-submenu="true"
-          >
-            <a class="nav-item-hold" href="#">
-              <i class="nav-icon i-Back"></i>
-              <span class="nav-text">{{$t('StockTransfers')}}</span>
-            </a>
-            <div class="triangle"></div>
-          </li>
           <li
             v-show="currentUserPermissions && (currentUserPermissions.includes('expense_view')
               || currentUserPermissions.includes('expense_add')
@@ -188,6 +267,13 @@
               || currentUserPermissions.includes('deposit_add')
               || currentUserPermissions.includes('account')
               || currentUserPermissions.includes('transfer_money')
+              || currentUserPermissions.includes('accounting_dashboard')
+              || currentUserPermissions.includes('chart_of_accounts')
+              || currentUserPermissions.includes('journal_entries')
+              || currentUserPermissions.includes('trial_balance')
+              || currentUserPermissions.includes('accounting_profit_loss')
+              || currentUserPermissions.includes('balance_sheet')
+              || currentUserPermissions.includes('accounting_tax_report')
               )"
             @mouseenter="toggleSubMenu"
             class="nav-item"
@@ -201,6 +287,8 @@
             </a>
             <div class="triangle"></div>
           </li>
+
+          
 
             <li
             v-if="currentUserPermissions && currentUserPermissions.includes('subscription_product')"
@@ -218,24 +306,37 @@
 
 
           <li
-            v-show="currentUserPermissions && (currentUserPermissions.includes('Customers_view') 
-                        ||currentUserPermissions.includes('Suppliers_view')
-                        ||currentUserPermissions.includes('users_view'))"
+            v-show="currentUserPermissions && currentUserPermissions.includes('service_jobs')"
             @mouseenter="toggleSubMenu"
-            :class="{ active: selectedParentMenu == 'People' }"
+            :class="{ active: selectedParentMenu == 'service' }"
             class="nav-item"
-            data-item="People"
+            data-item="service"
             :data-submenu="true"
           >
             <a class="nav-item-hold" href="#">
-              <i class="nav-icon i-Business-Mens"></i>
-              <span class="nav-text">{{$t('People')}}</span>
+              <i class="nav-icon i-Repair"></i>
+              <span class="nav-text">{{$t('Service_Maintenance')}}</span>
             </a>
             <div class="triangle"></div>
           </li>
 
           <li
-            v-show="currentUserPermissions && (currentUserPermissions.includes('projects'))"
+            v-show="currentUserPermissions && currentUserPermissions.includes('assets')"
+            @mouseenter="toggleSubMenu"
+            :class="{ active: selectedParentMenu == 'assets' }"
+            class="nav-item"
+            data-item="assets"
+            :data-submenu="true"
+          >
+            <a class="nav-item-hold" href="#">
+              <i class="nav-icon i-Gear"></i>
+              <span class="nav-text">{{$t('Assets')}}</span>
+            </a>
+            <div class="triangle"></div>
+          </li>
+
+          <li
+            v-show="currentUserPermissions && currentUserPermissions.includes('projects')"
             @mouseenter="toggleSubMenu"
             :class="{ active: selectedParentMenu == 'projects' }"
             class="nav-item"
@@ -248,7 +349,7 @@
           </li>
 
           <li
-            v-show="currentUserPermissions && (currentUserPermissions.includes('tasks'))"
+            v-show="currentUserPermissions && currentUserPermissions.includes('tasks')"
             @mouseenter="toggleSubMenu"
             :class="{ active: selectedParentMenu == 'tasks' }"
             class="nav-item"
@@ -259,27 +360,42 @@
               <span class="nav-text">{{$t('Tasks')}}</span>
             </router-link>
           </li>
-         
-            <!-- //import component Modules -->
-         
-            <li v-for="ComponentModule in getallmodules" 
-                v-show="currentUserPermissions && currentUserPermissions.includes(ComponentModule.permission)"
-                @mouseenter="toggleSubMenu"
-                class="nav-item" >
-                <a class="nav-item-hold nav-item-module" target="_blank" :href="ComponentModule.url">
-                  <i :class="ComponentModule.icon"></i>
-                  <span class="nav-text">{{ ComponentModule.name }}</span>
-                </a>
-                <div class="addon_triangle">
-                  <span>Addon</span>
-                </div>
-              </li>
-            
-         
+
+          <!-- Bookings (with submenu: Booking List, Google Calendar) -->
+          <li
+            v-show="currentUserPermissions && currentUserPermissions.includes('bookings')"
+            @mouseenter="toggleSubMenu"
+            :class="{ active: selectedParentMenu == 'bookings' }"
+            class="nav-item"
+            data-item="bookings"
+            :data-submenu="true"
+          >
+            <a class="nav-item-hold" href="#">
+              <i class="nav-icon i-Calendar-4"></i>
+              <span class="nav-text">{{ $t('Bookings') }}</span>
+            </a>
+            <div class="triangle"></div>
+          </li>
+
+          <!-- woocommerce_settings -->
+          <li
+            v-show="currentUserPermissions && currentUserPermissions.includes('woocommerce_settings')"
+            :class="{ active: selectedParentMenu == 'woocommerce_settings' }"
+            class="nav-item"
+            data-item="woocommerce_settings"
+          >
+            <router-link tag="a" class="nav-item-hold" to="/app/woocommerce">
+              <i class="nav-icon i-Shopping-Cart"></i>
+              <span class="nav-text">{{$t('WooCommerce_Settings')}}</span>
+            </router-link>
+          </li>
+
 
           <li
-            v-show="currentUserPermissions && (currentUserPermissions.includes('setting_system') 
+            v-show="currentUserPermissions && (currentUserPermissions.includes('setting_system')
+                        || currentUserPermissions.includes('update_settings')
                         || currentUserPermissions.includes('sms_settings')
+                        || currentUserPermissions.includes('quickbooks_settings')
                         || currentUserPermissions.includes('notification_template')
                         || currentUserPermissions.includes('pos_settings')
                         || currentUserPermissions.includes('appearance_settings')
@@ -287,11 +403,11 @@
                         || currentUserPermissions.includes('module_settings')
                         || currentUserPermissions.includes('payment_gateway')
                         || currentUserPermissions.includes('mail_settings')
-                        || currentUserPermissions.includes('warehouse') 
+                        || currentUserPermissions.includes('warehouse')
                         || currentUserPermissions.includes('backup')
-                        || currentUserPermissions.includes('payment_methods')  
-                        || currentUserPermissions.includes('currency') 
-                        || currentUserPermissions.includes('permissions_view'))"
+                        || currentUserPermissions.includes('payment_methods')
+                        || currentUserPermissions.includes('currency')
+                        || currentUserPermissions.includes('login_device_management'))"
             @mouseenter="toggleSubMenu"
             :class="{ active: selectedParentMenu == 'settings' }"
             class="nav-item"
@@ -305,6 +421,19 @@
             <div class="triangle"></div>
           </li>
 
+          <!-- AI Reports -->
+          <li
+            v-show="currentUserPermissions && currentUserPermissions.includes('AI_Reports')"
+            :class="{ active: selectedParentMenu == 'ai_reports' }"
+            class="nav-item"
+            data-item="ai_reports"
+          >
+            <router-link tag="a" class="nav-item-hold" to="/app/reports/ai_reports">
+              <i class="nav-icon i-Light-Bulb"></i>
+              <span class="nav-text">{{$t('AI_Reports') || 'AI Reports'}}</span>
+            </router-link>
+          </li>
+
           <li
             v-show="currentUserPermissions && 
                      (currentUserPermissions.includes('Reports_payments_Sales') 
@@ -313,6 +442,8 @@
                      || currentUserPermissions.includes('Reports_payments_purchase_Return')
                      || currentUserPermissions.includes('Warehouse_report')
                      || currentUserPermissions.includes('Reports_profit')
+                     || currentUserPermissions.includes('analytics_report')
+                     || currentUserPermissions.includes('Stock_Inventory_Valuation')
                      || currentUserPermissions.includes('inventory_valuation')
                      || currentUserPermissions.includes('expenses_report')
                      || currentUserPermissions.includes('deposits_report')
@@ -322,16 +453,39 @@
                      || currentUserPermissions.includes('product_sales_report')
                      || currentUserPermissions.includes('product_purchases_report')
                      || currentUserPermissions.includes('Reports_suppliers')
+                     || currentUserPermissions.includes('Top_Suppliers_Report')
                      || currentUserPermissions.includes('Reports_customers')
                      || currentUserPermissions.includes('Top_products')
+                     || currentUserPermissions.includes('inactive_customers_report')
                      || currentUserPermissions.includes('Top_customers')
+                     || currentUserPermissions.includes('report_device_management')
                      || currentUserPermissions.includes('users_report')
                      || currentUserPermissions.includes('product_report')
+                      || currentUserPermissions.includes('zeroSalesProducts')
+                      || currentUserPermissions.includes('Dead_Stock_Report')
+                       || currentUserPermissions.includes('Stock_Aging_Report')
+                       || currentUserPermissions.includes('Stock_Transfer_Report')
+                       || currentUserPermissions.includes('discount_summary_report')
+                       || currentUserPermissions.includes('Stock_Adjustment_Report')
+                      || currentUserPermissions.includes('customer_loyalty_points_report')
+                      || currentUserPermissions.includes('tax_summary_report')
+                      || currentUserPermissions.includes('draft_invoices_report')
                       || currentUserPermissions.includes('report_transactions')
+                      || currentUserPermissions.includes('cash_flow_report')
+                      || currentUserPermissions.includes('report_attendance_summary')
+                       || currentUserPermissions.includes('seller_report')
                       || currentUserPermissions.includes('report_sales_by_category')
                        || currentUserPermissions.includes('report_sales_by_brand')
                       || currentUserPermissions.includes('report_error_logs')
-                     || currentUserPermissions.includes('stock_report'))"
+                      || currentUserPermissions.includes('cash_register_report')
+                      || currentUserPermissions.includes('report_warranty')
+                     || currentUserPermissions.includes('stock_report')
+                     || currentUserPermissions.includes('negative_stock_report')
+                     || currentUserPermissions.includes('return_ratio_report')
+                     || currentUserPermissions.includes('service_jobs')
+                     || currentUserPermissions.includes('service_jobs_report')
+                     || currentUserPermissions.includes('checklist_completion_report')
+                     || currentUserPermissions.includes('customer_maintenance_history_report'))"
             @mouseenter="toggleSubMenu"
             :class="{ active: selectedParentMenu == 'reports' }"
             class="nav-item"
@@ -355,6 +509,90 @@
       class="sidebar-left-secondary ps rtl-ps-none"
     >
       <div ref="sidebarChild">
+
+
+        <!-- Store (children) -->
+       <ul
+        class="childNav d-none"
+        data-parent="Store"
+        :class="{ 'd-block': selectedParentMenu == 'Store' }"
+      >
+        <!-- Visit Online Store (external link) -->
+        <li class="nav-item">
+          <a class="nav-item-hold" href="/online_store" target="_blank">
+            <i class="nav-icon i-Shop-2"></i>
+            <span class="item-name">{{ $t('Visit_Online_Store') }}</span>
+          </a>
+        </li>
+
+        <!-- Settings -->
+        <li
+          class="nav-item"
+          v-if="currentUserPermissions && currentUserPermissions.includes('Store_settings_view')"
+        >
+          <router-link tag="a" class="nav-item-hold" to="/app/Store/Settings">
+            <i class="nav-icon i-Gear"></i>
+            <span class="item-name">{{ $t('Settings') }}</span>
+          </router-link>
+        </li>
+
+        <!-- Orders -->
+        <li
+          class="nav-item"
+          v-if="currentUserPermissions && currentUserPermissions.includes('Orders_view')"
+        >
+          <router-link tag="a" class="nav-item-hold" to="/app/Store/Orders">
+            <i class="nav-icon i-Receipt"></i>
+            <span class="item-name">{{ $t('Online_Orders') }}</span>
+          </router-link>
+        </li>
+
+        <!-- Collections -->
+        <li
+          class="nav-item"
+          v-if="currentUserPermissions && currentUserPermissions.includes('Collections_view')"
+        >
+          <router-link tag="a" class="nav-item-hold" to="/app/Store/Collections">
+            <i class="nav-icon i-Check"></i>
+            <span class="item-name">{{ $t('Collections') }}</span>
+          </router-link>
+        </li>
+
+        <!-- Banners -->
+        <li
+          class="nav-item"
+          v-if="currentUserPermissions && currentUserPermissions.includes('Banners_view')"
+        >
+          <router-link tag="a" class="nav-item-hold" to="/app/Store/Banners">
+            <i class="nav-icon i-Wallet"></i>
+            <span class="item-name">{{ $t('Banners') }}</span>
+          </router-link>
+        </li>
+
+        <!-- Subscribers -->
+        <li
+          class="nav-item"
+          v-if="currentUserPermissions && currentUserPermissions.includes('Subscribers_view')"
+        >
+          <router-link tag="a" class="nav-item-hold" to="/app/Store/Subscribers">
+            <i class="nav-icon i-MaleFemale"></i>
+            <span class="item-name">{{ $t('Subscribers') }}</span>
+          </router-link>
+        </li>
+
+        <!-- Messages -->
+        <li
+          class="nav-item"
+          v-if="currentUserPermissions && currentUserPermissions.includes('Messages_view')"
+        >
+          <router-link tag="a" class="nav-item-hold" to="/app/Store/Messages">
+            <i class="nav-icon i-Speach-Bubble"></i>
+            <span class="item-name">{{ $t('Messages') }}</span>
+          </router-link>
+        </li>
+      </ul>
+
+
         <ul
           class="childNav d-none"
           data-parent="products"
@@ -376,6 +614,26 @@
             <router-link tag="a" class to="/app/products/list">
               <i class="nav-icon i-Files"></i>
               <span class="item-name">{{$t('productsList')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('product_import')"
+          >
+            <router-link tag="a" class to="/app/products/import">
+              <i class="nav-icon i-Download"></i>
+              <span class="item-name">{{ $t('import_products') }}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('product_import')"
+          >
+            <router-link tag="a" class to="/app/products/import-update">
+              <i class="nav-icon i-Edit"></i>
+              <span class="item-name">Import (Update Only)</span>
             </router-link>
           </li>
 
@@ -419,6 +677,15 @@
           </li>
           <li
             class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('subcategory')"
+          >
+            <router-link tag="a" class to="/app/products/SubCategories">
+              <i class="nav-icon i-Library"></i>
+              <span class="item-name">{{$t('SubCategory')}}</span>
+            </router-link>
+          </li>
+          <li
+            class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('brand')"
           >
             <router-link tag="a" class to="/app/products/Brands">
@@ -433,6 +700,56 @@
             <router-link tag="a" class to="/app/products/Units">
               <i class="nav-icon i-Quotes"></i>
               <span class="item-name">{{$t('Units')}}</span>
+            </router-link>
+          </li>
+        </ul>
+
+        <ul
+          class="childNav d-none"
+          data-parent="accounting"
+          :class="{ 'd-block': selectedParentMenu == 'accounting' }"
+        >
+          <!-- NEW FEATURE - SAFE ADDITION: Advanced Accounting under Accounting -->
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('accounting_dashboard')">
+            <router-link tag="a" class to="/app/accounting-v2/dashboard">
+              <i class="nav-icon i-Line-Chart"></i>
+              <span class="item-name">{{ $t("dashboard") }}</span>
+            </router-link>
+          </li>
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('chart_of_accounts')">
+            <router-link tag="a" class to="/app/accounting-v2/chart-of-accounts">
+              <i class="nav-icon i-Data"></i>
+              <span class="item-name">{{ $t('Chart_of_Accounts_Title') }}</span>
+            </router-link>
+          </li>
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('journal_entries')">
+            <router-link tag="a" class to="/app/accounting-v2/journal-entries">
+              <i class="nav-icon i-Files"></i>
+              <span class="item-name">{{ $t('Journal_Entries_Title') }}</span>
+            </router-link>
+          </li>
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('trial_balance')">
+            <router-link tag="a" class to="/app/accounting-v2/reports/trial-balance">
+              <i class="nav-icon i-Line-Chart"></i>
+              <span class="item-name">{{ $t('Trial_Balance_Title') }}</span>
+            </router-link>
+          </li>
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('accounting_profit_loss')">
+            <router-link tag="a" class to="/app/accounting-v2/reports/profit-and-loss">
+              <i class="nav-icon i-Money-Bag"></i>
+              <span class="item-name">{{ $t('Profit_Loss_Title') }}</span>
+            </router-link>
+          </li>
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('balance_sheet')">
+            <router-link tag="a" class to="/app/accounting-v2/reports/balance-sheet">
+              <i class="nav-icon i-Pie-Chart"></i>
+              <span class="item-name">{{ $t('Balance_Sheet_Title') }}</span>
+            </router-link>
+          </li>
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('accounting_tax_report')">
+            <router-link tag="a" class to="/app/accounting-v2/reports/tax-report">
+              <i class="nav-icon i-Files"></i>
+              <span class="item-name">{{ $t('Tax_Summary_Report') }}</span>
             </router-link>
           </li>
         </ul>
@@ -489,9 +806,35 @@
 
         <ul
           class="childNav d-none"
+          data-parent="damages"
+          :class="{ 'd-block': selectedParentMenu == 'damages' }"
+        >
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('damage_view')"
+          >
+            <router-link tag="a" class to="/app/damages/store">
+              <i class="nav-icon i-Add-File"></i>
+              <span class="item-name">{{ $t('Create_Damage') }}</span>
+            </router-link>
+          </li>
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('damage_view')"
+          >
+            <router-link tag="a" class to="/app/damages/list">
+              <i class="nav-icon i-Files"></i>
+              <span class="item-name">{{ $t('Damages') }}</span>
+            </router-link>
+          </li>
+        </ul>
+
+        <ul
+          class="childNav d-none"
           data-parent="accounting"
           :class="{ 'd-block': selectedParentMenu == 'accounting' }"
         >
+          
 
         <li
             class="nav-item"
@@ -566,36 +909,14 @@
           >
             <router-link tag="a" class to="/app/deposits/category">
               <i class="nav-icon i-Files"></i>
-              <span class="item-name">{{$t('deposit_Category')}}</span>
+              <span class="item-name">{{$t('Deposit_Category')}}</span>
             </router-link>
           </li>
+
+          
         </ul>
 
-        <ul
-          class="childNav d-none"
-          data-parent="quotations"
-          :class="{ 'd-block': selectedParentMenu == 'quotations' }"
-        >
-          <li
-            class="nav-item"
-            v-if="currentUserPermissions && currentUserPermissions.includes('Quotations_add')"
-          >
-            <router-link tag="a" class to="/app/quotations/store">
-              <i class="nav-icon i-Add-File"></i>
-              <span class="item-name">{{$t('AddQuote')}}</span>
-            </router-link>
-          </li>
-          <li
-            class="nav-item"
-            v-if="currentUserPermissions && currentUserPermissions.includes('Quotations_view')"
-          >
-            <router-link tag="a" class to="/app/quotations/list">
-              <i class="nav-icon i-Files"></i>
-              <span class="item-name">{{$t('ListQuotations')}}</span>
-            </router-link>
-          </li>
-        </ul>
-
+        
         <ul
           class="childNav d-none"
           data-parent="purchases"
@@ -634,6 +955,68 @@
 
         <ul
           class="childNav d-none"
+          data-parent="service"
+          :class="{ 'd-block': selectedParentMenu == 'service' }"
+        >
+          <li class="nav-item">
+            <router-link tag="a" class to="/app/service/jobs">
+              <i class="nav-icon i-Files"></i>
+              <span class="item-name">{{$t('Service_Jobs')}}</span>
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link tag="a" class to="/app/service/technicians">
+              <i class="nav-icon i-Files"></i>
+              <span class="item-name">{{$t('Service_Technicians')}}</span>
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link tag="a" class to="/app/service/checklist-categories">
+              <i class="nav-icon i-Folder"></i>
+              <span class="item-name">{{$t('Checklist_Categories')}}</span>
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link tag="a" class to="/app/service/checklists">
+              <i class="nav-icon i-Check"></i>
+              <span class="item-name">{{$t('Checklist_Items')}}</span>
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link tag="a" class to="/app/service/history">
+              <i class="nav-icon i-Calendar-4"></i>
+              <span class="item-name">{{$t('Maintenance_History')}}</span>
+            </router-link>
+          </li>
+        </ul>
+
+        <ul
+          class="childNav d-none"
+          data-parent="assets"
+          :class="{ 'd-block': selectedParentMenu == 'assets' }"
+        >
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('assets')">
+            <router-link tag="a" class to="/app/assets/store">
+              <i class="nav-icon i-Add-File"></i>
+              <span class="item-name">{{$t('Add_Asset')}}</span>
+            </router-link>
+          </li>
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('assets')">
+            <router-link tag="a" class to="/app/assets/list">
+              <i class="nav-icon i-Files"></i>
+              <span class="item-name">{{$t('Assets_List')}}</span>
+            </router-link>
+          </li>
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('assets')">
+            <router-link tag="a" class to="/app/assets/category">
+              <i class="nav-icon i-Folder"></i>
+              <span class="item-name">{{$t('Asset_Category')}}</span>
+            </router-link>
+          </li>
+        </ul>
+
+        <ul
+          class="childNav d-none"
           data-parent="sales"
           :class="{ 'd-block': selectedParentMenu == 'sales' }"
         >
@@ -644,6 +1027,15 @@
             <router-link tag="a" class to="/app/sales/store">
               <i class="nav-icon i-Add-File"></i>
               <span class="item-name">{{$t('AddSale')}}</span>
+            </router-link>
+          </li>
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')"
+          >
+            <router-link tag="a" class to="/app/sales/import_sales">
+              <i class="nav-icon i-Add-File"></i>
+              <span class="item-name">{{$t('Import_Sales')}}</span>
             </router-link>
           </li>
           <li
@@ -666,11 +1058,70 @@
           </li>
           <li
             class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('customer_display_screen_setup')"
+          >
+            <router-link tag="a" class to="/app/customer-display/setup">
+              <i class="nav-icon i-Bar-Code"></i>
+              <span class="item-name">{{$t('Customer_Screen')}}</span>
+            </router-link>
+          </li>
+          <li
+            class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('shipment')"
           >
             <router-link tag="a" class to="/app/sales/shipment">
               <i class="nav-icon i-Files"></i>
               <span class="item-name">{{$t('Shipments')}}</span>
+            </router-link>
+          </li>
+        </ul>
+
+        <ul
+          class="childNav d-none"
+          data-parent="bookings"
+          :class="{ 'd-block': selectedParentMenu == 'bookings' }"
+        >
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('bookings')"
+          >
+            <router-link tag="a" class to="/app/bookings/list">
+              <i class="nav-icon i-Files"></i>
+              <span class="item-name">{{ $t('Booking_List') || 'Booking List' }}</span>
+            </router-link>
+          </li>
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('bookings')"
+          >
+            <router-link tag="a" class to="/app/bookings/calendar">
+              <i class="nav-icon i-Calendar-4"></i>
+              <span class="item-name">{{ $t('Calendar_View') }}</span>
+            </router-link>
+          </li>
+        </ul>
+
+        <ul
+          class="childNav d-none"
+          data-parent="quotations"
+          :class="{ 'd-block': selectedParentMenu == 'quotations' }"
+        >
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('Quotations_add')"
+          >
+            <router-link tag="a" class to="/app/quotations/store">
+              <i class="nav-icon i-Add-File"></i>
+              <span class="item-name">{{$t('AddQuote')}}</span>
+            </router-link>
+          </li>
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('Quotations_view')"
+          >
+            <router-link tag="a" class to="/app/quotations/list">
+              <i class="nav-icon i-Files"></i>
+              <span class="item-name">{{$t('ListQuotations')}}</span>
             </router-link>
           </li>
         </ul>
@@ -791,6 +1242,7 @@
 
         </ul>
 
+
          <!-- People -->
         <ul
           class="childNav d-none"
@@ -806,6 +1258,48 @@
               <span class="item-name">{{$t('Customers')}}</span>
             </router-link>
           </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('Customers_add')"
+          >
+            <router-link tag="a" class to="/app/People/Customers/create">
+              <i class="nav-icon i-Add"></i>
+              <span class="item-name">{{$t('Add')}} {{$t('Customer')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('customers_import')"
+          >
+            <router-link tag="a" class to="/app/People/Customers_import">
+              <i class="nav-icon i-Download"></i>
+              <span class="item-name">{{$t('Import_Customers')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('Customers_view')"
+          >
+            <router-link tag="a" class to="/app/People/Customers_without_ecommerce">
+              <i class="nav-icon i-Administrator"></i>
+              <span class="item-name">{{$t('Customers_without_Login')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('Customers_view')"
+          >
+            <router-link tag="a" class to="/app/People/Customers_ecommerce">
+              <i class="nav-icon i-Administrator"></i>
+              <span class="item-name">{{$t('Customers_with_Login')}}</span>
+            </router-link>
+          </li>
+
+
           <li
             class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('Suppliers_view')"
@@ -815,15 +1309,54 @@
               <span class="item-name">{{$t('Suppliers')}}</span>
             </router-link>
           </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('Suppliers_add')"
+          >
+            <router-link tag="a" class to="/app/People/Suppliers/create">
+              <i class="nav-icon i-Add"></i>
+              <span class="item-name">{{$t('Add')}} {{$t('Supplier')}}</span>
+            </router-link>
+          </li>
+
+           <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('Suppliers_import')"
+          >
+            <router-link tag="a" class to="/app/People/Suppliers_import">
+              <i class="nav-icon i-Download"></i>
+              <span class="item-name">{{$t('Import_Suppliers')}}</span>
+            </router-link>
+          </li>
+
+        </ul>
+
+        <ul
+          class="childNav d-none"
+          data-parent="User_Management"
+          :class="{ 'd-block': selectedParentMenu == 'User_Management' }"
+        >
           <li
             class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('users_view')"
           >
-            <router-link tag="a" class to="/app/People/Users">
+            <router-link tag="a" class to="/app/User_Management/Users">
               <i class="nav-icon i-Administrator"></i>
               <span class="item-name">{{$t('Users')}}</span>
             </router-link>
           </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('permissions_view')"
+          >
+            <router-link tag="a" class to="/app/User_Management/permissions">
+              <i class="nav-icon i-Key"></i>
+              <span class="item-name">{{$t('GroupPermissions')}}</span>
+            </router-link>
+          </li>
+
         </ul>
 
         <ul
@@ -838,6 +1371,16 @@
             <router-link tag="a" class to="/app/settings/System_settings">
               <i class="nav-icon i-Gear"></i>
               <span class="item-name">{{$t('SystemSettings')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('quickbooks_settings')"
+          >
+            <router-link tag="a" class to="/app/settings/quickbooks_sync">
+              <i class="nav-icon i-Money-2"></i>
+              <span class="item-name">{{$t('Quickbooks_Sync')}}</span>
             </router-link>
           </li>
 
@@ -911,13 +1454,25 @@
             </router-link>
           </li>
 
-           <li
+          <!-- POS Settings (System Settings -> POS Settings tab) -->
+          <li
             class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('pos_settings')"
           >
             <router-link tag="a" class to="/app/settings/pos_settings">
-              <i class="nav-icon i-Cash-Register"></i>
+              <i class="nav-icon i-Data-Settings"></i>
               <span class="item-name">{{$t('Pos_Settings')}}</span>
+            </router-link>
+          </li>
+
+          <!-- POS Receipt page (dedicated POS receipt settings view) -->
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('pos_settings')"
+          >
+            <router-link tag="a" class to="/app/settings/pos_receipt">
+              <i class="nav-icon i-Cash-Register"></i>
+              <span class="item-name">{{$t('POS_Receipt')}}</span>
             </router-link>
           </li>
 
@@ -931,9 +1486,11 @@
             </router-link>
           </li>
 
+         
+
             <li
             class="nav-item"
-            v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')"
+            v-if="currentUserPermissions && currentUserPermissions.includes('update_settings')"
           >
             <router-link tag="a" class to="/app/settings/update_settings">
               <i class="nav-icon i-Upgrade"></i>
@@ -953,15 +1510,6 @@
 
           
 
-          <li
-            class="nav-item"
-            v-if="currentUserPermissions && currentUserPermissions.includes('permissions_view')"
-          >
-            <router-link tag="a" class to="/app/settings/permissions">
-              <i class="nav-icon i-Key"></i>
-              <span class="item-name">{{$t('GroupPermissions')}}</span>
-            </router-link>
-          </li>
           <li
             class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('warehouse')"
@@ -988,6 +1536,16 @@
             <router-link tag="a" class to="/app/settings/Backup">
               <i class="nav-icon i-Data-Backup"></i>
               <span class="item-name">{{$t('Backup')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('login_device_management')"
+          >
+            <router-link tag="a" class to="/app/settings/login_devices">
+              <i class="nav-icon i-Lock-2"></i>
+              <span class="item-name">{{$t('Login_Device_Management')}}</span>
             </router-link>
           </li>
 
@@ -1060,11 +1618,80 @@
 
           <li
             class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('cash_flow_report')"
+          >
+            <router-link tag="a" class to="/app/reports/cash_flow_report">
+              <i class="nav-icon i-Line-Chart"></i>
+              <span class="item-name">{{$t('Cash_Flow_Report')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('seller_report')"
+          >
+            <router-link tag="a" class to="/app/reports/seller_report">
+              <i class="nav-icon i-User"></i>
+              <span class="item-name">{{$t('Seller_report')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('report_attendance_summary')"
+          >
+            <router-link tag="a" class :to="{ name: 'attendance_report' }">
+              <i class="nav-icon i-Clock"></i>
+              <span class="item-name">{{$t('attendance_summary')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('Reports_profit')"
           >
             <router-link tag="a" class to="/app/reports/profit_and_loss">
               <i class="nav-icon i-Money-Bag"></i>
               <span class="item-name">{{$t('ProfitandLoss')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('analytics_report')"
+          >
+            <router-link tag="a" class to="/app/reports/analytics_report">
+              <i class="nav-icon i-Bar-Chart"></i>
+              <span class="item-name">{{$t('Analytics_Report')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('Stock_Inventory_Valuation')"
+          >
+            <router-link tag="a" class to="/app/reports/stock_inventory_valuation">
+              <i class="nav-icon i-Line-Chart"></i>
+              <span class="item-name">{{$t('Stock_Inventory_Valuation')}}</span>
+            </router-link>
+          </li>
+          
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('cash_register_report')"
+          >
+            <router-link tag="a" class :to="{ name: 'cash_register_report' }">
+              <i class="nav-icon i-Money-2"></i>
+              <span class="item-name">{{$t('Cash_Register_Report')}}</span>
+            </router-link>
+          </li>
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('report_warranty')"
+          >
+            <router-link tag="a" class :to="{ name: 'warranty_guarantee_report' }">
+              <i class="nav-icon i-Shield"></i>
+              <span class="item-name">{{ $t('Warranty_Guarantee_Report') }}</span>
             </router-link>
           </li>
 
@@ -1121,8 +1748,17 @@
             v-if="currentUserPermissions && currentUserPermissions.includes('stock_report')"
           >
             <router-link tag="a" class to="/app/reports/stock_report">
-              <i class="nav-icon i-Box-Full"></i>
+              <i class="nav-icon i-Line-Chart"></i>
               <span class="item-name">{{$t('stock_report')}}</span>
+            </router-link>
+          </li>
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('negative_stock_report')"
+          >
+            <router-link tag="a" class to="/app/reports/negative_stock_report">
+              <i class="nav-icon i-Line-Chart"></i>
+              <span class="item-name">{{$t('Negative_Stock_Report')}}</span>
             </router-link>
           </li>
 
@@ -1135,6 +1771,88 @@
               <span class="item-name">{{$t('product_report')}}</span>
             </router-link>
           </li>
+
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('zeroSalesProducts')">
+            <router-link tag="a" class :to="{ name: 'zero_sales_products_report' }">
+              <i class="nav-icon i-Remove-Bag"></i>
+              <span class="item-name">{{$t('Zero_Sales_Products_Report')}}</span>
+            </router-link>
+          </li>
+
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('Dead_Stock_Report')">
+            <router-link tag="a" class :to="{ name: 'dead_stock_report' }">
+              <i class="nav-icon i-Remove-Bag"></i>
+              <span class="item-name">{{$t('Dead_Stock_Report')}}</span>
+            </router-link>
+          </li>
+
+          <li
+          class="nav-item"
+          v-if="currentUserPermissions && currentUserPermissions.includes('Stock_Aging_Report')"
+        >
+          <router-link tag="a" class :to="{ name: 'stock_aging_report' }">
+            <i class="nav-icon i-Clock"></i>
+            <span class="item-name">{{$t('Stock_Aging_Report')}}</span>
+          </router-link>
+        </li>
+
+        <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('Stock_Transfer_Report')">
+        <router-link tag="a" class :to="{ name: 'stock_transfer_report' }">
+          <i class="nav-icon i-Back"></i>
+          <span class="item-name">{{$t('Stock_Transfer_Report')}}</span>
+        </router-link>
+      </li>
+
+      <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('Stock_Adjustment_Report')">
+        <router-link tag="a" :to="{ name: 'stock_adjustment_report' }">
+          <i class="nav-icon i-Edit"></i>
+          <span class="item-name">{{$t('Stock_Adjustment_Report')}}</span>
+        </router-link>
+      </li>
+
+
+        <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('discount_summary_report')">
+          <router-link tag="a" class :to="{ name: 'discount_summary_report' }">
+            <i class="nav-icon i-Billing"></i>
+            <span class="item-name">{{$t('Discount_Summary_Report')}}</span>
+          </router-link>
+        </li>
+      <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('customer_loyalty_points_report')">
+        <router-link tag="a" class :to="{ name: 'customer_loyalty_points_report' }">
+          <i class="nav-icon i-Love"></i>
+          <span class="item-name">{{$t('Customer_Loyalty_Points_Report')}}</span>
+        </router-link>
+      </li>
+
+        <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('tax_summary_report')">
+          <router-link tag="a" class :to="{ name: 'tax_summary_report' }">
+            <i class="nav-icon i-Files"></i>
+            <span class="item-name">{{$t('Tax_Summary_Report')}}</span>
+          </router-link>
+        </li>
+
+
+
+        <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('draft_invoices_report')">
+          <router-link tag="a" class :to="{ name: 'draft_invoices_report' }">
+            <i class="nav-icon i-Receipt"></i>
+            <span class="item-name">{{$t('Draft_Invoices_Report')}}</span>
+          </router-link>
+        </li>
+
+
+          
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('return_ratio_report')"
+          >
+            <router-link tag="a" class to="/app/reports/return_ratio_report">
+              <i class="nav-icon i-Line-Chart"></i>
+              <span class="item-name">{{$t('Return_Ratio_Report')}}</span>
+            </router-link>
+          </li>
+
           <li
             class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')"
@@ -1204,6 +1922,25 @@
               <span class="item-name">{{$t('CustomersReport')}}</span>
             </router-link>
           </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('inactive_customers_report')"
+          >
+            <router-link tag="a" class to="/app/reports/inactive_customers">
+              <i class="nav-icon i-Remove-User"></i>
+              <span class="item-name">{{$t('Inactive_Customers_Report')}}</span>
+            </router-link>
+          </li>
+
+          <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('Top_Suppliers_Report')">
+            <router-link tag="a" class :to="{ name: 'top_suppliers_report' }">
+              <i class="nav-icon i-Business-ManWoman"></i>
+              <span class="item-name">{{$t('Top_Suppliers_Report')}}</span>
+            </router-link>
+          </li>
+
+
           <li
             class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('Reports_suppliers')"
@@ -1244,6 +1981,16 @@
             </router-link>
           </li>
 
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('report_device_management')"
+          >
+            <router-link tag="a" class to="/app/reports/login_activity_report">
+              <i class="nav-icon i-Lock-2"></i>
+              <span class="item-name">{{$t('Login_Activity_Report')}}</span>
+            </router-link>
+          </li>
+
            <li
             class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('report_error_logs')"
@@ -1251,6 +1998,36 @@
             <router-link tag="a" class to="/app/reports/report_error_logs">
               <i class="nav-icon i-Bug"></i>
               <span class="item-name">{{$t('Error_Logs')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('service_jobs_report')"
+          >
+            <router-link tag="a" class :to="{ name: 'service_jobs_report' }">
+              <i class="nav-icon i-Repair"></i>
+              <span class="item-name">{{$t('Service_Jobs_Report')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('checklist_completion_report')"
+          >
+            <router-link tag="a" class :to="{ name: 'checklist_completion_report' }">
+              <i class="nav-icon i-Check"></i>
+              <span class="item-name">{{$t('Checklist_Completion_Report')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('customer_maintenance_history_report')"
+          >
+            <router-link tag="a" class :to="{ name: 'customer_maintenance_history_report' }">
+              <i class="nav-icon i-Calendar-4"></i>
+              <span class="item-name">{{$t('Customer_Maintenance_History_Report')}}</span>
             </router-link>
           </li>
 
@@ -1303,7 +2080,7 @@ export default {
   },
 
   computed: {
-    ...mapGetters(["getSideBarToggleProperties", "currentUserPermissions","getallmodules"])
+    ...mapGetters(["getSideBarToggleProperties", "currentUserPermissions"])
   },
 
   methods: {
@@ -1378,6 +2155,13 @@ export default {
 };
 </script>
 
-<style lang="" scoped>
+<style>
+
+.navigation-left::after{
+  content:"";
+  display:block;
+  height: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+
 </style>
 

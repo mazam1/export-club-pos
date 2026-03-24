@@ -15,7 +15,7 @@ class CreateCombinedProductsTable extends Migration
     {
         Schema::create('combined_products', function (Blueprint $table) {
             $table->engine = 'InnoDB';
-			$table->integer('id', true);
+            $table->integer('id', true);
             $table->integer('product_id')->index('combined_products_product_id');
             $table->integer('combined_product_id')->index('combined_products_combined_product_id');
 

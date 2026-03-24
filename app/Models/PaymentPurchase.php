@@ -8,21 +8,21 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class PaymentPurchase extends Model
 {
     use SoftDeletes;
+
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'purchase_id', 'date', 'montant','change', 'Ref', 'payment_method_id', 'user_id', 'notes','account_id'
+        'purchase_id', 'date', 'montant', 'change', 'Ref', 'payment_method_id', 'user_id', 'notes', 'account_id',
     ];
 
     protected $casts = [
         'montant' => 'double',
-        'change'  => 'double',
+        'change' => 'double',
         'purchase_id' => 'integer',
         'user_id' => 'integer',
         'account_id' => 'integer',
         'payment_method_id' => 'integer',
     ];
-
 
     public function payment_method()
     {
@@ -43,5 +43,4 @@ class PaymentPurchase extends Model
     {
         return $this->belongsTo('App\Models\Purchase');
     }
-
 }

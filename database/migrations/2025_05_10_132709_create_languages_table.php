@@ -24,130 +24,130 @@ return new class extends Migration
 
         DB::table('languages')->insert([
             [
-                'name'      => 'English',
-                'locale'    => 'en',
-                'flag'      => 'gb.svg',
+                'name' => 'English',
+                'locale' => 'en',
+                'flag' => 'gb.svg',
                 'is_active' => true,
-                'is_default' => true
+                'is_default' => true,
             ],
             [
                 'name' => 'Français',
                 'locale' => 'fr',
-                'flag'      => 'fr.svg',
+                'flag' => 'fr.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
-                'name' => 'العربية', 
-                'locale' => 'ar', 
-                'flag'      => 'sa.svg',
+                'name' => 'العربية',
+                'locale' => 'ar',
+                'flag' => 'sa.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Turkish',
                 'locale' => 'tur',
-                'flag'      => 'tr.svg',
+                'flag' => 'tr.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Thaï',
                 'locale' => 'thai',
-                'flag'      => 'th.svg',
+                'flag' => 'th.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Hindi',
                 'locale' => 'hn',
-                'flag'      => 'in.svg',
+                'flag' => 'in.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'German',
                 'locale' => 'de',
-                'flag'      => 'de.svg',
+                'flag' => 'de.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Spanish',
                 'locale' => 'es',
-                'flag'      => 'es.svg',
+                'flag' => 'es.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Italien',
                 'locale' => 'it',
-                'flag'      => 'it.svg',
+                'flag' => 'it.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Indonesian',
                 'locale' => 'Ind',
-                'flag'      => 'id.svg',
+                'flag' => 'id.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Simplified Chinese',
                 'locale' => 'sm_ch',
-                'flag'      => 'cn.svg',
+                'flag' => 'cn.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Traditional Chinese',
                 'locale' => 'tr_ch',
-                'flag'      => 'cn.svg',
+                'flag' => 'cn.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Russian',
                 'locale' => 'ru',
-                'flag'      => 'ru.svg',
+                'flag' => 'ru.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Vietnamese',
                 'locale' => 'vn',
-                'flag'      => 'vn.svg',
+                'flag' => 'vn.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Korean',
                 'locale' => 'kr',
-                'flag'      => 'kr.svg',
+                'flag' => 'kr.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Bangla',
                 'locale' => 'ba',
-                'flag'      => 'bd.svg',
+                'flag' => 'bd.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Portuguese',
                 'locale' => 'br',
-                'flag'      => 'pt.svg',
+                'flag' => 'pt.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Danish',
                 'locale' => 'da',
-                'flag'      => 'dk.svg',
+                'flag' => 'dk.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
 
             // Not
@@ -155,50 +155,50 @@ return new class extends Migration
             [
                 'name' => 'Japanese',
                 'locale' => 'ja',
-                'flag'      => 'jp.svg',
+                'flag' => 'jp.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Polish',
                 'locale' => 'pl',
-                'flag'      => 'pl.svg',
+                'flag' => 'pl.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Swahili',
                 'locale' => 'sw',
-                'flag'      => 'ke.svg',
+                'flag' => 'ke.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
             [
                 'name' => 'Hausa',
                 'locale' => 'ha',
-                'flag'      => 'ng.svg',
+                'flag' => 'ng.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
 
             [
                 'name' => 'Yoruba',
                 'locale' => 'yo',
-                'flag'      => 'ng.svg',
+                'flag' => 'ng.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
 
-             [
+            [
                 'name' => 'Amharic',
                 'locale' => 'am',
-                'flag'      => 'et.svg',
+                'flag' => 'et.svg',
                 'is_active' => true,
-                'is_default' => false
+                'is_default' => false,
             ],
         ]);
 
-         // Get default_language from settings table
+        // Get default_language from settings table
         $defaultLocale = DB::table('settings')->value('default_language') ?? 'en';
 
         // Reset all is_default flags

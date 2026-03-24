@@ -250,7 +250,7 @@ methods: {
 
   SetLocal(locale) {
     this.$i18n.locale = locale;
-    this.$store.dispatch("language/setLanguage", locale);
+    this.$store.dispatch("setLanguage", locale);
     Fire.$emit("ChangeLanguage");
     window.location.reload();
   },

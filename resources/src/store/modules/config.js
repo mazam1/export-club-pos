@@ -29,6 +29,9 @@ const mutations = {
   toggleThemeMode: (state) => {
     state.themeMode.dark = !state.themeMode.dark;
   },
+  setDarkMode: (state, darkMode) => {
+    state.themeMode.dark = darkMode;
+  },
   toggleThemeLayout(state, data) {
     state.themeMode.layout = data;
   },
@@ -38,6 +41,7 @@ const mutations = {
 };
 
 export default {
+  namespaced: true,
   state,
   getters,
   actions,

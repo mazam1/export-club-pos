@@ -18,6 +18,28 @@
         </date-range-picker>
       </b-col>
 
+    <!-- Charts -->
+    <b-row v-if="!isLoading">
+      <b-col md="8" class="mb-3">
+        <b-card class="shadow-soft border-0">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="m-0">{{$t('PaymentsOverTime')}}</h6>
+            <small class="text-muted">{{ fmt(dateRange.startDate) }} → {{ fmt(dateRange.endDate) }}</small>
+          </div>
+          <apexchart type="line" height="320" :options="apexTimeOptions" :series="apexTimeSeries" />
+        </b-card>
+      </b-col>
+      <b-col md="4" class="mb-3">
+        <b-card class="shadow-soft border-0">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="m-0">{{$t('PaymentsByMethod')}}</h6>
+            <small class="text-muted">{{$t('ByAmount')}}</small>
+          </div>
+          <apexchart type="bar" height="320" :options="apexMethodOptions" :series="apexMethodSeries" />
+        </b-card>
+      </b-col>
+    </b-row>
+
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -44,10 +66,24 @@
       }"
         styleClass="table-hover tableOne vgt-table"
       >
+        <template slot="table-row" slot-scope="props">
+          <span v-if="props.column.field === 'montant'">
+            {{ formatPriceDisplay(props.row.montant, 2) }}
+          </span>
+          <span v-else-if="props.column.field === 'Ref_return' && props.row.sale_return_id">
+            <router-link :to="{ name: 'detail_sale_return', params: { id: props.row.sale_return_id } }" class="text-primary">
+              {{ props.formattedRow[props.column.field] }}
+            </router-link>
+          </span>
+          <span v-else>{{ props.formattedRow[props.column.field] }}</span>
+        </template>
         <div slot="table-actions" class="mt-2 mb-3">
           <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
             <i class="i-Filter-2"></i>
             {{ $t("Filter") }}
+          </b-button>
+          <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
+            <i class="i-Printer"></i> {{ $t("print") }}
           </b-button>
           <b-button @click="Payment_PDF()" size="sm" variant="outline-success ripple m-1">
             <i class="i-File-Copy"></i> PDF
@@ -141,17 +177,22 @@
 <script>
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import DateRangePicker from 'vue2-daterange-picker'
 //you need to import the CSS manually
 import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
 import moment from 'moment'
+import VueApexCharts from "vue-apexcharts";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting
+} from "../../../../../utils/priceFormat";
 
 export default {
   metaInfo: {
     title: "Payment Sale Returns"
   },
-  components: { DateRangePicker },
+  components: { DateRangePicker, apexchart: VueApexCharts },
   data() {
     return {
       isLoading: true,
@@ -199,6 +240,8 @@ export default {
           monthNames: moment.monthsShort(), //array of month names - see moment documenations for details 
           firstDay: 1 //ISO first day of week - see moment documenations for details
         },
+      // Optional price format key for frontend display (loaded from system settings/localStorage)
+      price_format_key: null
     };
   },
   computed: {
@@ -244,24 +287,130 @@ export default {
         {
           label: this.$t("Amount"),
           field: "montant",
-          type: "decimal",
+          // Let headerField return a formatted string; avoid vue-good-table's decimal re-formatting.
           headerField: this.sumCount,
           tdClass: "text-left",
           thClass: "text-left"
+        },
+        {
+          label: this.$t("AddedBy"),
+          field: "user_name",
+          tdClass: "text-left",
+          thClass: "text-left",
+          sortable: false
         }
       ];
+    },
+
+    // ApexCharts: time series (line)
+    apexTimeOptions(){
+      const map = new Map();
+      (this.payments || []).forEach(p => {
+        const d = p.date ? String(p.date).slice(0,10) : "";
+        const amt = Number(p.montant || 0);
+        if (!d) return;
+        map.set(d, (map.get(d) || 0) + amt);
+      });
+      const dates = Array.from(map.keys()).sort();
+      return {
+        chart: { type: 'line', toolbar: { show: false } },
+        stroke: { curve: 'smooth', width: 3 },
+        dataLabels: { enabled: false },
+        xaxis: { categories: dates, labels: { rotate: -45 } },
+        yaxis: { labels: { formatter: (v) => {
+          try { return new Intl.NumberFormat(undefined,{ notation:'compact', maximumFractionDigits:1 }).format(Number(v||0)); }
+          catch { return v; }
+        } } },
+        tooltip: { y: { formatter: (v) => {
+          try { return Number(v||0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+          catch { return v; }
+        } } },
+        grid: { padding: { left: 10, right: 10, top: 10, bottom: 10 } }
+      };
+    },
+    apexTimeSeries(){
+      const map = new Map();
+      (this.payments || []).forEach(p => {
+        const d = p.date ? String(p.date).slice(0,10) : "";
+        const amt = Number(p.montant || 0);
+        if (!d) return;
+        map.set(d, (map.get(d) || 0) + amt);
+      });
+      const dates = Array.from(map.keys()).sort();
+      const vals = dates.map(d => map.get(d));
+      return [{ name: this.$t('Amount'), data: vals }];
+    },
+
+    // ApexCharts: by method (horizontal bar)
+    apexMethodOptions(){
+      const map = new Map();
+      (this.payments || []).forEach(p => {
+        const k = p.payment_method || this.$t('Unknown');
+        map.set(k, (map.get(k) || 0) + Number(p.montant || 0));
+      });
+      const cats = Array.from(map.keys());
+      return {
+        chart: { type: 'bar', toolbar: { show: false } },
+        plotOptions: { bar: { horizontal: true } },
+        dataLabels: { enabled: false },
+        xaxis: { categories: cats },
+        tooltip: { y: { formatter: (v) => {
+          try { return Number(v||0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+          catch { return v; }
+        } } },
+        grid: { padding: { left: 10, right: 10, top: 10, bottom: 10 } }
+      };
+    },
+    apexMethodSeries(){
+      const map = new Map();
+      (this.payments || []).forEach(p => {
+        const k = p.payment_method || this.$t('Unknown');
+        map.set(k, (map.get(k) || 0) + Number(p.montant || 0));
+      });
+      const cats = Array.from(map.keys());
+      const vals = cats.map(k => map.get(k));
+      return [{ name: this.$t('Amount'), data: vals }];
     }
   },
 
   methods: {
-
-    sumCount(rowObj) {
-     
-    	let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        sum += rowObj.children[i].montant;
+    // Price formatting for display only (does NOT affect calculations or stored values)
+    // Uses the global/system price_format setting when available; otherwise falls back
+    // to the existing toLocaleString behavior to preserve current behavior.
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = Number.isInteger(dec) ? dec : 2;
+        const n = Number(number || 0);
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
+        const effectiveKey = key || null;
+        return formatPriceDisplayHelper(n, decimals, effectiveKey);
+      } catch (e) {
+        const n = Number(number || 0);
+        return n.toLocaleString(undefined, { maximumFractionDigits: dec || 2 });
       }
-      return sum;
+    },
+    fmt(d){
+      try { return moment(d).format('YYYY-MM-DD'); } catch(e){ return String(d || ''); }
+    },
+
+    // Group footer helper for vue-good-table.
+    // Returns a formatted string so the footer row inside the table
+    // looks like a normal data row, but uses the global price format.
+    sumCount(rowObj) {
+      if (!rowObj || !Array.isArray(rowObj.children)) {
+        return this.formatPriceDisplay(0, 2);
+      }
+      let sum = 0;
+      for (let i = 0; i < rowObj.children.length; i++) {
+        const value = Number(rowObj.children[i].montant) || 0;
+        if (Number.isFinite(value)) {
+          sum += value;
+        }
+      }
+      return this.formatPriceDisplay(sum, 2);
     },
 
     //---- update Params Table
@@ -318,6 +467,102 @@ export default {
       this.Payments_sale_returns(this.serverParams.page);
     },
 
+    //------ Print Table Only - Print ALL payments data with all columns
+    printTableOnly() {
+      const title = `${this.$t("Reports")} / ${this.$t("payments_Sales_Return")}`;
+      const payments = Array.isArray(this.payments) ? this.payments : [];
+      
+      // Build table header with all columns
+      let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
+      tableHTML += '<thead><tr>';
+      
+      this.columns.forEach(col => {
+        tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
+      });
+      tableHTML += '</tr></thead><tbody>';
+      
+      // Build table rows with all data - format each cell according to column type
+      payments.forEach(payment => {
+        tableHTML += '<tr>';
+        this.columns.forEach(col => {
+          let cellValue = '';
+          
+          if (col.field === 'date') {
+            cellValue = payment.date ? this.fmt(payment.date) : '';
+          } else if (col.field === 'Ref') {
+            cellValue = payment.Ref || '';
+          } else if (col.field === 'Ref_return') {
+            cellValue = payment.Ref_return || '';
+          } else if (col.field === 'client_name') {
+            cellValue = payment.client_name || '';
+          } else if (col.field === 'payment_method') {
+            cellValue = payment.payment_method || '';
+          } else if (col.field === 'account_name') {
+            cellValue = payment.account_name || '';
+          } else if (col.field === 'montant') {
+            cellValue = this.formatPriceDisplay(payment.montant, 2);
+          } else if (col.field === 'user_name') {
+            cellValue = payment.user_name || '';
+          } else {
+            // Default: get value directly from payment object
+            cellValue = payment[col.field] || '';
+          }
+          
+          tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
+        });
+        tableHTML += '</tr>';
+      });
+      
+      tableHTML += '</tbody></table>';
+
+      const w = window.open("", "_blank");
+      if (!w) {
+        alert("Please allow popups to print");
+        return;
+      }
+
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML)
+        .join("\n");
+
+      const doc = w.document;
+      doc.open();
+      doc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="${window.location.origin}/" />
+    <title>${title}</title>
+    ${links}
+    <style>
+      /* Force visibility in print (some global POS print CSS hides body) */
+      @media print { 
+        body, body * { visibility: visible !important; }
+        @page { size: A4 landscape; margin: 0.3cm; }
+      }
+      body { margin: 0.3cm; font-family: Arial, sans-serif; }
+      .print-header { font-weight: 600; margin-bottom: 10px; font-size: 14px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 10px; }
+      th { background-color: #f5f5f5; font-weight: bold; }
+      tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+  </head>
+  <body>
+    <div class="print-header">${title}</div>
+    ${tableHTML}
+  </body>
+</html>`);
+      doc.close();
+
+      w.focus();
+      setTimeout(() => {
+        w.print();
+        w.close();
+      }, 400);
+    },
+
     //---------------------------------------- Set To Strings-------------------------\\
     setToStrings() {
       // Simply replaces null values with strings=''
@@ -338,13 +583,14 @@ export default {
       pdf.setFont("VazirmatnBold"); 
 
       let columns = [
-        { title: self.$t("date"), dataKey: "date" },
-        { title: self.$t("Reference"), dataKey: "Ref" },
-        { title: self.$t("Return"), dataKey: "Ref_return" },
-        { title: self.$t("Customer"), dataKey: "client_name" },
-        { title: self.$t("ModePaiement"), dataKey: "payment_method" },
-        { title: self.$t("Account"), dataKey: "account_name" },
-        { title: self.$t("Amount"), dataKey: "montant" }
+        { header: self.$t("date"), dataKey: "date" },
+        { header: self.$t("Reference"), dataKey: "Ref" },
+        { header: self.$t("Return"), dataKey: "Ref_return" },
+        { header: self.$t("Customer"), dataKey: "client_name" },
+        { header: self.$t("ModePaiement"), dataKey: "payment_method" },
+        { header: self.$t("Account"), dataKey: "account_name" },
+        { header: self.$t("Amount"), dataKey: "montant" },
+        { header: self.$t("AddedBy"), dataKey: "user_name" }
       ];
       
     // Calculate totals
@@ -358,11 +604,11 @@ export default {
        payment_method: '',
        account_name: '',
        montant: `${totalGrandTotal.toFixed(2)}`,
-      
+       user_name: ''
      }];
 
 
-    pdf.autoTable({
+    autoTable(pdf, {
              columns: columns,
              body: self.payments,
              foot: footer,
@@ -378,13 +624,13 @@ export default {
                halign: "center", // 
              },
              headStyles: {
-               fillColor: [200, 200, 200], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
              footStyles: {
-               fillColor: [230, 230, 230], 
-               textColor: [0, 0, 0], 
+               fillColor: [26, 86, 219], 
+               textColor: 255, 
                fontStyle: "bold", 
              },
     });

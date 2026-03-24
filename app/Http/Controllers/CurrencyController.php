@@ -9,8 +9,7 @@ use Illuminate\Http\Request;
 
 class CurrencyController extends Controller
 {
-
-    //------------ GET ALL Currency -----------\\
+    // ------------ GET ALL Currency -----------\\
 
     public function index(Request $request)
     {
@@ -22,7 +21,7 @@ class CurrencyController extends Controller
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        $helpers = new helpers();
+        $helpers = new helpers;
 
         $currencies = Currency::where('deleted_at', '=', null)
 
@@ -34,7 +33,7 @@ class CurrencyController extends Controller
                 });
             });
         $totalRows = $currencies->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $currencies = $currencies->offset($offSet)
@@ -48,7 +47,7 @@ class CurrencyController extends Controller
         ]);
     }
 
-    //---------------- STORE NEW Currency -------------\\
+    // ---------------- STORE NEW Currency -------------\\
 
     public function store(Request $request)
     {
@@ -70,14 +69,15 @@ class CurrencyController extends Controller
 
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
-        }
 
-    //---------------- UPDATE Currency -------------\\
+    }
+
+    // ---------------- UPDATE Currency -------------\\
 
     public function update(Request $request, $id)
     {
@@ -99,7 +99,7 @@ class CurrencyController extends Controller
 
     }
 
-    //------------ Delete Currency -----------\\
+    // ------------ Delete Currency -----------\\
 
     public function destroy(Request $request, $id)
     {
@@ -112,7 +112,7 @@ class CurrencyController extends Controller
         return response()->json(['success' => true]);
     }
 
-    //-------------- Delete by selection  ---------------\\
+    // -------------- Delete by selection  ---------------\\
 
     public function delete_by_selection(Request $request)
     {
@@ -124,15 +124,16 @@ class CurrencyController extends Controller
                 'deleted_at' => Carbon::now(),
             ]);
         }
+
         return response()->json(['success' => true]);
     }
 
-    //------------ GET ALL Currency WITHOUT PAGINATE -----------\\
+    // ------------ GET ALL Currency WITHOUT PAGINATE -----------\\
 
     public function Get_Currencies()
     {
         $Currencies = Currency::where('deleted_at', null)->get(['id', 'name']);
+
         return response()->json($Currencies);
     }
-
 }

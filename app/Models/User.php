@@ -9,6 +9,7 @@ use Laravel\Passport\HasApiTokens;
 class User extends Authenticatable
 {
     use HasApiTokens, Notifiable;
+
     protected $dates = ['deleted_at'];
 
     /**
@@ -17,7 +18,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'firstname', 'lastname', 'username', 'email', 'password', 'phone', 'statut', 'avatar', 'role_id','is_all_warehouses'
+        'firstname', 'lastname', 'username', 'email', 'password', 'phone', 'statut', 'avatar', 'role_id', 'is_all_warehouses', 'record_view',
     ];
 
     /**
@@ -39,6 +40,7 @@ class User extends Authenticatable
         'role_id' => 'integer',
         'statut' => 'integer',
         'is_all_warehouses' => 'integer',
+        'record_view' => 'boolean',
     ];
 
     public function oauthAccessToken()
@@ -61,7 +63,8 @@ class User extends Authenticatable
         if (is_string($role)) {
             return $this->roles->contains('name', $role);
         }
-        return !!$role->intersect($this->roles)->count();
+
+        return (bool) $role->intersect($this->roles)->count();
     }
 
     public function assignedWarehouses()
@@ -69,4 +72,25 @@ class User extends Authenticatable
         return $this->belongsToMany('App\Models\Warehouse');
     }
 
+    /**
+     * Check if user has record_view permission (user-level boolean with backward compatibility)
+     * 
+     * @return bool
+     */
+    public function hasRecordView()
+    {
+        // New way: Check user's record_view field (user-level boolean)
+        // Backward compatibility: If record_view is null, fall back to role permission check
+        if (isset($this->record_view)) {
+            return (bool) $this->record_view;
+        } else {
+            // Fallback to role permission check for backward compatibility
+            $role = $this->roles()->first();
+            if ($role) {
+                return $role->inRole('record_view');
+            }
+        }
+        
+        return false;
+    }
 }

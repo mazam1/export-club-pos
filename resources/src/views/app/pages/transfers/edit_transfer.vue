@@ -68,7 +68,7 @@
                         v-model="transfer.to_warehouse"
                         :reduce="label => label.value"
                         :placeholder="$t('Choose_Warehouse')"
-                        :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
+                        :options="to_warehouses.map(to_warehouses => ({label: to_warehouses.name, value: to_warehouses.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
@@ -474,6 +474,7 @@ export default {
         tax_method: ""
       },
       warehouses: [],
+      to_warehouses: [],
       products: [],
       total: 0,
       GrandTotal: 0,
@@ -1005,9 +1006,9 @@ export default {
 
     Get_Product_Details(product_id, variant_id) {
       axios.get("/show_product_data/" + product_id +"/"+ variant_id).then(response => {
-        this.product.discount = 0;
-        this.product.DiscountNet = 0;
-        this.product.discount_Method = "2";
+        this.product.discount           = response.data.discount;
+        this.product.DiscountNet        = response.data.DiscountNet;
+        this.product.discount_Method    = response.data.discount_method;
         this.product.del = 0;
         this.product.id = 0;
         this.product.etat = "new";
@@ -1041,6 +1042,7 @@ export default {
           this.transfer = response.data.transfer;
           this.details = response.data.details;
           this.warehouses = response.data.warehouses;
+          this.to_warehouses = response.data.to_warehouses;
           this.Get_Products_By_Warehouse(this.transfer.from_warehouse);
           this.Calcul_Total();
           this.isLoading = false;

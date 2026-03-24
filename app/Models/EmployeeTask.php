@@ -6,16 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class EmployeeTask extends Model
 {
-   protected $table ="employee_task";
+    protected $table = 'employee_task';
 
-   protected $fillable = [
-    'employee_id', 'task_id',
-];
+    protected $fillable = [
+        'employee_id', 'task_id',
+    ];
 
-protected $casts = [
-    'employee_id' => 'integer',
-    'task_id' => 'integer',
-];
+    protected $casts = [
+        'employee_id' => 'integer',
+        'task_id' => 'integer',
+    ];
 
     public function assignedTasks()
     {

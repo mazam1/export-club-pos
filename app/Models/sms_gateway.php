@@ -11,6 +11,4 @@ class sms_gateway extends Model
     protected $fillable = [
         'title',
     ];
-
-
 }
