@@ -1,9 +1,10 @@
 /public/hot
-
+/public/images
 /public/js/bundle
 /public/images/vendor
 /public/js/main.js
 /node_modules
+/bootstrap/cache
 /public/hot
 /public/storage
 /storage/*.key
@@ -18,6 +19,9 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+<<<<<<< Updated upstream
 CLAUDE.md
 /bootstrap/cache/
 /public/.rnd
+=======
+>>>>>>> Stashed changes
