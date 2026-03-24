@@ -90,6 +90,14 @@ class PurchasesController extends BaseController
 
         // Multiple Filter
         $Filtred = $helpers->filter($Purchases, $columns, $param, $request)
+        // Filter by product barcode
+            ->when($request->filled('product_barcode'), function ($query) use ($request) {
+                return $query->whereHas('details', function ($q) use ($request) {
+                    $q->whereHas('product', function ($q2) use ($request) {
+                        $q2->where('code', $request->product_barcode);
+                    });
+                });
+            })
         // Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {

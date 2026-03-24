@@ -34,6 +34,23 @@
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
         </div>
         <div slot="table-actions" class="mt-2 mb-3">
+          <b-input-group size="sm" class="d-inline-flex align-items-center m-1" style="width: 250px;">
+            <b-input-group-prepend>
+              <b-input-group-text>
+                <i class="i-Bar-Code"></i>
+              </b-input-group-text>
+            </b-input-group-prepend>
+            <b-form-input
+              v-model="Filter_barcode"
+              :placeholder="$t('Scan_Barcode')"
+              @keyup.enter="GET_Sales_Return(1)"
+            ></b-form-input>
+            <b-input-group-append v-if="Filter_barcode">
+              <b-button variant="outline-danger" @click="Filter_barcode = ''; GET_Sales_Return(1)">
+                <i class="i-Close"></i>
+              </b-button>
+            </b-input-group-append>
+          </b-input-group>
           <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
             <i class="i-Filter-2"></i>
             {{ $t("Filter") }}
@@ -524,6 +541,7 @@ export default {
       Filter_status: "",
       Filter_Payment: "",
       Filter_Ref: "",
+      Filter_barcode: "",
       Filter_date: "",
       Filter_warehouse: "",
       due:0,
@@ -779,6 +797,7 @@ export default {
       this.Filter_status = "";
       this.Filter_Payment = "";
       this.Filter_Ref = "";
+      this.Filter_barcode = "";
       this.Filter_date = "";
       this.Filter_warehouse = "";
       this.GET_Sales_Return(this.serverParams.page);
@@ -1073,7 +1092,9 @@ export default {
             "&search=" +
             this.search +
             "&limit=" +
-            this.limit
+            this.limit +
+            "&product_barcode=" +
+            this.Filter_barcode
         )
         .then(response => {
           this.sales_return = response.data.sale_Return;
